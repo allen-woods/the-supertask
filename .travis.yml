@@ -3,7 +3,7 @@ node_js:
   - stable
 env:
   matrix:
-    - secure: mlfS7FSWfFoglYCtL2dbqoIaPMkx1WyKCzE2WswZPq/yE6ltXDXG2JspsnQjE6xqoFOLQEiSEV7cOEJhFC1rVFpF+F9DV3vyUToGMGxHkdpDUoRQwJEBcqJZ1IiAUz13nQPJrha7ihKVMPBhDNOzkHxqqu0X+JNmOhVmLHW9tXmq1s23o4NaYkR5o2vY1K5LGnX8mCYq4prBNZ8HOMebPVDl4C8qcbnEssZb3nJ8zpNij8aGL5bF1ZFmbVPe7ncEW8U5jaE9K6GXarbFjiv0dxLT8oGkHF+1QSpFcRUca5gVoJP11MTmKYKbH7vWu/mWDswdQuQQ+gaH8M8pGXP1naB6x8ZJumQiPvtLPMkV2ZHWSFwi+FBmWnhppRnowPlXF48icE+npr7dAvAb0l2IQVLAw8LDBhdCmFCJXYb+78qm3ilriC1MozL4zyXgDksz9V5dXL2t9v1UvEaNeUrx7wUyxHtB2JKDf3IrEZP2h3tbf57TCWWGez+cpGYfddqWE9GTysZjCsTqPyX2PUED7xmkABqzNiyF6dCNNm9H0Jbsh29HlLv1gWMdx8XfkefSBhcA9me4PrMuUQxEL9+EZPuwVMik+ObMjuQ8rBcS0+zYL4IZN2ClZo//da4tj3db0U7JuvnxAl/Q7vFHpbjm4Nhk6aqDZ73sRi2b/8roRiI=
+    secure: ZJ4+komC0JKlCQpXsOikJbDK45XCmbJgAkn2XG+tk2fZtxkkQOMYZXDRV7sY4lYpNa5/ng9b9pudoqRcLUGyT1qu2p5GQM+B66Lr/9bv844Jg44VGCqn8QESet/NRTc+s17HO1jKZ639VU7zajkl5ThcWvqMLmvzTKsYpyTsGfUbix5wrDZZSrKUehpHcQQNafGkoZanMTv4WSnL6GqHl8ontcsat6kig+E3YRzxQ6BJtyGoSV/cYWC9De4s9tTAcz9duER6BzBBS2KGPyNI2mkvgP+UnTE2ep1OFU/pzYYX1Bq82kTBlUuLXMvqzVVXMlASs1c3VAPi6gvIGMwBDmeoNzR3pSrRN02M3kVqJcVz7syCX74DO44lK84GuI0JRD5ZIxOIbt9eOnI6rSxM5js5jPOUk6w+47F6bvKQs9c4PKhTtJHHTBgVXI4NepkRM21R8QdPF993Ke0n6+GKGnWbkW7ieeCNLZiZwBsuiaYEiHK3vRNDfxovZJtMCkv6oq/I0ZT+Kyco+GJudTLVeOV7yFwERTOmim/AkFAQn//VoQQ01x53fCnhY9SZCRbBE+PqA6Uhs5YBKWaGNAj7YzGuPNbNYdMlxJE4G+FDiGnTROl4Nr/DR+1GkCNskm6o32LhmiH+ZCQLUC4Xbd0JRfyDfGHMYwUNssnuooU4WfA=
 addons:
   ssh_known_hosts: thesupertask.com
 before_install:
@@ -11,6 +11,6 @@ before_install:
     -in travis_ci_deploy_thesupertask_key.enc -out ./deploy_key -d
   - eval "$(ssh-agent -s)"
   - chmod 600 ./deploy_key
-  - echo -e "Host $VPS_IP\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+  - echo -e "Host \$VPS_IP\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
   - ssh-add ./deploy_key
-  - ssh -i ./deploy_key "deploy@$VPS_IP" ls
+  - ssh -i ./deploy_key "deploy@\$VPS_IP" ls
