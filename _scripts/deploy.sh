@@ -3,7 +3,8 @@ set -x
 echo "the deploy step has started..."
 
 # Initialize a new git repo in _site, and push it to our server.
-cd _site
+mkdir _site && cd _site
+
 git init
 
 git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com/.git"
