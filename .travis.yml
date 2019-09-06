@@ -1,10 +1,14 @@
 language: node_js
+
 node_js:
   - stable
+
 dist: trusty
+
 env:
   matrix:
     secure: ZJ4+komC0JKlCQpXsOikJbDK45XCmbJgAkn2XG+tk2fZtxkkQOMYZXDRV7sY4lYpNa5/ng9b9pudoqRcLUGyT1qu2p5GQM+B66Lr/9bv844Jg44VGCqn8QESet/NRTc+s17HO1jKZ639VU7zajkl5ThcWvqMLmvzTKsYpyTsGfUbix5wrDZZSrKUehpHcQQNafGkoZanMTv4WSnL6GqHl8ontcsat6kig+E3YRzxQ6BJtyGoSV/cYWC9De4s9tTAcz9duER6BzBBS2KGPyNI2mkvgP+UnTE2ep1OFU/pzYYX1Bq82kTBlUuLXMvqzVVXMlASs1c3VAPi6gvIGMwBDmeoNzR3pSrRN02M3kVqJcVz7syCX74DO44lK84GuI0JRD5ZIxOIbt9eOnI6rSxM5js5jPOUk6w+47F6bvKQs9c4PKhTtJHHTBgVXI4NepkRM21R8QdPF993Ke0n6+GKGnWbkW7ieeCNLZiZwBsuiaYEiHK3vRNDfxovZJtMCkv6oq/I0ZT+Kyco+GJudTLVeOV7yFwERTOmim/AkFAQn//VoQQ01x53fCnhY9SZCRbBE+PqA6Uhs5YBKWaGNAj7YzGuPNbNYdMlxJE4G+FDiGnTROl4Nr/DR+1GkCNskm6o32LhmiH+ZCQLUC4Xbd0JRfyDfGHMYwUNssnuooU4WfA=
+
 addons:
   ssh_known_hosts: thesupertask.com
 
