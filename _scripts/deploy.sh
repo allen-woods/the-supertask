@@ -7,7 +7,7 @@ echo "the deploy step has started..."
 
 # git init
 
-git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com.git"
+git remote add deploy "ssh://deploy@$VPS_IP:/var/www/thesupertask.com.git"
 # git config user.name "Travis CI"
 # git config user.email "allen@thesupertask.com"
 
