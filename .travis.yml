@@ -1,0 +1,16 @@
+language: node_js
+node_js:
+  - stable
+addons:
+  ssh_known_hosts: thesupertask.com
+before_install:
+  - openssl aes-256-cbc -K $encrypted_a9f5e5e6d65e_key -iv $encrypted_a9f5e5e6d65e_iv
+    -in travis_ci_deploy_thesupertask_key.enc -out ./deploy_key -d
+  - eval "$(ssh-agent -s)"
+  - chmod 600 ./deploy_key
+  - echo -e "Host $VPS_IP\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+  - ssh-add ./deploy_key
+  - ssh -i ./deploy_key "deploy@$VPS_IP" pwd
+env:
+  matrix:
+    - secure: mlfS7FSWfFoglYCtL2dbqoIaPMkx1WyKCzE2WswZPq/yE6ltXDXG2JspsnQjE6xqoFOLQEiSEV7cOEJhFC1rVFpF+F9DV3vyUToGMGxHkdpDUoRQwJEBcqJZ1IiAUz13nQPJrha7ihKVMPBhDNOzkHxqqu0X+JNmOhVmLHW9tXmq1s23o4NaYkR5o2vY1K5LGnX8mCYq4prBNZ8HOMebPVDl4C8qcbnEssZb3nJ8zpNij8aGL5bF1ZFmbVPe7ncEW8U5jaE9K6GXarbFjiv0dxLT8oGkHF+1QSpFcRUca5gVoJP11MTmKYKbH7vWu/mWDswdQuQQ+gaH8M8pGXP1naB6x8ZJumQiPvtLPMkV2ZHWSFwi+FBmWnhppRnowPlXF48icE+npr7dAvAb0l2IQVLAw8LDBhdCmFCJXYb+78qm3ilriC1MozL4zyXgDksz9V5dXL2t9v1UvEaNeUrx7wUyxHtB2JKDf3IrEZP2h3tbf57TCWWGez+cpGYfddqWE9GTysZjCsTqPyX2PUED7xmkABqzNiyF6dCNNm9H0Jbsh29HlLv1gWMdx8XfkefSBhcA9me4PrMuUQxEL9+EZPuwVMik+ObMjuQ8rBcS0+zYL4IZN2ClZo//da4tj3db0U7JuvnxAl/Q7vFHpbjm4Nhk6aqDZ73sRi2b/8roRiI=
