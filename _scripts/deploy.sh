@@ -1,10 +1,10 @@
 #!/bin/bash
 set -x
+echo "the deploy step has started..."
 if [ $TRAVIS_BRANCH == 'master' ] ; then
-  echo "the deploy step has started..."
 
   # Initialize a new git repo in _site, and push it to our server.
-  mkdir _site && cd _site
+  cd _site
   git init
 
   git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com"
@@ -17,3 +17,4 @@ if [ $TRAVIS_BRANCH == 'master' ] ; then
 else
   echo "Not Deployed: branch must be master"
 fi
+echo "the deploy step has ended"
