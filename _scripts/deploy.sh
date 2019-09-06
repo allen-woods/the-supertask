@@ -6,12 +6,12 @@ echo "the deploy step has started..."
 cd _site
 git init
 
-git remote add deploy "deploy@thesupertask.com:/var/www/thesupertask.com"
+git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com"
 git config user.name "Travis CI"
 git config user.email "allen@thesupertask.com"
 
 git add .
 git commit -m "Deploy"
-git push --force deploy master
+ssh -i ./deploy_key git push --force deploy master
 
 echo "the deploy step has ended"
