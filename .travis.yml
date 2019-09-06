@@ -11,8 +11,6 @@ before_install:
     -in travis_ci_deploy_thesupertask_key.enc -out ./deploy_key -d
   - eval "$(ssh-agent -s)"
   - chmod 600 ./deploy_key
-  - echo -e "Host $VPS_IP\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+  - echo -e "Host \\\$VPS_IP\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
   - ssh-add ./deploy_key
-  - ssh -i ./deploy_key "deploy@$VPS_IP" pwd
-after_success:
-  - ls
+  - ssh -i ./deploy_key "deploy@$VPS_IP" && pwd
