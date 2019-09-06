@@ -14,5 +14,7 @@ before_install:
   - echo -e "Host $VPS_IP\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
   - ssh-add ./deploy_key
   - ssh -i ./deploy_key "deploy@$VPS_IP"
-  - ls
+after_success:
+  - sleep 10
+  - ls -al
   - exit
