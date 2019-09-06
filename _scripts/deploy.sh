@@ -17,7 +17,7 @@ echo "!index.html" >> .gitignore
 echo "!/src/**" >> .gitignore
 
 # Add the deploy and configure it
-git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com.git"
+git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com/.git"
 git config user.name "Travis CI"
 git config user.email "allen@thesupertask.com"
 
