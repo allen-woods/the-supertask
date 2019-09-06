@@ -13,6 +13,6 @@ git config user.email "allen@thesupertask.com"
 
 git add .
 git commit -m "Deploy"
-git push --force deploy master
+git push deploy
 
 echo "the deploy step has ended"
