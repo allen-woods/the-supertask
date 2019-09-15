@@ -1,0 +1,60 @@
+version: '3.7'
+
+services:
+  api:
+    build: ./api
+    image: site-api
+    container_name: site-api
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      - DB_USERNAME
+      - DB_PASSWORD
+      - DB_HOST=db
+      - DB_NAME=$MONGO_INITDB_DATABASE
+      - SESS_SECRET
+      - REDIS_HOST=cache
+      - REDIS_PASSWORD
+    depends_on:
+      - db
+      - cache
+  web:
+    build: ./web
+    image: site-web
+    container_name: site-web
+    expose:
+      - '80'
+    depends_on:
+      - api
+  proxy:
+    image: nginx:alpine
+    container_name: site-proxy
+    volumes:
+      - ./proxy.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - 8080:80
+    depends_on:
+      - web
+  db:
+    image: mongo
+    container_name: site-db
+    expose:
+      - '27017'
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD
+      - MONGO_INITDB_DATABASE
+      - DB_USERNAME
+      - DB_PASSWORD
+    volumes:
+      - ./mongo-init.sh:/docker-entrypont-initdb.d/mongo-init.sh
+      - ./data:/data/db
+  cache:
+    image: redis:alpine
+    container_name: site-cache
+    expose:
+      - '6379'
+    environment:
+      - REDIS_PASS
+    command: ['--requirepass "$REDIS_PASSWORD"']
