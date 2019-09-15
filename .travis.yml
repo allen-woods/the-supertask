@@ -11,6 +11,9 @@ jobs:
         - docker push $DOCKER_HUB_USERNAME/$DOCKER_HUB_REPO
     - stage: test
       script: echo "This is the test stage."
+branches:
+  only:
+    - master
 env:
   matrix:
     - secure: T1FFwxvL2QogRtZjpnqTmfaOYhLw05r2NNQ5W2rVTFoA5cIfnifZzDaFauThG34UZYargkozQM7KnxtYhMGCo4YH9eiP9oSfJJHvgVNjyOurBDHCfIixVsbYWvo16Omdc0ToswGcji2R0uixKzK0M2vbm1jWryeIU9BBBy6JSax7hwm+iRDTTkNla37GdgDQj2Pf8SxWeU0ta/U7XWWqscO6wfZN1WTj6PmZLCJgSgIJdesaQO851ATulCQicq8mbOQ3QrtT7yC+oI6eCF07u9ABUVxbB+i811yyhNmkmEe761NlqAEGcrGy1XImzq9x4cFd3NT/cG8ySqQK25jMCFnAjkB4JSiq6+U+mDRVrJkvAa9bxu4HGaPz6QXoOyisEc8RTvj835cCUUkcTo6B5ioV1SVSy9Nw+JywJSg8cCqjJ/TNKrYDz3JmiF+l79NXkqYXO1ZtDmQtYjgAFtcyyvwoLq1ZuRJ6xNQTA0Vr32WvK0y3r+cQjiZfncqFk51Wq56dFjgGn0Q+85UdWhvi5Y1Ee7tNS94h6f92ZdaYi9avBH9jHrWICD5qkWVnYfmwDeiE0mfKbHfGbKJlXDAcsaTyT6MvinrUq3UNnBvWOgSYHNinMTN7yRhxx1eHHoYKJgm5Df0CPv3xB6zNssvEMkkHIznTDlpd0ynzDJ2mxUU=
