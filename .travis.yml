@@ -1,4 +1,6 @@
 dist: trusty
+services:
+  - docker
 jobs:
   include:
     - stage: build docker image
