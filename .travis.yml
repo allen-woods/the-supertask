@@ -1,21 +1,7 @@
+language: node_js
+node_js:
+  - stable
 dist: trusty
-services:
-  - docker
-jobs:
-  include:
-    - stage: build docker image
-      script:
-        -
-        - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
-        - docker-compose up --build -t "$DOCKER_HUB_REPO" .
-        - docker images
-        - docker tag $DOCKER_HUB_REPO $DOCKER_HUB_USERNAME/$DOCKER_HUB_REPO
-        - docker push $DOCKER_HUB_USERNAME/$DOCKER_HUB_REPO
-    - stage: test
-      script: echo "This is the test stage."
-branches:
-  only:
-    - master
 env:
   matrix:
     - secure: T1FFwxvL2QogRtZjpnqTmfaOYhLw05r2NNQ5W2rVTFoA5cIfnifZzDaFauThG34UZYargkozQM7KnxtYhMGCo4YH9eiP9oSfJJHvgVNjyOurBDHCfIixVsbYWvo16Omdc0ToswGcji2R0uixKzK0M2vbm1jWryeIU9BBBy6JSax7hwm+iRDTTkNla37GdgDQj2Pf8SxWeU0ta/U7XWWqscO6wfZN1WTj6PmZLCJgSgIJdesaQO851ATulCQicq8mbOQ3QrtT7yC+oI6eCF07u9ABUVxbB+i811yyhNmkmEe761NlqAEGcrGy1XImzq9x4cFd3NT/cG8ySqQK25jMCFnAjkB4JSiq6+U+mDRVrJkvAa9bxu4HGaPz6QXoOyisEc8RTvj835cCUUkcTo6B5ioV1SVSy9Nw+JywJSg8cCqjJ/TNKrYDz3JmiF+l79NXkqYXO1ZtDmQtYjgAFtcyyvwoLq1ZuRJ6xNQTA0Vr32WvK0y3r+cQjiZfncqFk51Wq56dFjgGn0Q+85UdWhvi5Y1Ee7tNS94h6f92ZdaYi9avBH9jHrWICD5qkWVnYfmwDeiE0mfKbHfGbKJlXDAcsaTyT6MvinrUq3UNnBvWOgSYHNinMTN7yRhxx1eHHoYKJgm5Df0CPv3xB6zNssvEMkkHIznTDlpd0ynzDJ2mxUU=
@@ -31,3 +17,15 @@ env:
     - secure: n7qfbT8ogpwGkzd2wEwdPUF/z4PDxqFduBUYFlrQVPnWWImNpMT/wlFKPYSLO3aWoto+snQWOp27zAG7Tyt3Kmmqu60x/FJzFU/oZwjYaDMcjI6RMT7+vIxzdGxhtRbKWf/TDfpCe/2k+xaLOQLX3uCAktPh+5zm9v8VDb0XT2ItP+AHes8S+iG+x+kEgC59ou7IsN6oENaV+MAllHNk7MaTkPVzro2p+FMwGoMn7LYg1rdsRdwnRARX8oAl8Joi92sn8HsvROCprC1RKHo7jzLMHu8taM3HaCpjkd+jy63ct5ZXdY2L/LHYmIbh+TyiqWzt99OKNpCnTXb+xPtXJxdyjogXhzENaCkSmhRuef1jPXr3KWzXQ7uCzsvOT3Gj9l4gWeLfZ9yBtNh+IDx6erepSPhUDhMSS8VItmh9ttad47xBZNw964YDYiiLO6lOtKeqy6ApFB11Wo/Z4OR8mPywlF5uz4OqqOjWRwmhr9U422bo7ig0/kv9cMpa/VOSuKh53/dD0saLk8EnAokWdxN7gdKRdvlyXlqvlhNKD/Pm/lVOzao/e6jARPxm1Twe1R5DY2AamveNUf8wZhAUlpCG+FwLKh0Vi1QRosYuEDjOe36vX5Dr0P5KzYfJUf6WMlJIZsvEGjsSoxaoLwfTQpnsBPfAjrBmHY+JP7tCdIU=
     - secure: lsh+97HmPF3cj8MHKpZOli59cXMo2q2CJH7oGzP48LkRYVxNj80Nkd/cvlvTt5IgjfQ0KbUcCWQY4yn3jI3iPLdm3YkjY63t8aiaaJJpNs53A5Ne5HjHHv9kbgmC2pnNA5HNIRAMSNv2dVj73tz/4PgiB/sV1Uc3WsPOTpBpD6XsgBjaYMZImX0vY+p5o4+ZS67eulku7cr5jKawOT+3jDb5JH9YMHLzCjmvpHJ0xFiTh2Lgems8TWiblc7/MdQTCriurF+CiQzqmdlfWOLHM+WQ8eR1Wp4kVLLUNvsjOgJL+VOAOnMcYpv74QSzZAAMxioaDtJsl55RGdqxlMINETYpZ3dKGPT2aKLpGJJRua7Rk7pqU+7PPgxLyLfyzemYR7qh27QsRiVLhi07ktDwHGl2AYzlLsBDzZoAvWscNp6HdyGHzi5URkGEnD1risq1N820B7kZBAt5lWpvuYz1NdAtDHagdVtTRrVzYeVa2MfiQ8SikTCHhBU6Y6AaIutyMbdRFqfdrNH30iRyxKK2X0SwXFD3fI+u35LKLCAfWWa4fkVStbzF7tn4hCZVA+N4Y+DvAIeWSQws+/ZF9E0sKrR4TBZdNTXIVYsG6bBCExRyU2XPgM7ZF5xOWBbRIqF4X+UVbhLCxxdlrX2CjJOEO0CJH19Ow4kuRsxm7M57124=
     - secure: h1ir1pkp8bbYOaPg5z53bcTD+OYpPSLrbr2LymTx+sFdSO4SUffmOjCPrqMCeubiSx++sUz01qFB/wZNyISbZH0/sOsOlci0hqVUhINnJWNug/01BHnrM/is3lCnT45FSMsrOw9Z+TjDa871D/r9XYYvDF85CbXobCAAJ6dTP5DXXXFh3PEQhZ20QTae8COlpJsTs+SPyW6GhsvRairxBV3DQu3QZSUyWqWIVW2oKEnma0NT2fkxqnrUSmzxlqm9503VPpE90tc1viWiHKu2xIAG/Tk3r7o/oIK4hKXdqLGicCosCzCqg0p64VnM3kWBMJjSLRzx5rlvUX8tYghCMuchOtlKaPPSd9+EfhrfrlwgRvuDosA40ZaZr0age5Ab9KH+9iInbIJtrODATQBPTUMKkuZs1SNViUqE0OorvCJooW1mhqukWc9nbFAhELtFgmOsAtcvvpfLBN9ia3kpMCl/ToiHX5GF+jeiPX8l5WuUCtKVu7nMR9900fA3BvqRvaI2rWQkp7drh9EiAjkPp63VgW1mUFroa0AXUJFo+oimZeQEOkdh3rOAnyIxUJ7YXwjt9twEbH6PogYX8PJKq+TRjUgcIWwCmm/FbVcqfikY+JlfQCWUd+H37sIu7fMzpvu+rLYRM+HbLK58slv5YXT3SrMeJkO0Ps0vRl7+Hog=
+addons:
+  ssh_known_hosts: thesupertask.com
+before_install:
+  - bash _scripts/before_install.sh
+script:
+  - bash _scripts/build.sh
+  - bash _scripts/test.sh
+after_success:
+  - bash _scripts/deploy.sh
+branches:
+  only:
+    - master
