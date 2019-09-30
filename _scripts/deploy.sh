@@ -16,9 +16,9 @@ git init
 echo "!/web/**" >> .gitignore
 
 # Add the deploy and configure it
-git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com/.git"
+git remote add deploy "$VPS_USER@$VPS_IP:$VSP_UPSTREAM"
 git config user.name "Travis CI"
-git config user.email "allen@thesupertask.com"
+git config user.email "$VPS_EMAIL"
 
 # Stage, commit, and push
 git add .
