@@ -13,8 +13,7 @@ ssh-add ./deploy_key
 git init
 
 # Whitelist only the items we want to push
-echo "!index.html" >> .gitignore
-echo "!/src/**" >> .gitignore
+echo "!/web/**" >> .gitignore
 
 # Add the deploy and configure it
 git remote add deploy "deploy@$VPS_IP:/var/www/thesupertask.com/.git"
