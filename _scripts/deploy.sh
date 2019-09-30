@@ -13,7 +13,11 @@ ssh-add ./deploy_key
 git init
 
 # Whitelist only the items we want to push
-echo "!/web/**" >> .gitignore
+echo "!/assets/**" >> .gitignore
+echo "!/css/**" >> .gitignore
+echo "!/js/**" >> .gitignore
+echo "!/textures/**" >> .gitignore
+echo "!index.html" >> .gitignore
 
 # Add the deploy and configure it
 git remote add deploy "$VPS_USER@$VPS_IP:$VSP_UPSTREAM"
