@@ -1,10 +1,16 @@
-# the-supertask
+# The Supertask
 
-My personal portfolio site for ongoing projects using MERN stack, GraphQL, BabylonJS, and other technologies.
+Personal portfolio site for the second half of 2020.
 
-# TODO
+Technologies planned for project:
 
-- Troubleshoot Travis CI config
-- Dockerize services
-- Push to Docker Hub
-- Configure Webhook endpoint
+- Caddy Server
+- CircleCI
+- Custom Authentication
+- Docker Machine
+- Golang
+- GraphQL
+- MongoDB
+- ReactJS
+- Redis
+- WebAssembly
