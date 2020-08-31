@@ -14,3 +14,9 @@ Technologies planned for project:
 - ReactJS
 - Redis
 - WebAssembly
+
+### TODO:
+
+- Dockerize local environment
+- Implement `docker/mongo` and `docker/redis`
+- Begin building API
