@@ -20,6 +20,6 @@ Technologies planned for project:
 - Dockerize local environment
 - Implement `docker/mongo` and `docker/redis`
   - Implement MongoDB with Authentication
-  - Implement Redis securely
-  - Make sure both data stores are persisted
+  - Implement Redis securely (done)
+  - Make sure both data stores are persisted (done)
 - Begin building API
