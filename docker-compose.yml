@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  mongo:
+    container_name: mongo_svc
+    image: mongo:bionic
+    restart: unless-stopped
+
+    # Protect our secrets.
+    env_file:
+      - ./mongo/mongo.env
+
+    ports:
+      - '27017'
+
+    networks:
+      - backend
+    volumes:
+      # A volume to persist our NoSQL database
+      - persist_mongo:/data/db
+
+  redis:
+    container_name: redis_svc
+    image: redis:alpine
+    restart: unless-stopped
+
+    # Protect our secrets.
+    env_file:
+      - ./redis/redis.env
+
+    ports:
+      - '6379'
+
+    networks:
+      - backend
+    volumes:
+      # To prevent crashing, we override the default entrypoint.
+      - ./redis/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+
+      # Custom config file.
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:rw
+
+      # To restrict permissions within the API, we use an external ACL file.
+      - ./redis/users.acl:/usr/local/etc/redis/users.acl:rw
+
+      # A volume for persisting our database.
+      - persist_redis:/data:rw
+
+      # A volume for persisting our backup files.
+      - persist_redis_backups:/var/local/redis/backups:rw
+
+networks:
+  # frontend:
+  backend:
+
+volumes:
+  persist_mongo:
+  persist_redis:
+  persist_redis_backups:
