@@ -2,6 +2,9 @@
 set -e
 
 chown -R redis:redis /usr/local/etc/redis
-chown -R redis:redis /var/local/redis/backups
+
+# The following two lines disable THP support.
+echo "never" > /sys/kernel/mm/transparent_hugepage/enabled
+echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
 
 redis-server /usr/local/etc/redis/redis.conf

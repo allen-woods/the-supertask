@@ -24,6 +24,16 @@ services:
     image: redis:alpine
     restart: unless-stopped
 
+    # These settings allow tcp-backlog in
+    # ./redis/redis.conf to not be capped.
+    sysctls:
+      net.core.somaxconn: 1024
+      net.ipv4.tcp_syncookies: 0
+
+    # This setting is required to disable THP support
+    # (for now).
+    privileged: true
+
     # Protect our secrets.
     env_file:
       - ./redis/redis.env
@@ -46,9 +56,6 @@ services:
       # A volume for persisting our database.
       - persist_redis:/data:rw
 
-      # A volume for persisting our backup files.
-      - persist_redis_backups:/var/local/redis/backups:rw
-
 networks:
   # frontend:
   backend:
@@ -56,4 +63,3 @@ networks:
 volumes:
   persist_mongo:
   persist_redis:
-  persist_redis_backups:
