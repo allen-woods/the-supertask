@@ -3,7 +3,7 @@ version: '3'
 services:
   mongo:
     container_name: mongo_svc
-    image: mongo:bionic
+    image: mongo
     restart: unless-stopped
 
     # Protect our secrets.
@@ -16,6 +16,11 @@ services:
     networks:
       - backend
     volumes:
+      # Run our custom initialization to support authentication.
+      - ./mongo/sh/00-create-admin-user.sh:/docker-entrypoint-initdb.d/00-create-admin-user.sh
+      - ./mongo/sh/01-create-api-user.sh:/docker-entrypoint-initdb.d/01-create-api-user.sh
+      - ./mongo/sh/02-auth-api-user.sh:/docker-entrypoint-initdb.d/02-auth-api-user.sh
+
       # A volume to persist our NoSQL database
       - persist_mongo:/data/db
 
