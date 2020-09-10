@@ -30,4 +30,5 @@ Technologies planned for project:
   - Make sure both data stores are persisted (done)
 - Begin building API
   - Added placeholder types in schema file.
-  - Will flesh out models and relationships in the coming days.
+  - Authentication
+    - Create User type, model, and resolvers.
