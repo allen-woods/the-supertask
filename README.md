@@ -30,5 +30,9 @@ Technologies planned for project:
   - Make sure both data stores are persisted (done)
 - Begin building API
   - Added placeholder types in schema file.
-  - Authentication
+  - Authentication (ON HOLD)
     - Create User type, model, and resolvers.
+  - Researching
+    - Incorporate Apollo Federation?
+      - Embed gRPC to make microservices performant?
+    - GraphQL appropriate for project size?
