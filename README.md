@@ -9,15 +9,24 @@ Technologies planned for project:
 - Custom Authentication
 - Docker Machine
 - Golang
-- GraphQL
+- GraphQL (gqlgen)
 - MongoDB
 - ReactJS
 - Redis
-- WebAssembly
+- <em><s>WebAssembly</s></em>
 
 ### TODO:
 
 - Dockerize local environment (ongoing)
+- Create draft of architecture (done)
+- Begin building API
+  - **Define User schema.**
+    - Generate User model and resolvers.
+    - Populate resolvers with logic.
+    - Design toward implementation of `Apollo Server` and `Apollo Client`.
+
+### DONE:
+
 - Implement `docker/mongo` and `docker/redis`
   - Implement MongoDB with Authentication
     - Wrote custom shell scripts for initializing database.
@@ -28,11 +37,3 @@ Technologies planned for project:
     - Disable THP support inside the container.
     - Removed unnecessary volume "persist_redis_backups" (should be /data).
   - Make sure both data stores are persisted (done)
-- Begin building API
-  - Added placeholder types in schema file.
-  - Authentication (ON HOLD)
-    - Create User type, model, and resolvers.
-  - Researching
-    - Incorporate Apollo Federation?
-      - Embed gRPC to make microservices performant?
-    - GraphQL appropriate for project size?
