@@ -2,8 +2,6 @@
 #
 # https://gqlgen.com/getting-started/
 
-scalar Time
-
 input NewUser {
   email: String!
   name: String!
@@ -20,9 +18,13 @@ type User {
 }
 
 type Query {
-  # Flesh this out
+  me: User
+  users: [User!]!
 }
 
 type Mutation {
-  # Flesh this out
+  signUpUser(input: NewUser): User
+  logInUser(email: String!, password: String!): User
+  logOutUser: Boolean!
+  deleteUser(id: ID!, confirmDelete: Boolean!): Boolean!
 }
