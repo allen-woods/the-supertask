@@ -24,18 +24,14 @@ func MarshalID(id primitive.ObjectID) graphql.Marshaler {
 
 func UnmarshalID(v interface{}) (primitive.ObjectID, error) {
 	var id primitive.ObjectID
+	err := errors.New("")
 
 	json, ok := v.(string)
 	if !ok {
-		// Return the zero value of ObjectID (empty)
-		return id, errors.New("ids must be strings")
+		err = errors.New("ids must be strings")
+	} else {
+		err = id.UnmarshalJSON([]byte(strconv.Quote(json)))
 	}
 
-	err := id.UnmarshalJSON([]byte(strconv.Quote(json)))
-	if err != nil {
-		// Return the zero value of ObjectID (empty)
-		return id, errors.New("ids must be valid JSON")
-	}
-
-	return id, nil
+	return id, err
 }
