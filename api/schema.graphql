@@ -1,5 +1,0 @@
-type User {}
-type Experience {}
-type Memory {}
-type Query {}
-type Mutation {}
