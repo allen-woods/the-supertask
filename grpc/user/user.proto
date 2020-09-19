@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "github.com/allen-woods/the-supertask/grpc/user";
+
+// option java_multiple_files = true;
+
+// Research which java package I need.
+// option java_package = ""
+// java_outer_classname = "UserProto";
+
+// package user;
+
+service Register {
+  rpc SignUp (RegisterRequest) returns (RegisterReply) {}
+}
