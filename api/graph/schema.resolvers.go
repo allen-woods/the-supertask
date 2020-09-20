@@ -15,6 +15,8 @@ import (
 )
 
 func (r *mutationResolver) SignUpUser(ctx context.Context, input *graph_model.NewUser) (*graph_model.User, error) {
+	// Not authenticated to allow sign up.
+
 	// Define any user data to be sent over gRPC.
 
 	// Dial the gRPC server for the User model.
@@ -39,22 +41,27 @@ func (r *mutationResolver) SignUpUser(ctx context.Context, input *graph_model.Ne
 }
 
 func (r *mutationResolver) LogInUser(ctx context.Context, email string, password string) (*graph_model.User, error) {
+	// Not authenticated to allow login.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) LogOutUser(ctx context.Context) (bool, error) {
+	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) DeleteUser(ctx context.Context, id primitive.ObjectID, confirmDelete bool) (bool, error) {
+	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *queryResolver) Me(ctx context.Context) (*graph_model.User, error) {
+	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *queryResolver) Users(ctx context.Context) ([]*graph_model.User, error) {
+	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
