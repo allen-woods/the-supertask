@@ -1,0 +1,98 @@
+// Specify the latest protobuf syntax.
+syntax = "proto3";
+
+// Declare the package of our service ("user")
+package user;
+
+// Provide a full path to the protobuf package.
+// Future releases of the protoc go plugin require this.
+option go_package = "github.com/allen-woods/the-supertask/services/user/userpb";
+
+// Create a message for new users.
+// IMPORTANT:
+// - No "id" field because the user is new.
+// - Has hashed and salted "password" field.
+message NewUser {
+  string email = 1;
+  string name = 2;
+  string userName = 3;
+  string password = 4;
+}
+
+// Create a message for a registered user.
+// IMPORTANT:
+// - Has "id" field because the user is registered.
+// - No "password" field because we should never return it.
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string userName = 4;
+}
+
+// Create a message for updating a registered user.
+// IMPORTANT:
+// - Has "id" field because the user is registered.
+// - Has "password" field because this user is "me".
+message EditUser {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string userName = 4;
+  string password = 5;
+}
+
+// No "id".
+message CreateUserReq {
+  NewUser user = 1;
+}
+
+// No "password".
+message CreateUserRes {
+  User user = 1;
+}
+
+// No "password".
+message ReadUserReq {
+  string id = 1;
+}
+// No "password".
+message ReadUserRes {
+  User user = 1;
+}
+
+// Has both "id" and "password".
+message UpdateUserReq {
+  EditUser user = 1;
+}
+
+// No "password".
+message UpdateUserRes {
+  User user = 1;
+  // May need to use "bool success = 2;".
+}
+
+// No "password".
+message DeleteUserReq {
+  string id = 1;
+}
+
+message DeleteUserRes {
+  bool success = 1;
+}
+
+message ListUsersReq {}
+
+// No "password".
+message ListUsersRes {
+  User user = 1;
+}
+
+service UserService {
+  rpc CreateUser(CreateUserReq) returns (CreateUserRes);
+  rpc ReadUser(ReadUserReq) returns (ReadUserRes);
+  rpc UpdateUser(UpdateUserReq) returns (UpdateUserRes);
+  rpc DeleteUser(DeleteUserReq) returns (DeleteUserRes);
+  rpc ListUsers(ListUsersReq) returns (stream ListUsersRes);
+}
+
