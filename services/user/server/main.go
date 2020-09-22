@@ -25,7 +25,7 @@ type UserServiceServer struct{}
 func (s *UserServiceServer) CreateUser(ctx context.Context, req *userpb.CreateUserReq) (*userpb.CreateUserRes, error) {
 	user := req.GetUser()
 
-	data := NewUserAccount{
+	data := NewOrEditedUserAccount{
 		Email:    user.GetEmail(),
 		Name:     user.GetName(),
 		UserName: user.GetUserName(),
@@ -44,7 +44,7 @@ func (s *UserServiceServer) CreateUser(ctx context.Context, req *userpb.CreateUs
 
 	user.Id = id.Hex()
 
-	return &userpb.CreateUserRes{User: user}, nil
+	return &userpb.CreateUserRes{NewUser: user}, nil
 }
 
 // ReadUser is the "read" method for User CRUD in the User gRPC microservice.
@@ -176,12 +176,13 @@ type UserAccount struct {
 	UserName string             `bson:"userName"`
 }
 
-// NewUserAccount is the struct used for a new User signing up. It does not contain an "ID" field. It does contain a hashed and salted password.
-type NewUserAccount struct {
-	Email    string `bson:"email"`
-	Name     string `bson:"name"`
-	UserName string `bson:"userName"`
-	Password string `bson:"password"`
+// NewOrEditedUserAccount is the struct used for a new User signing up as well as a User that is being edited. It contains hashed and salted password information.
+type NewOrEditedUserAccount struct {
+	ID       primitive.ObjectID `bson:"_id,omitempty"`
+	Email    string             `bson:"email"`
+	Name     string             `bson:"name"`
+	UserName string             `bson:"userName"`
+	Password string             `bson:"password"`
 }
 
 var db *mongo.Client
