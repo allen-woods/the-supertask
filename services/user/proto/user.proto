@@ -6,14 +6,13 @@ option go_package = "user;userpb";
 
 // Create a message for new users.
 // IMPORTANT:
-// - Don't pass "id" when creating because the user is new.
+// - No "id" field because the user is new.
 // - Has hashed and salted "password" field.
-message NewOrEditedUser {
-  string id = 1;
-  string email = 2;
-  string name = 3;
-  string userName = 4;
-  string password = 5;
+message NewUser {
+  string email = 1;
+  string name = 2;
+  string userName = 3;
+  string password = 4;
 }
 
 // Create a message for a registered user.
@@ -27,9 +26,21 @@ message User {
   string userName = 4;
 }
 
+// Create a message for updating a registered user.
+// IMPORTANT:
+// - Has "id" field because the user is registered.
+// - Has "password" field because this user is "me".
+message EditUser {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string userName = 4;
+  string password = 5;
+}
+
 // No "id".
 message CreateUserReq {
-  NewOrEditedUser user = 1;
+  NewUser user = 1;
 }
 
 // No "password".
@@ -48,7 +59,7 @@ message ReadUserRes {
 
 // Has both "id" and "password".
 message UpdateUserReq {
-  NewOrEditedUser user = 1;
+  EditUser user = 1;
 }
 
 // No "password".

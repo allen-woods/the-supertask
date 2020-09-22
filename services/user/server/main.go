@@ -18,14 +18,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// UserServiceServer is the server struct of the User gRPC microservice.
-type UserServiceServer struct{}
+// UserServiceService is the server struct of the User gRPC microservice.
+type UserServiceService struct{}
 
 // CreateUser is the "create" method for User CRUD in the User gRPC microservice.
-func (s *UserServiceServer) CreateUser(ctx context.Context, req *userpb.CreateUserReq) (*userpb.CreateUserRes, error) {
+func (s *UserServiceService) CreateUser(ctx context.Context, req *userpb.CreateUserReq) (*userpb.CreateUserRes, error) {
 	user := req.GetUser()
 
-	data := NewOrEditedUserAccount{
+	data := NewUserAccount{
 		Email:    user.GetEmail(),
 		Name:     user.GetName(),
 		UserName: user.GetUserName(),
@@ -42,13 +42,20 @@ func (s *UserServiceServer) CreateUser(ctx context.Context, req *userpb.CreateUs
 
 	id := result.InsertedID.(primitive.ObjectID)
 
-	user.Id = id.Hex()
+	response := &userpb.CreateUserRes{
+		User: &userpb.User{
+			Id:       id.Hex(),
+			Email:    data.Email,
+			Name:     data.Name,
+			UserName: data.UserName,
+		},
+	}
 
-	return &userpb.CreateUserRes{NewUser: user}, nil
+	return response, nil
 }
 
 // ReadUser is the "read" method for User CRUD in the User gRPC microservice.
-func (s *UserServiceServer) ReadUser(ctx context.Context, req *userpb.ReadUserReq) (*userpb.ReadUserRes, error) {
+func (s *UserServiceService) ReadUser(ctx context.Context, req *userpb.ReadUserReq) (*userpb.ReadUserRes, error) {
 	id, err := primitive.ObjectIDFromHex(req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectId: %v", err))
@@ -75,7 +82,7 @@ func (s *UserServiceServer) ReadUser(ctx context.Context, req *userpb.ReadUserRe
 }
 
 // UpdateUser is the "update" method for User CRUD in the User gRPC microservice.
-func (s *UserServiceServer) UpdateUser(ctx context.Context, req *userpb.UpdateUserReq) (*userpb.UpdateUserRes, error) {
+func (s *UserServiceService) UpdateUser(ctx context.Context, req *userpb.UpdateUserReq) (*userpb.UpdateUserRes, error) {
 	user := req.GetUser()
 
 	id, err := primitive.ObjectIDFromHex(user.GetId())
@@ -118,7 +125,7 @@ func (s *UserServiceServer) UpdateUser(ctx context.Context, req *userpb.UpdateUs
 }
 
 // DeleteUser is the "delete" method for User CRUD in the User gRPC microservice.
-func (s *UserServiceServer) DeleteUser(ctx context.Context, req *userpb.DeleteUserReq) (*userpb.DeleteUserRes, error) {
+func (s *UserServiceService) DeleteUser(ctx context.Context, req *userpb.DeleteUserReq) (*userpb.DeleteUserRes, error) {
 	id, err := primitive.ObjectIDFromHex(req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert ObjectId: %v", err))
@@ -135,7 +142,7 @@ func (s *UserServiceServer) DeleteUser(ctx context.Context, req *userpb.DeleteUs
 }
 
 // ListUsers is the "index" method for the User gRPC microservice.
-func (s *UserServiceServer) ListUsers(req *userpb.ListUsersReq, stream userpb.UserService_ListUsersServer) error {
+func (s *UserServiceService) ListUsers(req *userpb.ListUsersReq, stream userpb.UserService_ListUsersServer) error {
 	data := &UserAccount{}
 
 	cursor, err := userdb.Find(context.Background(), bson.M{})
@@ -168,6 +175,14 @@ func (s *UserServiceServer) ListUsers(req *userpb.ListUsersReq, stream userpb.Us
 	return nil
 }
 
+// NewUserAccount is the struct used for a new User signing up. It contains hashed and salted password information.
+type NewUserAccount struct {
+	Email    string `bson:"email"`
+	Name     string `bson:"name"`
+	UserName string `bson:"userName"`
+	Password string `bson:"password"`
+}
+
 // UserAccount is the struct used for registered User accounts. It does not contain password information.
 type UserAccount struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
@@ -176,8 +191,8 @@ type UserAccount struct {
 	UserName string             `bson:"userName"`
 }
 
-// NewOrEditedUserAccount is the struct used for a new User signing up as well as a User that is being edited. It contains hashed and salted password information.
-type NewOrEditedUserAccount struct {
+// EditUserAccount is the struct used for an account that needs to be updated by its owner. It contains hashed and salted password information because this user is "Me" in the API.
+type EditUserAccount struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
 	Email    string             `bson:"email"`
 	Name     string             `bson:"name"`
@@ -201,28 +216,28 @@ func main() {
 	// Use the default port for MongoDB.
 	mongoPort := 27017
 
-	fmt.Printf("Starting server on port :%s...", servicePort)
+	fmt.Printf("Starting server on port :%d...", servicePort)
 
 	listenPort := fmt.Sprintf(":%d", servicePort)
 
 	listener, err := net.Listen("tcp", listenPort)
 	if err != nil {
-		log.Fatalf("Unable to listen on port %s: %v", servicePort, err)
+		log.Fatalf("Unable to listen on port %d: %v", servicePort, err)
 	}
 
 	opts := []grpc.ServerOption{}
 
 	s := grpc.NewServer(opts...)
 
-	srv := &UserServiceServer{}
+	srv := &userpb.UserServiceService{}
 
-	userpb.RegisterUserServiceServer(s, srv)
+	userpb.RegisterUserServiceService(s, srv)
 
 	fmt.Println("Connecting to MongoDB...")
 
 	mongoCtx = context.Background()
 
-	mongoURI := fmt.Sprintf("mongodb://%d:%d", serviceIP, mongoPort)
+	mongoURI := fmt.Sprintf("mongodb://%s:%d", serviceIP, mongoPort)
 
 	db, err = mongo.Connect(mongoCtx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
