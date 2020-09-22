@@ -1,12 +1,8 @@
-// Specify the latest protobuf syntax.
 syntax = "proto3";
 
-// Declare the package of our service ("user")
 package user;
 
-// Provide a full path to the protobuf package.
-// Future releases of the protoc go plugin require this.
-option go_package = "github.com/allen-woods/the-supertask/services/user/userpb";
+option go_package = "user;userpb";
 
 // Create a message for new users.
 // IMPORTANT:
@@ -69,7 +65,6 @@ message UpdateUserReq {
 // No "password".
 message UpdateUserRes {
   User user = 1;
-  // May need to use "bool success = 2;".
 }
 
 // No "password".
@@ -81,6 +76,7 @@ message DeleteUserRes {
   bool success = 1;
 }
 
+// No args.
 message ListUsersReq {}
 
 // No "password".
