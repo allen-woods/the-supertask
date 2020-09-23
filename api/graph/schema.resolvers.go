@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pb "../../services/user/proto"
+	auth "../auth"
 	graphGen "./generated"
 	graphModel "./model"
 

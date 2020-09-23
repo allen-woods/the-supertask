@@ -1,3 +1,22 @@
+package auth
+
+import(
+	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/go-redis/redis"
+	"github.com/gorilla/securecookie"
+	uuid "github.com/satori/go.uuid"
+	"golang.org/x/crypto/bcrypt"
+)
+
 var authenticatedUserID struct {
 	id string
 }
