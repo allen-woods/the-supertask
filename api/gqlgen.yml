@@ -1,6 +1,6 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
-  - graph/*.graphqls
+  - graph/*.graphql
 
 # Where should the generated server code go?
 exec:
@@ -44,16 +44,13 @@ autobind:
 # your liking
 models:
   ID:
-    model:
-      - github.com/allen-woods/the-supertask/api/graph/model.ID
+    model: github.com/allen-woods/the-supertask/api/graph/model.ID
   Int:
     model:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
   NewUser:
-    model:
-      - github.com/allen-woods/the-supertask/api/graph/model.NewUser
+    model: github.com/allen-woods/the-supertask/api/graph/model.NewUser
   User:
-    model:
-      - github.com/allen-woods/the-supertask/api/graph/model.User
+    model: github.com/allen-woods/the-supertask/api/graph/model.User
