@@ -18,11 +18,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// UserService is the server struct of the User gRPC microservice.
-type UserService struct{}
+// UserCRUDService is the server struct of the User gRPC microservice.
+type UserCRUDService struct{}
 
 // CreateUser is the "create" method for User CRUD in the User gRPC microservice.
-func (s *UserService) CreateUser(ctx context.Context, req *userpb.CreateUserReq) (*userpb.CreateUserRes, error) {
+func (s *UserCRUDService) CreateUser(ctx context.Context, req *userpb.CreateUserReq) (*userpb.CreateUserRes, error) {
 	user := req.GetUser()
 
 	data := NewUserAccount{
@@ -55,7 +55,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *userpb.CreateUserReq)
 }
 
 // ReadUser is the "read" method for User CRUD in the User gRPC microservice.
-func (s *UserService) ReadUser(ctx context.Context, req *userpb.ReadUserReq) (*userpb.ReadUserRes, error) {
+func (s *UserCRUDService) ReadUser(ctx context.Context, req *userpb.ReadUserReq) (*userpb.ReadUserRes, error) {
 	id, err := primitive.ObjectIDFromHex(req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectId: %v", err))
@@ -82,7 +82,7 @@ func (s *UserService) ReadUser(ctx context.Context, req *userpb.ReadUserReq) (*u
 }
 
 // UpdateUser is the "update" method for User CRUD in the User gRPC microservice.
-func (s *UserService) UpdateUser(ctx context.Context, req *userpb.UpdateUserReq) (*userpb.UpdateUserRes, error) {
+func (s *UserCRUDService) UpdateUser(ctx context.Context, req *userpb.UpdateUserReq) (*userpb.UpdateUserRes, error) {
 	user := req.GetUser()
 
 	id, err := primitive.ObjectIDFromHex(user.GetId())
@@ -125,7 +125,7 @@ func (s *UserService) UpdateUser(ctx context.Context, req *userpb.UpdateUserReq)
 }
 
 // DeleteUser is the "delete" method for User CRUD in the User gRPC microservice.
-func (s *UserService) DeleteUser(ctx context.Context, req *userpb.DeleteUserReq) (*userpb.DeleteUserRes, error) {
+func (s *UserCRUDService) DeleteUser(ctx context.Context, req *userpb.DeleteUserReq) (*userpb.DeleteUserRes, error) {
 	id, err := primitive.ObjectIDFromHex(req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert ObjectId: %v", err))
@@ -142,7 +142,7 @@ func (s *UserService) DeleteUser(ctx context.Context, req *userpb.DeleteUserReq)
 }
 
 // ListUsers is the "index" method for the User gRPC microservice.
-func (s *UserService) ListUsers(req *userpb.ListUsersReq, stream userpb.UserService_ListUsersServer) error {
+func (s *UserCRUDService) ListUsers(req *userpb.ListUsersReq, stream userpb.UserCRUDService_ListUsersServer) error {
 	data := &UserAccount{}
 
 	cursor, err := userdb.Find(context.Background(), bson.M{})
@@ -229,9 +229,9 @@ func main() {
 
 	s := grpc.NewServer(opts...)
 
-	srv := &userpb.UserService{}
+	srv := &userpb.UserCRUDService{}
 
-	userpb.RegisterUserService(s, srv)
+	userpb.RegisterUserCRUDService(s, srv)
 
 	fmt.Println("Connecting to MongoDB...")
 
