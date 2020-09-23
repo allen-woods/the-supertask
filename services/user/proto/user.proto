@@ -84,7 +84,7 @@ message ListUsersRes {
   User user = 1;
 }
 
-service UserService {
+service User {
   rpc CreateUser(CreateUserReq) returns (CreateUserRes);
   rpc ReadUser(ReadUserReq) returns (ReadUserRes);
   rpc UpdateUser(UpdateUserReq) returns (UpdateUserRes);

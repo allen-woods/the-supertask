@@ -7,40 +7,85 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
-	graph_gen "github.com/allen-woods/the-supertask/api/graph/generated"
-	graph_model "github.com/allen-woods/the-supertask/api/graph/model"
+	pb "../../services/user/proto"
+	graphGen "./generated"
+	graphModel "./model"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 )
 
-func (r *mutationResolver) SignUpUser(ctx context.Context, input *graph_model.NewUser) (*graph_model.User, error) {
-	// Not authenticated to allow sign up.
+const (
+	userServiceIP   = "0.0.0.0"
+	userServicePort = 50051
+)
 
-	// Define any user data to be sent over gRPC.
+var userServiceAddress string = fmt.Sprintf("%s:%d", userServiceIP, userServicePort)
 
-	// Dial the gRPC server for the User model.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+func (r *mutationResolver) SignUpUser(ctx context.Context, input *graphModel.NewUser) (*graphModel.User, error) {
+	// Resolver not authenticated to allow sign up.
+
+	// Hash and salt the password first using authentication middleware.
+	securePassword, err := auth.HashAndSalt(input.Password)
+	if err != nil {
+		log.Fatal("Failed to hash and salt password.")
+	}
+
+	// Dial the gRPC server dedicated to the User model.
+	conn, err := grpc.Dial(userServiceAddress, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatal("did not connect: %v", err)
 	}
 	defer conn.Close()
 
-	// c := pb.NewSignUpClient
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	// defer cancel()
+	// Create a client for talking to the server we just dialed.
+	c := pb.NewUserServiceClient(conn)
 
-	// Send the data
-	// r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name})
-	// if err != nil {
-	// 	log.Fatalf("could not sign up: %v", err)
-	// }
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-	// Process any results returned by the gRPC server.
-	// log.Printf("Signed up: %s", r.GetMessage())
+	// Request to create the User, given the fields of "input" in our ctx.
+	res, err := c.CreateUser(
+		ctx,
+		&pb.CreateUserReq{
+			User: &pb.NewUser{
+				Email:    input.Email,
+				Name:     input.Name,
+				UserName: input.UserName,
+				Password: securePassword,
+			},
+		},
+	)
+	if err != nil {
+		log.Fatal("Failed to create User over gRPC.")
+	}
+
+	// Parse the User from our response "res".
+	createdUser := res.GetUser()
+
+	// Sanitize our ObjectID value to make sure it's legitimate.
+	idToInsert, err := primitive.ObjectIDFromHex(createdUser.Id)
+	if err != nil {
+		log.Fatalf("Corrupted ObjectID: %v", err)
+	}
+
+	// Build a valid User return value with an ommitted "password" field.
+	u := &graphModel.User{
+		ID:       idToInsert,
+		Email:    createdUser.Email,
+		Name:     createdUser.Name,
+		UserName: createdUser.UserName,
+	}
+
+	// Pass the verified ObjectID as hex into authentication middleware.
+	auth.InsertUserID(u.ID.Hex())
+
+	return u, nil
 }
 
-func (r *mutationResolver) LogInUser(ctx context.Context, email string, password string) (*graph_model.User, error) {
+func (r *mutationResolver) LogInUser(ctx context.Context, email string, password string) (*graphModel.User, error) {
 	// Not authenticated to allow login.
 	panic(fmt.Errorf("not implemented"))
 }
@@ -55,21 +100,21 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id primitive.ObjectID
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *queryResolver) Me(ctx context.Context) (*graph_model.User, error) {
+func (r *queryResolver) Me(ctx context.Context) (*graphModel.User, error) {
 	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *queryResolver) Users(ctx context.Context) ([]*graph_model.User, error) {
+func (r *queryResolver) Users(ctx context.Context) ([]*graphModel.User, error) {
 	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
-// Mutation returns graph_gen.MutationResolver implementation.
-func (r *Resolver) Mutation() graph_gen.MutationResolver { return &mutationResolver{r} }
+// Mutation returns graphGen.MutationResolver implementation.
+func (r *Resolver) Mutation() graphGen.MutationResolver { return &mutationResolver{r} }
 
-// Query returns graph_gen.QueryResolver implementation.
-func (r *Resolver) Query() graph_gen.QueryResolver { return &queryResolver{r} }
+// Query returns graphGen.QueryResolver implementation.
+func (r *Resolver) Query() graphGen.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
