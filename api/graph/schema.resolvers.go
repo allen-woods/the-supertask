@@ -9,11 +9,10 @@ import (
 	"log"
 	"time"
 
-	pb "../../services/user/proto"
-	auth "../auth"
-	graphGen "./generated"
-	graphModel "./model"
-
+	"github.com/allen-woods/the-supertask/api/auth"
+	"github.com/allen-woods/the-supertask/api/graph/generated"
+	"github.com/allen-woods/the-supertask/api/graph/model"
+	pb "github.com/allen-woods/the-supertask/services/user/proto"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 )
@@ -25,7 +24,7 @@ const (
 
 var userServiceAddress string = fmt.Sprintf("%s:%d", userServiceIP, userServicePort)
 
-func (r *mutationResolver) SignUpUser(ctx context.Context, input *graphModel.NewUser) (*graphModel.User, error) {
+func (r *mutationResolver) SignUpUser(ctx context.Context, input *model.NewUser) (*model.User, error) {
 	// Resolver not authenticated to allow sign up.
 
 	// Hash and salt the password first using authentication middleware.
@@ -73,7 +72,7 @@ func (r *mutationResolver) SignUpUser(ctx context.Context, input *graphModel.New
 	}
 
 	// Build a valid User return value with an ommitted "password" field.
-	u := &graphModel.User{
+	u := &model.User{
 		ID:       idToInsert,
 		Email:    createdUser.Email,
 		Name:     createdUser.Name,
@@ -86,36 +85,31 @@ func (r *mutationResolver) SignUpUser(ctx context.Context, input *graphModel.New
 	return u, nil
 }
 
-func (r *mutationResolver) LogInUser(ctx context.Context, email string, password string) (*graphModel.User, error) {
-	// Not authenticated to allow login.
+func (r *mutationResolver) LogInUser(ctx context.Context, email string, password string) (*model.User, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) LogOutUser(ctx context.Context) (bool, error) {
-	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) DeleteUser(ctx context.Context, id primitive.ObjectID, confirmDelete bool) (bool, error) {
-	// Fails if not authenticated.
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *queryResolver) Me(ctx context.Context) (*graphModel.User, error) {
-	// Fails if not authenticated.
+func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *queryResolver) Users(ctx context.Context) ([]*graphModel.User, error) {
-	// Fails if not authenticated.
+func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-// Mutation returns graphGen.MutationResolver implementation.
-func (r *Resolver) Mutation() graphGen.MutationResolver { return &mutationResolver{r} }
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
-// Query returns graphGen.QueryResolver implementation.
-func (r *Resolver) Query() graphGen.QueryResolver { return &queryResolver{r} }
+// Query returns generated.QueryResolver implementation.
+func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
