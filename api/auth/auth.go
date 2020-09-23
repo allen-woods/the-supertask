@@ -264,3 +264,137 @@ func WriteToRedis(sessionID map[string]string, userID string, ttl time.Time) err
 
 	return nil
 }
+
+// Middleware is the authentication middleware function of our API.
+func Middleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// TODO:
+			//
+			// Gqlgen no longer uses these handler types, so must migrate
+			// this code to use the new standard.
+			// Also, this code needs to get cleaned up by refactoring.
+			var maxAge int
+			var expiration time.Time
+
+			del := deleteSessionAndCookie.flag
+			if del == true {
+				maxAge = 0
+				expiration = time.Now().addDate(0,0,-1)
+			} else {
+				maxAge = 24 * 60 * 60
+				expiration = time.Now().Add(24 * time.Hour)
+			}
+
+			if len(authenticatedUserID.id) == 0 {
+				c, err := r.Cookie("sid")
+
+				if c == nil || err != nil {
+					sessionID := map[string]string{
+						"sessionID": uuid.NewV4().String(),
+					}
+
+					err = WriteToRedis(sessionID, authenticatedUserID.id, expiration)
+					if err != nil {
+						log.Fatalln("Unable to write sessionID to Redis:", err)
+					}
+
+					persistedID, err = ReadFromRedis(sessionID)
+					if err != nil {
+						log.Fatalln("Unable to read sessionID from Redis:", err)
+					}
+
+					if persistedID == authenticatedUserID.id {
+						encoded, err := securecookie.EncodeMulti(
+							"sid",
+							sessionID,
+							validCookies[len(validCookies)-1],
+						)
+						if err != nil {
+							log.Fatalln("Failed to encode sessionID.")
+						}
+
+						cookie := &http.Cookie{
+							Name: "sid",
+							Value: encoded,
+							HttpOnly: true,
+							Path: "/",
+							MaxAge: maxAge,
+							Expires: expiration,
+						}
+
+						http.SetCookie(w, cookie)
+
+						ctx := context.WithValue(r.Context(), userIDCtxKey, authenticatedUserID.id)
+						r = r.WithContext(ctx)
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+				cookie, err := r.Cookie("sid")
+				if cookie == nil || err != nil {
+					log.Fatalln("Unable to find cookie for logged in User:", err)
+				}
+
+				sessionID := make(map[string]string)
+
+				err = securecookie.DecodeMulti("sid", cookie.Value, &sessionID, validCookies...)
+				if err != nil {
+					log.Fatalln("The session cookie has been tampered with:", err)
+				}
+
+				userID, err := ReadFromRedis(sessionID)
+				if err != nil {
+					log.Fatalln("Unable to read from Redis:", err)
+				}
+
+				err = WriteToRedis(sessionID, userID, expiration)
+				if err != nil {
+					log.Fatalln("Unable to write sessionID to Redis:", err)
+				}
+
+				persistedID, err := ReadFromRedis(sessionID)
+				if err != nil && del != true {
+					log.Fatalln("Unable to read userID from Redis:", err)
+				}
+
+				cookie.HttpOnly = true
+
+				if del == true {
+					cookie.Value = ""
+				}
+
+				cookie.Path = "/"
+				cookie.MaxAge = maxAge
+				cookie.Expires = expiration
+
+				http.SetCookie(w, cookie)
+
+				if del == true {
+					authenticatedUserID.id = ""
+					deleteSessionAndCookie.flag = false
+				} else {
+					authenticatedUserID.id = persistedID
+				}
+
+				ctx := context.WithValue(r.Context(), userIDCtxKey, authenticatedUserID.id)
+				r = r.WithContext(ctx)
+				next.ServeHTTP(w, r)
+			}
+		})
+	}
+}
+
+func InsertUserID(userID string) {
+	authenticatedUserID.id = userID
+}
+
+func SetLogOutFlag(value bool) {
+	deleteSessionAndCookie.flag = value
+}
+
+func ForContext(ctx context.Context) string {
+	// TODO: There should be error handling here.
+	raw, _ := ctx.Value(userIDCtxKey).(string)
+	return raw
+}
