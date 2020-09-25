@@ -252,7 +252,10 @@ func ReadSessionIDFromCookie(w http.ResponseWriter, r *http.Request) (string, er
 func ReadFromRedis(sessionID map[string]string) (string, error) {
 	// TODO: Update this to use Docker URI.
 	client := redis.NewClient(&redis.Options{
+		// Network: ""
 		Addr: "localhost:6379",
+		// Username: ""
+		// Password: ""
 	})
 	defer client.Close()
 

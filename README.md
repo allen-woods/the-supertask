@@ -20,10 +20,10 @@ Technologies planned for project:
 - Dockerize local environment (ongoing)
 - Create draft of architecture (done)
 - Begin building API
-  - **Define User schema.**
-    - Generate User model and resolvers.
-    - Populate resolvers with logic.
-    - Design toward implementation of `Apollo Server` and `Apollo Client`.
+  - Design toward implementation of `Apollo Server` and `Apollo Client`. (on track)
+  - **Provide single source of truth for models.**
+  - **Define Redis and MongoDB secrets as environment variables.**
+  - **Create initialization for unique email fields requirement.**
 
 ### DONE:
 
@@ -37,3 +37,7 @@ Technologies planned for project:
     - Disable THP support inside the container.
     - Removed unnecessary volume "persist_redis_backups" (should be /data).
   - Make sure both data stores are persisted (done)
+- API
+  - Define User schema. (done)
+  - Generate User model and resolvers. (done)
+  - Populate resolvers with logic. (in progress)
