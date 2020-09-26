@@ -87,26 +87,31 @@ func (r *mutationResolver) SignUpUser(ctx context.Context, input *model.NewUser)
 
 func (r *mutationResolver) LogInUser(ctx context.Context, email string, password string) (*model.User, error) {
 	// Not authenticated to allow for login.
+	// gRPC takes id as input and returns User.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) LogOutUser(ctx context.Context) (bool, error) {
 	// Must be authenticated.
+	// gRPC takes nothing as input and returns bool.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *mutationResolver) DeleteUser(ctx context.Context, id primitive.ObjectID, confirmDelete bool) (bool, error) {
 	// Must be authenticated.
+	// gRPC takes id as input and returns bool.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 	// Must be authenticated.
+	// gRPC takes id (via cookie) as input and returns User.
 	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	// Must be authenticated.
+	// gRPC takes nothing as input and returns []*User.
 	panic(fmt.Errorf("not implemented"))
 }
 

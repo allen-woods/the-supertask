@@ -1,6 +1,16 @@
 # /bin/bash
 
-INIT_JS_1="db.createUser({ user: \"${MONGO_API_USER}\", pwd: \"${MONGO_API_PASS}\", roles: [{ role: \"readWrite\", db: \"${MONGO_API_DB}\"}, \"readWrite\" ]})"
+INIT_JS_1="\\
+db.createUser({ \\
+  user: \"${MONGO_API_USER}\", \\
+  pwd: \"${MONGO_API_PASS}\", \\
+  roles: [ \\
+    { \\
+      role: \"readWrite\", \\
+      db: \"${MONGO_API_DB}\" \\
+    }, \"readWrite\" \\
+  ] \\
+})"
 
 init_01(){
   # Run the javascript inside of Mongo shell.
