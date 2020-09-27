@@ -16,11 +16,9 @@ create_service_mongo_admin_and_db() {
   adminPass=$2
   dbName=$3
 
-  mongo admin \
-  --host "${MONGO_CONTAINER}" \
-  --port "${MONGO_PORT}" \
-  --eval "\\
-  if (db.getMongo().getDBNames().indexOf(\"${dbName}\") < 0) {
+  curl -u $MONGO_SUPER_USERNAME:$MONGO_SUPER_PASSWORD \
+  -i -X POST -H 'Content-Type: application/json' -d "\\
+  if (db.getMongo().getDBNames().indexOf(\"${dbName}\") < 0) { \\
     use ${dbName}; \\
     db.resources.insert({ allocated: true }); \\
   } \\
@@ -45,11 +43,7 @@ create_service_mongo_admin_and_db() {
         ] \\
       } \\
     }); \\
-  }" \
-  -u "${MONGO_SUPER_USERNAME}" \
-  -p "${MONGO_SUPER_PASSWORD}" \
-  --authenticationDatabase "admin" \
-  --quiet
+  }" http://$MONGO_CONTAINER:$MONGO_PORT
 
   : "\\
   For security, unset the environment variables related to superUser,

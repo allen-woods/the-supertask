@@ -6,9 +6,15 @@ services:
     build:
       context: ./
       dockerfile: ./api/Dockerfile
+    depends_on:
+      - redis
+      - user
     restart: unless-stopped
     ports:
-      - '9000:9000'
+      - target: 9000
+        published: 80
+        protocol: tcp
+        mode: host
     networks:
       - backend
   mongo:
@@ -18,6 +24,8 @@ services:
       dockerfile: ./mongo/Dockerfile
     restart: unless-stopped
     ports:
+      - '27017'
+    expose:
       - '27017'
     networks:
       - backend
@@ -40,6 +48,8 @@ services:
     privileged: true
     ports:
       - '6379'
+    expose:
+      - '6379'
     networks:
       - backend
     volumes:
@@ -50,8 +60,13 @@ services:
     build:
       context: ./
       dockerfile: ./services/user/Dockerfile
+    depends_on:
+      - mongo
+      - redis
     restart: unless-stopped
     ports:
+      - '50051'
+    expose:
       - '50051'
     networks:
       - backend

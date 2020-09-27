@@ -17,8 +17,11 @@ COPY --chown=root:root ./services/sh ./.env/
 # Copy over the MongoDB env vars.
 COPY --chown=root:root ./mongo/.env ./.env/
 
+# Add the curl package to Alpine.
+RUN ["apk", "add", "curl"]
+
 # Source all env vars used to connect to MongoDB from gRPC.
-RUN ["/bin/sh", "/code/.env/user-service-secrets.sh"]
+RUN ["/bin/sh", ".", "/code/.env/user-service-secrets.sh"]
 
 # Run the gRPC server by default.
-CMD ["/bin/sh", "go", "run", "/code/server/main.go"]
+CMD ["go", "run", "/code/server/main.go"]

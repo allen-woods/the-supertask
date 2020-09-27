@@ -8,8 +8,7 @@ COPY --chown=root:root ./api ./
 COPY --chown=root:root ./redis/.env ./.env/
 
 # Source the script used to populate env variables.
-RUN ["/bin/sh", "/code/.env/api-secrets.sh"]
+RUN ["/bin/sh", ".", "/code/.env/api-secrets.sh"]
 
 # Start the server by default.
-CMD ["/bin/sh", "go", "run", "/code/server.go"]
-EXPOSE 9000
+CMD ["go", "run", "/code/server.go"]
