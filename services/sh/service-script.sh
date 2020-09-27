@@ -3,7 +3,7 @@
 : "\\
 Pull in environment variables and data needed to connect to MongoDB
 on the Docker network."
-source ./mongo-secrets.sh
+. /code/.env/mongo-secrets.sh
 
 : "\\
 Creating superUser account with global permissions is the responsibility
@@ -11,7 +11,7 @@ of the 'mongo_svc' container, defined in '/mongo'.
 
 Any service only needs to use the credentials of superUser to create
 resources (admin, database)."
-create_service_mongo_admin_and_db {
+create_service_mongo_admin_and_db() {
   svcName=$1
   adminPass=$2
   dbName=$3
@@ -60,4 +60,4 @@ create_service_mongo_admin_and_db {
 }
 
 # Export the function so we can call it from the terminal.
-export -f create_service_mongo_admin_and_db
+export create_service_mongo_admin_and_db

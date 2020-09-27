@@ -1,4 +1,4 @@
-FROM go:alpine
+FROM golang:alpine
 
 # Many thanks and much credit goes to Nico Vergauwen for this repo:
 # - https://github.com/kyriediculous/go-grpc-mongodb
@@ -9,16 +9,16 @@ FROM go:alpine
 WORKDIR /code
 
 # Copy over all contents of this service.
-COPY --chown=root:root . .
+COPY --chown=root:root ./services/user ./
 
 # Copy over the service agnostic MongoDB authentication script.
-COPY --chown=root:root ../sh ./.env/
+COPY --chown=root:root ./services/sh ./.env/
 
 # Copy over the MongoDB env vars.
-COPY --chown=root:root ../../mongo/.env ./.env/
+COPY --chown=root:root ./mongo/.env ./.env/
 
 # Source all env vars used to connect to MongoDB from gRPC.
-RUN ["/bin/sh", "source", "./.env/user-service-secrets.sh"]
+RUN ["/bin/sh", "/code/.env/user-service-secrets.sh"]
 
 # Run the gRPC server by default.
-CMD ["/bin/sh", "go", "run", "./server/main.go"]
+CMD ["/bin/sh", "go", "run", "/code/server/main.go"]
