@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This file is being replaced by better shell scripting. (WIP)
+
 init_02(){
   # Insert something into the new database to trigger persistence.
   gosu mongodb mongo ${MONGO_API_DB} \

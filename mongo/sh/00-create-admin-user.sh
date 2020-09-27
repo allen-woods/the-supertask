@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This file is being replaced by better shell scripting. (WIP)
+
 INIT_JS_0="\\
 db.createUser({ \\
   user: \"${MONGO_ADMIN_USER}\", \\
