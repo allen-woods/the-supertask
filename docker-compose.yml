@@ -1,65 +1,55 @@
 version: '3'
 
 services:
+  api:
+    container_name: api_svc
+    build: ./api
+    restart: unless-stopped
+    ports:
+      - '9000:9000'
+    networks:
+      - backend
   mongo:
     container_name: mongo_svc
-    image: mongo:bionic
+    build: ./mongo
     restart: unless-stopped
-    command: /bin/sh mongo_create_super_user_account
-
     ports:
       - '27017'
-
     networks:
       - backend
     volumes:
-      # Run our custom initialization to support authentication.
-      - ./mongo/.env/mongo-secrets.sh:/mongo-secrets.sh
-
       # A volume to persist our NoSQL database
       - persist_mongo:/data/db
-
   redis:
     container_name: redis_svc
-    image: redis:alpine
+    build: ./redis
     restart: unless-stopped
-
     # These settings allow tcp-backlog in
     # ./redis/redis.conf to not be capped.
     sysctls:
       net.core.somaxconn: 1024
       net.ipv4.tcp_syncookies: 0
-
     # This setting is required to disable THP support
     # (for now).
     privileged: true
-
-    # Protect our secrets.
-    env_file:
-      - ./redis/redis.env
-
     ports:
       - '6379'
-
     networks:
       - backend
     volumes:
-      # To prevent crashing, we override the default entrypoint.
-      - ./redis/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
-
-      # Custom config file.
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:rw
-
-      # To restrict permissions within the API, we use an external ACL file.
-      - ./redis/users.acl:/usr/local/etc/redis/users.acl:rw
-
       # A volume for persisting our database.
       - persist_redis:/data:rw
-
+  user:
+    container_name: user_svc
+    build: ./services/user
+    restart: unless-stopped
+    ports:
+      - '50051'
+    networks:
+      - backend
 networks:
   # frontend:
   backend:
-
 volumes:
   persist_mongo:
   persist_redis:

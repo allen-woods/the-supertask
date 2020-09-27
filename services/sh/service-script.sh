@@ -3,7 +3,7 @@
 : "\\
 Pull in environment variables and data needed to connect to MongoDB
 on the Docker network."
-source ./mongo-secrets
+source ./mongo-secrets.sh
 
 : "\\
 Creating superUser account with global permissions is the responsibility
