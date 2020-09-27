@@ -252,10 +252,14 @@ func ReadSessionIDFromCookie(w http.ResponseWriter, r *http.Request) (string, er
 func ReadFromRedis(sessionID map[string]string) (string, error) {
 	// TODO: Update this to use Docker URI.
 	client := redis.NewClient(&redis.Options{
-		// Network: ""
-		Addr: "localhost:6379",
-		// Username: ""
-		// Password: ""
+		Network: "backend"
+		Addr: fmt.Sprintf(
+			"%s:%d",
+			os.Getenv("REDIS_IP").(String),
+			os.Getenv("REDIS_PORT").(Int)
+		),
+		Username: os.Getenv("REDIS_ADMIN_USERNAME"),
+		Password: os.Getenv("REDIS_ADMIN_PASSWORD"),
 	})
 	defer client.Close()
 
@@ -269,7 +273,14 @@ func ReadFromRedis(sessionID map[string]string) (string, error) {
 
 func WriteToRedis(sessionID map[string]string, userID string, ttl time.Time) error {
 	client := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Network: "backend"
+		Addr: fmt.Sprintf(
+			"%s:%d",
+			os.Getenv("REDIS_IP").(String),
+			os.Getenv("REDIS_PORT").(Int)
+		),
+		Username: os.Getenv("REDIS_ADMIN_USERNAME"),
+		Password: os.Getenv("REDIS_ADMIN_PASSWORD"),
 	})
 
 	defer client.Close()
