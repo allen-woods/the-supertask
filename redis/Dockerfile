@@ -1,13 +1,17 @@
 FROM redis:alpine
 
-# Set working directory to the root of the shared path for Redis defaults.
-WORKDIR /usr/local
+# Set working directory to the root of the container.
+WORKDIR /
+
+# Copy the system settings needed to disable THP.
+COPY --chown=root:root ./redis/system/defrag ./sys/kernel/mm/transparent_hugepage/defrag
+COPY --chown=root:root ./redis/system/enabled ./sys/kernel/mm/transparent_hugepage/enabled
 
 # Copy over the config.
-COPY --chown=redis:redis ./redis/config ./etc/redis/
+COPY --chown=redis:redis ./redis/config ./usr/local/etc/redis/
 
 # Copy over the env vars.
-COPY --chown=root:root ./redis/.env ./bin/
+COPY --chown=root:root ./redis/.env ./usr/local/bin/
 
 # NOTE:
 # The below won't work, not sure why.
@@ -23,4 +27,4 @@ COPY --chown=root:root ./redis/.env ./bin/
 RUN ["/bin/sh", ".", "/usr/local/bin/redis-secrets.sh"]
 
 # Start the server with our custom config by default.
-CMD ["/bin/sh", "redis-server", "/usr/local/etc/redis/redis.conf"]
+CMD ["/bin/sh", "./redis-server", "/usr/local/etc/redis/redis.conf"]

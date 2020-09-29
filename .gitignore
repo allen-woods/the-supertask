@@ -1,3 +1,4 @@
 *.acl
 *.env
 *secret*
+default-cmd.sh
