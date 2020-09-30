@@ -16,11 +16,15 @@ create_service_mongo_admin_and_db() {
   adminPass=$2
   dbName=$3
 
+  # Pass in our JavaScript using HereString format.
+  # This format will interpolate variables and is multi-line
+  # without needing escapes (\\).
+
   curl -u $MONGO_SUPER_USERNAME:$MONGO_SUPER_PASSWORD \
-  -i -X POST -H 'Content-Type: application/json' -d <<-JSN
+  -i -X POST -H 'Content-Type: application/json' -d <<< "
   /* Allocate database if it does not yet exist. */
 
-  if (db.getMongo().getDBNames().indexOf("${dbName}") < 0) {
+  if (db.getMongo().getDBNames().indexOf('${dbName}') < 0) {
     use ${dbName};
     db.resources.insert({ allocated: true });
   }
@@ -29,26 +33,25 @@ create_service_mongo_admin_and_db() {
 
   use admin;
   if (db.system.users.find({
-    user: "${svcName}ServiceAdmin"
+    user: '${svcName}ServiceAdmin'
   }).count() !== 1) {
     /* We need to create the admin account for this service. */
     db.CreateUser({
       user: {
-        user: "${svcName}ServiceAdmin",
-        pwd: "${adminPass}",
+        user: '${svcName}ServiceAdmin',
+        pwd: '${adminPass}',
         customData: {
-          description: "An administration account for the '${svcName}' service, restricted to the '${dbName}' database."
+          description: 'An administration account for the '${svcName}' service, restricted to the '${dbName}' database.'
         },
         roles: [
           {
-            role: "userAdmin",
-            db: "${dbName}"
-          }, "readWrite"
+            role: 'userAdmin',
+            db: '${dbName}'
+          }, 'readWrite'
         ]
       }
     });
-  }
-JSN http://$MONGO_CONTAINER:$MONGO_PORT
+  }" http://$MONGO_CONTAINER:$MONGO_PORT
 
   : "\\
   For security, unset the environment variables related to superUser,
