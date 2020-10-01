@@ -4,8 +4,7 @@ FROM redis:alpine
 WORKDIR /
 
 # Copy the system settings needed to disable THP.
-COPY --chown=root:root ./redis/system/defrag ./sys/kernel/mm/transparent_hugepage/defrag
-COPY --chown=root:root ./redis/system/enabled ./sys/kernel/mm/transparent_hugepage/enabled
+COPY --chown=root:root ./redis/system ./sys/kernel/mm/transparent_hugepage/
 
 # Copy over the config.
 COPY --chown=redis:redis ./redis/config ./usr/local/etc/redis/
