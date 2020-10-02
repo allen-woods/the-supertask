@@ -14,31 +14,29 @@ export MONGO_INITDB_DATABASE=admin
 export MONGO_GLOBAL_SUPER_USERNAME=flynn
 export MONGO_GLOBAL_SUPER_PASSWORD=H4e9aYpFBt4tSuZNfsjS2f2wvp6/0HweVD/AL1nyr9OMwzZFPUCBB4QiAEo0x7g21bhSX4riDKdiv/1n
 
-export MDB_JS="
-db = db.getSiblingDB(\"admin\");
-
-if (db.system.users.find({
-  user: \"$MONGO_GLOBAL_SUPER_USERNAME\",
-}).count() < 1) {
-
+read -r -d '' MDB_JS <<< "
+if (db.system
+      .users
+      .find({
+        \"user\": \"$MONGO_GLOBAL_SUPER_USERNAME\"
+      }).count() < 1) {
   db.createUser({
-    user: {
-      user: \"$MONGO_GLOBAL_SUPER_USERNAME\",
-      pwd: \"$MONGO_GLOBAL_SUPER_PASSWORD\",
-      customData: {
-        description:
-          \"A global administration account for all databases within this MongoDB server.\",
+    \"user\": {
+      \"user\": \"$MONGO_GLOBAL_SUPER_USERNAME\",
+      \"pwd\": \"$MONGO_GLOBAL_SUPER_PASSWORD\",
+      \"customData\": {
+        \"description:\" \"A global administration account for all databases within this MongoDB server.\"
       },
-      roles: [
+      \"roles\":[
         {
-          role: \"root\",
-          db: \"admin\",
+          \"role\": \"root\",
+          \"db\": \"admin\"
         }
-      ],
-    },
+      ]
+    }
   });
+  db.removeUser(\"root\")};
+  quit();
+"
 
-  db.removeUser(\"root\");
-}
-
-quit();"
+export MDB_JS

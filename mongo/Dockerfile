@@ -4,9 +4,6 @@ FROM mongo:bionic
 WORKDIR /
 
 # Copy the env vars and superuser script.
-COPY --chown=mongodb:mongodb ./mongo/.sh ./run/env-vars
+COPY --chown=mongodb:mongodb ./mongo/init ./usr/local/etc/custom-init/
 
-RUN ["/bin/bash", "-c", ". /run/env-vars/00-export-env-vars.sh"]
-RUN ["/bin/bash", "-c", "mongod --bind_ip $MONGO_IP --port $MONGO_PORT --fork --logpath /var/log/mongodb/mongod"]
-RUN ["/bin/bash", "-c", "mongo --eval $MDB_JS"]
-# RUN ["/bin/bash", "-c", "kill -HUP 1"]
+RUN ["/bin/bash", "-c", "/usr/local/etc/custom-init/init.sh"]
