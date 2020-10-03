@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Bring in our environment variables.
-source /usr/local/etc/custom-init/export-env-vars.sh
+source /usr/local/etc/custom-init/mongo-init-env-vars.sh
 
-echo "$MDB_JS" | xargs
+echo $(echo -n "${MDB_JS//[[:space:]]/}")
 
 # Create a mongod instance for us to run our initialization against.
 mongod --bind_ip_all \
@@ -15,5 +15,5 @@ mongod --bind_ip_all \
 mongo $MONGO_INITDB_DATABASE \
 --host $MONGO_IP \
 --port $MONGO_PORT \
---eval $MDB_JS \
+--eval $(echo -n "${MDB_JS//[[:space:]]/}") \
 --quiet
