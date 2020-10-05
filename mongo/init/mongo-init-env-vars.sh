@@ -18,17 +18,17 @@ if (db.system
       .find({
         \"user\": \"$MONGO_GLOBAL_SUPER_USERNAME\"
       }).count() < 1) {
-  db.dropUser(\"root\");
-  db.createUser({
-    \"user\": \"$MONGO_GLOBAL_SUPER_USERNAME\",
-    \"pwd\": \"$MONGO_GLOBAL_SUPER_PASSWORD\",
-    \"roles\":[
-      {
-        \"role\": \"root\",
-        \"db\": \"admin\"
-      }
-    ]
+  db.adminCommand({
+    dropUser: \"root\"
   });
+  db.adminCommand({
+    createUser: \"$MONGO_GLOBAL_SUPER_USERNAME\",
+    pwd: \"$MONGO_GLOBAL_SUPER_PASSWORD\",
+    roles:[
+      { role: \"root\", db: \"admin\" }
+    ]
+  })
+  db.getSiblingDB(\"admin\").users.save();
 };
 quit();
 "

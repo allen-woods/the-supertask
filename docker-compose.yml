@@ -1,6 +1,7 @@
 version: '3'
 
 services:
+  # Our golang GraphQL server that sends gRPC requests.
   api:
     container_name: api_svc
     build:
@@ -17,6 +18,8 @@ services:
         mode: host
     networks:
       - backend
+
+  # The MongoDB instance that holds our databases.
   mongo:
     container_name: mongo_svc
     build:
@@ -29,9 +32,11 @@ services:
       - '27017'
     networks:
       - backend
-    volumes:
-      # A volume to persist our NoSQL database
-      - persist_mongo:/data/db
+    # volumes:
+    #   # A volume to persist our NoSQL database
+    #   - persist_mongo:/data/db
+
+  # The Redis instance that holds our user IDs (UUID v4).
   redis:
     container_name: redis_svc
     build:
@@ -52,9 +57,10 @@ services:
       - '6379'
     networks:
       - backend
-    volumes:
-      # A volume for persisting our database.
-      - persist_redis:/data:rw
+    # volumes:
+    #   # A volume for persisting our database.
+    #   - persist_redis:/data:rw
+
   user:
     container_name: user_svc
     build:
@@ -73,6 +79,6 @@ services:
 networks:
   # frontend:
   backend:
-volumes:
-  persist_mongo:
-  persist_redis:
+# volumes:
+#   persist_mongo:
+#   persist_redis:
