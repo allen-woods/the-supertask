@@ -1,15 +1,12 @@
 #!/bin/bash
 
 # Bring in our environment variables.
-source /usr/local/etc/custom-init/mongo-init-env-vars.sh
+source /usr/local/etc/custom-mongo-init/mongo-init-env-vars.sh
 
-echo $(echo -n "${MDB_JS//[[:space:]]/}")
+# echo $(echo -n "${MDB_JS//[[:space:]]/}")
 
 # Create a mongod instance for us to run our initialization against.
-mongod --bind_ip_all \
---port $MONGO_PORT \
---fork \
---logpath /var/log/mongodb/mongod
+mongod --port $MONGO_PORT
 
 # Create a mongo client that injects MDB_JS and initializes our superuser.
 mongo $MONGO_INITDB_DATABASE \
