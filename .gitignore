@@ -1,4 +1,3 @@
-*.acl
-*.env
-*secret*
-*credential*
+**/init/**
+!.gitkeep
+!init.sh
