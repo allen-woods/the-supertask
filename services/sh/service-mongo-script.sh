@@ -1,16 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
-: "\\
-Pull in environment variables and data needed to connect to MongoDB
-on the Docker network."
+# Pull in environment variables and data needed to connect to MongoDB
+# on the Docker network.
 . /code/.env/mongo-secrets.sh
 
-: "\\
-Creating superUser account with global permissions is the responsibility
-of the 'mongo_svc' container, defined in '/mongo'.
 
-Any service only needs to use the credentials of superUser to create
-resources (admin, database)."
+# Creating superUser account with global permissions is the responsibility
+# of the 'mongo_svc' container, defined in '/mongo'.
+
+# Any service only needs to use the credentials of superUser to create
+# resources (admin, database).
 create_service_mongo_admin_and_db() {
   svcName=$1
   adminPass=$2
@@ -53,10 +52,10 @@ create_service_mongo_admin_and_db() {
     });
   }" http://$MONGO_CONTAINER:$MONGO_PORT
 
-  : "\\
-  For security, unset the environment variables related to superUser,
-  with respect to this container.
-  We won't be needing these past this point."
+  
+  # For security, unset the environment variables related to superUser,
+  # with respect to this container.
+  # We won't be needing these past this point.
   unset MONGO_SUPER_USERNAME
   unset MONGO_SUPER_PASSWORD
 }

@@ -22,13 +22,12 @@ if (db.system
     dropUser: \"root\"
   });
   db.adminCommand({
-    createUser: \"$MONGO_GLOBAL_SUPER_USERNAME\",
-    pwd: \"$MONGO_GLOBAL_SUPER_PASSWORD\",
-    roles:[
-      { role: \"root\", db: \"admin\" }
+    \"createUser\": \"$MONGO_GLOBAL_SUPER_USERNAME\",
+    \"pwd\": \"$MONGO_GLOBAL_SUPER_PASSWORD\",
+    \"roles\":[
+      { \"role\": \"root\", \"db\": \"admin\" }
     ]
   })
-  db.getSiblingDB(\"admin\").users.save();
 };
 quit();
 "

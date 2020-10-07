@@ -5,7 +5,7 @@ FROM golang:alpine
 #
 # This would have taken a lot longer without that to learn from.
 
-# Set working directory to /code.
+# Set working directory to "/code".
 WORKDIR /code
 
 # Copy over all contents of this service.
@@ -15,7 +15,7 @@ COPY --chown=root:root ./services/user ./
 COPY --chown=root:root ./services/sh ./.env/
 
 # Copy over the MongoDB env vars.
-COPY --chown=root:root ./mongo/.env ./.env/
+COPY --chown=root:root ./mongo/init/mongo-credentials.sh ./.env/
 
 # Add the curl package to Alpine.
 RUN ["apk", "add", "curl"]
