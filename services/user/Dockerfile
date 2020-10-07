@@ -5,23 +5,23 @@ FROM golang:alpine
 #
 # This would have taken a lot longer without that to learn from.
 
-# Set working directory to "/code".
-WORKDIR /code
+# Set working directory to root of the container.
+WORKDIR /
 
-# Copy over all contents of this service.
-COPY --chown=root:root ./services/user ./
+# Copy over all contents of the config for this service.
+COPY --chown=root:root ./services/user/init ./usr/local/etc/custom-user-service-init/
 
 # Copy over the service agnostic MongoDB authentication script.
-COPY --chown=root:root ./services/sh ./.env/
+COPY --chown=root:root ./services/utils/service-mongo-script.sh ./usr/local/etc/custom-user-service-init/includes/
 
-# Copy over the MongoDB env vars.
-COPY --chown=root:root ./mongo/init/mongo-credentials.sh ./.env/
+# Copy over the Golang and Proto3 of this service.
+COPY --chown=root:root ./services/user/go ./where/the/code/goes
 
 # Add the curl package to Alpine.
 RUN ["apk", "add", "curl"]
 
 # Source all env vars used to connect to MongoDB from gRPC.
-RUN ["/bin/sh", ".", "/code/.env/user-service-secrets.sh"]
+RUN ["/bin/bash", "-c", "/usr/local/etc/custom-user-service-init/init.sh"]
 
 # Run the gRPC server by default.
 CMD ["go", "run", "/code/server/main.go"]

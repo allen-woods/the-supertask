@@ -4,26 +4,18 @@ FROM redis:alpine
 WORKDIR /
 
 # Copy the system settings needed to disable THP.
-COPY --chown=root:root ./redis/system ./sys/kernel/mm/transparent_hugepage/
+COPY --chown=redis:redis ./redis/init/config/defrag ./sys/kernel/mm/transparent_hugepage/
+COPY --chown=redis:redis ./redis/init/config/enabled ./sys/kernel/mm/transparent_hugepage/
 
-# Copy over the config.
-COPY --chown=redis:redis ./redis/config ./usr/local/etc/redis/
+# Copy the custom initialization files.
+COPY --chown=redis:redis ./redis/init ./usr/local/etc/custom-redis-init/
 
-# Copy over the env vars.
-COPY --chown=root:root ./redis/.env ./usr/local/bin/
+# Remove the THP setting duplicates.
+RUN rm /usr/local/etc/custom-redis-init/config/defrag
+RUN rm /usr/local/etc/custom-redis-init/config/enabled
 
-# NOTE:
-# The below won't work, not sure why.
-# Needs Alpine equivalent of 'export -f'.
-
-# Copy over the custom script(s).
-# COPY --chown=root:root ./redis/sh ./bin/
-
-# Disable THP using custom script.
-# RUN ["/bin/sh", "/usr/local/bin/disable-thp-support.sh"]
-
-# Source the env vars used to auth Redis.
-RUN ["/bin/sh", ".", "/usr/local/bin/redis-secrets.sh"]
+# Populate the env vars using the initialization script.
+RUN ["/bin/bash", "-c", "/usr/local/etc/custom-redis-init/init.sh"]
 
 # Start the server with our custom config by default.
-CMD ["/bin/sh", "./redis-server", "/usr/local/etc/redis/redis.conf"]
+CMD ["/bin/sh", "-c", "redis-server /usr/local/etc/custom-redis-init/config/redis.conf"]
