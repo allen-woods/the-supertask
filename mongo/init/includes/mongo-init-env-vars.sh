@@ -10,7 +10,7 @@ export MONGO_INITDB_ROOT_USERNAME=root
 export MONGO_INITDB_ROOT_PASSWORD=root
 export MONGO_INITDB_DATABASE=admin
 
-source /usr/local/etc/custom-mongo-init/mongo-credentials.sh
+source /usr/local/etc/custom-mongo-init/authorization/mongo-credentials.sh
 
 read -r -d '' MDB_JS <<< "
 if (db.system

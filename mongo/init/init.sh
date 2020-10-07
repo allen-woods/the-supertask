@@ -11,7 +11,6 @@ mongod --bind_ip_all \
 --fork \
 --logpath=/var/log/mongodb/mongod \
 --directoryperdb \
---eval $MDB_JS
 
 # Create a mongo client that injects MDB_JS and initializes our superuser.
 mongo $MONGO_INITDB_DATABASE \

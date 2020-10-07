@@ -15,7 +15,7 @@ RUN rm /usr/local/etc/custom-redis-init/config/defrag
 RUN rm /usr/local/etc/custom-redis-init/config/enabled
 
 # Populate the env vars using the initialization script.
-RUN ["/bin/bash", "-c", "/usr/local/etc/custom-redis-init/init.sh"]
+RUN ["/bin/sh", "-c", "/usr/local/etc/custom-redis-init/init.sh"]
 
 # Start the server with our custom config by default.
 CMD ["/bin/sh", "-c", "redis-server /usr/local/etc/custom-redis-init/config/redis.conf"]
