@@ -13,7 +13,7 @@ Technologies planned for project:
 - MongoDB
 - ReactJS
 - Redis
-- <em><s>WebAssembly</s></em>
+- <em>WebAssembly (?)</em>
 
 ### TODO:
 
@@ -22,8 +22,14 @@ Technologies planned for project:
 - Begin building API
   - Design toward implementation of `Apollo Server` and `Apollo Client`. (on track)
   - **Provide single source of truth for models.**
+    - Will be migrating to use of HashiCorp Vault.
   - **Define Redis and MongoDB secrets as environment variables.**
+    - These will be managed by Vault, see above.
   - **Create initialization for unique email fields requirement.**
+    - gRPC "user" microservice will manage this.
+  - Successfully create and persist the following accounts:
+    - Global super user to replace "root" in MongoDB.
+    - Database owners, each dedicated to a given microservice.
 
 ### DONE:
 

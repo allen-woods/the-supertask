@@ -1,14 +1,14 @@
 FROM golang:alpine
 
 # Set the working directory to where the code is copied.
-WORKDIR /code
+WORKDIR /
 
 # Copy local code over to the image.
-COPY --chown=root:root ./api ./
-COPY --chown=root:root ./redis/.env ./.env/
+COPY --chown=root:root ./api ./code/
+COPY --chown=root:root ./redis/init/authorization ./code/init/authorization/
 
 # Source the script used to populate env variables.
-RUN ["/bin/sh", ".", "/code/.env/api-secrets.sh"]
+RUN ["/bin/sh", "-c", ". /code/init/init.sh"]
 
 # Start the server by default.
 CMD ["go", "run", "/code/server.go"]

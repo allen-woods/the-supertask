@@ -15,13 +15,13 @@ COPY --chown=root:root ./services/user/init ./usr/local/etc/custom-user-service-
 COPY --chown=root:root ./services/utils/service-mongo-script.sh ./usr/local/etc/custom-user-service-init/includes/
 
 # Copy over the Golang and Proto3 of this service.
-COPY --chown=root:root ./services/user/go ./where/the/code/goes
+COPY --chown=root:root ./services/user/app ./app/
 
 # Add the curl package to Alpine.
 RUN ["apk", "add", "curl"]
 
 # Source all env vars used to connect to MongoDB from gRPC.
-RUN ["/bin/bash", "-c", "/usr/local/etc/custom-user-service-init/init.sh"]
+RUN ["/bin/sh", "-c", "/usr/local/etc/custom-user-service-init/init.sh"]
 
 # Run the gRPC server by default.
-CMD ["go", "run", "/code/server/main.go"]
+CMD ["go", "run", "/app/server/main.go"]
