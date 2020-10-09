@@ -9,7 +9,6 @@ services:
       dockerfile: ./api/Dockerfile
     depends_on:
       - redis
-      - vc_redis
       - user
     restart: unless-stopped
     ports:
@@ -26,20 +25,33 @@ services:
     build:
       context: ./
       dockerfile: ./mongo/Dockerfile
-    restart: unless-stopped
+    depends_on:
+      - vc_mongo
+    restart: 'no'
     ports:
       - '27017'
     expose:
       - '27017'
     networks:
       - backend
-    # A volume to persist our NoSQL database
     volumes:
-      - persist_mongo:/data/db:rw
+      # A mounted directory to safely pull variables from.
+      - type: bind
+        source: ./mongo/init
+        target: /usr/local/etc
+      # A volume to persist our NoSQL database.
+      - type: volume
+        source: persist_mongo
+        target: /data/db
+        volume:
+          nocopy: true
+
   vc_mongo:
     image: mongo:bionic
+    networks:
+      - backend
     volumes:
-      - persist_mongo:/data/db:rw
+      - persist_mongo:/data/db
 
   # The Redis instance that holds our user IDs (UUID v4).
   redis:
@@ -47,6 +59,8 @@ services:
     build:
       context: ./
       dockerfile: ./redis/Dockerfile
+    depends_on:
+      - vc_redis
     restart: unless-stopped
     # These settings allow tcp-backlog in
     # ./redis/redis.conf to not be capped.
@@ -64,12 +78,14 @@ services:
       - backend
     # A volume for persisting our database.
     volumes:
-      - persist_redis:/data:rw
+      - persist_redis:/data
 
   vc_redis:
     image: redis:alpine
+    networks:
+      - backend
     volumes:
-      - persist_redis:/data:rw
+      - persist_redis:/data
 
   user:
     container_name: user_svc
@@ -78,9 +94,6 @@ services:
       dockerfile: ./services/user/Dockerfile
     depends_on:
       - mongo
-      - vc_mongo
-      - redis
-      - vc_redis
     restart: unless-stopped
     ports:
       - '50051'

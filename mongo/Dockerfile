@@ -1,10 +1,8 @@
 FROM mongo:bionic
 
-# Set the working directory to the root of the container.
-WORKDIR /
+# Set the working directory to the location of docker-entrypoint.sh.
+# We do this to copy to multiple locations.
+WORKDIR /usr/local/bin
 
-# Copy the env vars and superuser script.
-COPY --chown=mongodb:mongodb ./mongo/init ./usr/local/etc/custom-mongo-init/
-# COPY --chown=mongodb:mongodb ./mongo/init/config/mongod.conf ./etc/
-
-RUN ["/bin/bash", "-c", "/usr/local/etc/custom-mongo-init/init.sh"]
+# Place our monkey patcher into the container.
+COPY --chown=root:root ./mongo/init/docker-entrypoint.sh ./
