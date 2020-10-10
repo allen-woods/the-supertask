@@ -35,10 +35,6 @@ services:
     networks:
       - backend
     volumes:
-      # A mounted directory to safely pull variables from.
-      - type: bind
-        source: ./mongo/init
-        target: /usr/local/etc
       # A volume to persist our NoSQL database.
       - type: volume
         source: persist_mongo
