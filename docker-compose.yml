@@ -97,6 +97,15 @@ services:
       - '50051'
     networks:
       - backend
+
+  truth:
+    container_name: truth_src
+    build:
+      context: ./
+      dockerfile: ./security/Dockerfile
+    restart: always
+    networks:
+      - backend
 networks:
   # frontend:
   backend:
