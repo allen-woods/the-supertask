@@ -22,7 +22,8 @@ Technologies planned for project:
 - Begin building API
   - Design toward implementation of `Apollo Server` and `Apollo Client`. (on track)
   - **Provide single source of truth for models.**
-    - Will be migrating to use of HashiCorp Vault.
+    - Included HashiCorp Vault image from Docker hub.
+    - Undecided: transit secrets / read write secrets.
   - **Define Redis and MongoDB secrets as environment variables.**
     - These will be managed by Vault, see above.
   - **Create initialization for unique email fields requirement.**
