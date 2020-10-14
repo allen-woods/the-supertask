@@ -23,7 +23,9 @@ Technologies planned for project:
   - Design toward implementation of `Apollo Server` and `Apollo Client`. (on track)
   - **Provide single source of truth for models.**
     - Included HashiCorp Vault image from Docker hub.
-    - Undecided: transit secrets / read write secrets.
+      - Persisted read/write rolling secrets for credentials.
+      - Transit secrets (EaaS) for request / response data (?)
+      - Stretch goal: full end-to-end TLS encryption.
   - **Define Redis and MongoDB secrets as environment variables.**
     - These will be managed by Vault, see above.
   - **Create initialization for unique email fields requirement.**
