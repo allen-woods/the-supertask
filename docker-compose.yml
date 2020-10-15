@@ -22,12 +22,21 @@ services:
   # The MongoDB instance that holds our databases.
   mongo:
     container_name: mongo_svc
+    environment:
+      # NOTE:
+      # These variables are for initialization purposes only.
+      # Credentials of the root user will be updated and rotated.
+      # Passing these variables enforces authentication requirement
+      # for all `mongo` shells.
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/usr/local/etc/mongodb/mongo-root-username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/usr/local/etc/mongodb/mongo-root-password
+      - MONGO_INITDB_DATABASE=admin
     build:
       context: ./
       dockerfile: ./mongo/Dockerfile
     depends_on:
-      - vc_mongo
-    restart: 'no'
+      - truth
+    restart: unless-stopped
     ports:
       - '27017'
     expose:
@@ -35,19 +44,12 @@ services:
     networks:
       - backend
     volumes:
-      # A volume to persist our NoSQL database.
+      # A volume to persist our NoSQL data store.
       - type: volume
         source: persist_mongo
         target: /data/db
         volume:
           nocopy: true
-
-  vc_mongo:
-    image: mongo:bionic
-    networks:
-      - backend
-    volumes:
-      - persist_mongo:/data/db
 
   # The Redis instance that holds our user IDs (UUID v4).
   redis:
@@ -56,7 +58,7 @@ services:
       context: ./
       dockerfile: ./redis/Dockerfile
     depends_on:
-      - vc_redis
+      - truth
     restart: unless-stopped
     # These settings allow tcp-backlog in
     # ./redis/redis.conf to not be capped.
@@ -72,16 +74,13 @@ services:
       - '6379'
     networks:
       - backend
-    # A volume for persisting our database.
     volumes:
-      - persist_redis:/data
-
-  vc_redis:
-    image: redis:alpine
-    networks:
-      - backend
-    volumes:
-      - persist_redis:/data
+      # A volume for persisting our in-memory data store.
+      - type: volume
+        source: persist_redis
+        target: /data
+        volume:
+          nocopy: true
 
   user:
     container_name: user_svc
@@ -104,8 +103,13 @@ services:
       context: ./
       dockerfile: ./security/Dockerfile
     restart: always
+    ports:
+      - '8200'
+    expose:
+      - '8200'
     networks:
       - backend
+
 networks:
   # frontend:
   backend:
