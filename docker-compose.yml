@@ -5,8 +5,8 @@ services:
   api:
     container_name: api_svc
     build:
-      context: ./
-      dockerfile: ./api/Dockerfile
+      context: ./api
+      dockerfile: ./Dockerfile
     depends_on:
       - redis
       - user
@@ -28,8 +28,8 @@ services:
       # Credentials of the root user will be updated and rotated.
       # Passing these variables enforces authentication requirement
       # for all `mongo` shells.
-      - MONGO_INITDB_ROOT_USERNAME_FILE=/usr/local/etc/mongodb/mongo-root-username
-      - MONGO_INITDB_ROOT_PASSWORD_FILE=/usr/local/etc/mongodb/mongo-root-password
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/usr/local/etc/mongodb/mongo-seed-username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/usr/local/etc/mongodb/mongo-seed-password
       - MONGO_INITDB_DATABASE=admin
     build:
       context: ./
