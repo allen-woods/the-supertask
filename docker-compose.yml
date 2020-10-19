@@ -28,12 +28,15 @@ services:
       # Credentials of the root user will be updated and rotated.
       # Passing these variables enforces authentication requirement
       # for all `mongo` shells.
+      #
+      # UPDATE: 10-19-2020
+      # The value of these variables will be managed by Vault.
       - MONGO_INITDB_ROOT_USERNAME_FILE=/usr/local/etc/mongodb/mongo-seed-username
       - MONGO_INITDB_ROOT_PASSWORD_FILE=/usr/local/etc/mongodb/mongo-seed-password
       - MONGO_INITDB_DATABASE=admin
     build:
-      context: ./
-      dockerfile: ./mongo/Dockerfile
+      context: ./mongo
+      dockerfile: ./Dockerfile
     depends_on:
       - truth
     restart: unless-stopped
@@ -55,8 +58,8 @@ services:
   redis:
     container_name: redis_svc
     build:
-      context: ./
-      dockerfile: ./redis/Dockerfile
+      context: ./redis
+      dockerfile: ./Dockerfile
     depends_on:
       - truth
     restart: unless-stopped
@@ -84,9 +87,12 @@ services:
 
   user:
     container_name: user_svc
+    environment:
+      # Spaces and quotes in JSON strings must be properly escaped.
+      - VAULT_LOCAL_CONFIG="{\"backend\":\ {\"file\":\ {\"path\":\ \"/vault/file\"}},\ \"default_lease_ttl\":\ \"24h\",\ \"max_lease_ttl\":\ \"720h\"}"
     build:
-      context: ./
-      dockerfile: ./services/user/Dockerfile
+      context: ./services/user
+      dockerfile: ./Dockerfile
     depends_on:
       - mongo
     restart: unless-stopped
@@ -100,8 +106,8 @@ services:
   truth:
     container_name: truth_src
     build:
-      context: ./
-      dockerfile: ./security/Dockerfile
+      context: ./security
+      dockerfile: ./Dockerfile
     restart: always
     ports:
       - '8200'
