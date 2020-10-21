@@ -6,7 +6,7 @@ FROM golang:alpine
 # This would have taken a lot longer without that to learn from.
 
 # Set working directory to root of the container.
-WORKDIR /
+# WORKDIR /
 
 # Copy over all contents of the config for this service.
 # COPY --chown=root:root ./services/user/init ./usr/local/etc/custom-user-service-init/

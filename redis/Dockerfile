@@ -1,7 +1,7 @@
 FROM redis:alpine
 
 # Set working directory to the root of the container.
-WORKDIR /
+# WORKDIR /
 
 # Copy the system settings needed to disable THP.
 # COPY --chown=redis:redis ./redis/init/config/defrag ./sys/kernel/mm/transparent_hugepage/

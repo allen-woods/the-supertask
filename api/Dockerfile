@@ -1,7 +1,7 @@
 FROM golang:alpine
 
 # Set the working directory to where the code is copied.
-WORKDIR /
+# WORKDIR /
 
 # Copy local code over to the image.
 # COPY --chown=root:root ./api ./code/
