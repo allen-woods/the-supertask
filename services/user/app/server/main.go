@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 
 	userpb "../proto"
 	"go.mongodb.org/mongo-driver/bson"
@@ -145,7 +142,7 @@ func (s *UserCRUDService) DeleteUser(ctx context.Context, req *userpb.DeleteUser
 }
 
 // ListUsers is the "index" method for the User gRPC microservice.
-func (s *UserCRUDService) ListUsers(req *userpb.ListUsersReq, stream userpb.UserCRUDService_ListUsersServer) error {
+func (s *UserCRUDService) ListUsers(req *userpb.ListUsersReq, stream userpb.UserCRUD_ListUsersServer) error {
 	data := &UserAccount{}
 
 	cursor, err := userdb.Find(context.Background(), bson.M{})
@@ -222,29 +219,9 @@ func main() {
 	// Request root token from Vault.
 	// Following: https://medium.com/rungo/making-external-http-requests-in-go-eb4c015f8839
 	//
-	startRootTokenRequestBody := strings.NewReader(`
-		{
-			"pgp_key":"Base64GoesHere",
-		}
-	`)
 
-	startRootTokenResponse, err := http.Put(
-		"http://truth_src:8200/v1/sys/generate-root/attempt",
-		"application/json; charset=UTF-8",
-		startRootTokenRequestBody,
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Read the response data.
-	startRootTokenData, err := ioutil.ReadAll(startRootTokenResponse.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Close the body of response.
-	startRootTokenResponse.Body.Close()
+	// Researching idiomatic solution from:
+	// https://golang.org/pkg/net/http/#NewRequest
 
 	fmt.Printf("Starting server on port :%d...", servicePort)
 
