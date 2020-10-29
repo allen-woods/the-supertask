@@ -220,13 +220,12 @@ func main() {
 
 	// Request root token from Vault.
 	// Following: https://medium.com/rungo/making-external-http-requests-in-go-eb4c015f8839
-	//
 
-	// Researching idiomatic solution from:
-	// https://golang.org/pkg/net/http/
+	// Previously used net/http, switching to the official API pkg:
+	// https://godoc.org/github.com/hashicorp/vault/api
 
 	// Build request to start generating a root token.
-	vaultReq, err := http.NewRequest("PUT", "http://truth_src:8200/v1/sys/generate-root/attempt")
+	vaultReq, err := http.NewRequest("PUT", "http://truth_src:8200/v1/sys/generate-root/attempt", nil)
 	if err != nil {
 		log.Fatalf("Unable to generate new request %v\n\n%v", vaultReq, err)
 	}
