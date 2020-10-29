@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 
@@ -221,7 +223,41 @@ func main() {
 	//
 
 	// Researching idiomatic solution from:
-	// https://golang.org/pkg/net/http/#NewRequest
+	// https://golang.org/pkg/net/http/
+
+	// Build request to start generating a root token.
+	vaultReq, err := http.NewRequest("PUT", "http://truth_src:8200/v1/sys/generate-root/attempt")
+	if err != nil {
+		log.Fatalf("Unable to generate new request %v\n\n%v", vaultReq, err)
+	}
+
+	// Create a client that can send our request to Vault.
+	vaultClient := &http.Client{}
+
+	// Receive the response object back from Vault.
+	vaultResp, err := vaultClient.Do(vaultReq)
+	if err != nil {
+		log.Fatalf("Unable to return response %v\n\n%v", vaultResp, err)
+	}
+	defer vaultResp.Body.Close()
+	// Read the entire contents of the body of the response.
+	vaultBody, err := ioutil.ReadAll(vaultResp.Body)
+	if err != nil {
+		log.Fatalf("Unable to parse parse body of response %v\n\n%v", vaultBody, err)
+	}
+
+	// Parse out the following data:
+	// "started": true,
+	// "nonce": "UUID",
+	// "pgp_fingerprint": "PGP string", (if pgp_key passed in request)
+	// "otp": "SSH string", (if otp used to encrypt)
+	// "complete": false,
+
+	// Logic to check values of data.
+
+	// Flow control to confirm root token generation. (loop?)
+
+	// END: Vault Initialization
 
 	fmt.Printf("Starting server on port :%d...", servicePort)
 
