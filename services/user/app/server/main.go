@@ -246,11 +246,11 @@ func main() {
 	}
 
 	// Parse out the following data:
-	// "started": true,
-	// "nonce": "UUID",
-	// "pgp_fingerprint": "PGP string", (if pgp_key passed in request)
-	// "otp": "SSH string", (if otp used to encrypt)
-	// "complete": false,
+	// - "started"				: true,
+	// - "nonce"					: "UUID",
+	// - "pgp_fingerprint": "PGP string", (if pgp_key passed in request)
+	// - "otp"						: "SSH string", (if otp used to encrypt)
+	// - "complete"				: false,
 
 	// Logic to check values of data.
 
