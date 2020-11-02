@@ -102,9 +102,9 @@ services:
 
   truth:
     container_name: truth_src
-    environment:
-      # Spaces and quotes in JSON strings must be properly escaped.
-      - VAULT_LOCAL_CONFIG="{\"backend\":\ {\"file\":\ {\"path\":\ \"/vault/file\"}},\ \"default_lease_ttl\":\ \"24h\",\ \"max_lease_ttl\":\ \"720h\"}"
+    cap_add:
+      # Required for Vault to lock memory (best practice).
+      - IPC_LOCK
     build:
       context: ./security
       dockerfile: ./Dockerfile
