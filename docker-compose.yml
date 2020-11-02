@@ -87,9 +87,6 @@ services:
 
   user:
     container_name: user_svc
-    environment:
-      # Spaces and quotes in JSON strings must be properly escaped.
-      - VAULT_LOCAL_CONFIG="{\"backend\":\ {\"file\":\ {\"path\":\ \"/vault/file\"}},\ \"default_lease_ttl\":\ \"24h\",\ \"max_lease_ttl\":\ \"720h\"}"
     build:
       context: ./services/user
       dockerfile: ./Dockerfile
@@ -105,6 +102,9 @@ services:
 
   truth:
     container_name: truth_src
+    environment:
+      # Spaces and quotes in JSON strings must be properly escaped.
+      - VAULT_LOCAL_CONFIG="{\"backend\":\ {\"file\":\ {\"path\":\ \"/vault/file\"}},\ \"default_lease_ttl\":\ \"24h\",\ \"max_lease_ttl\":\ \"720h\"}"
     build:
       context: ./security
       dockerfile: ./Dockerfile
@@ -115,10 +115,26 @@ services:
       - '8200'
     networks:
       - backend
+    volumes:
+      # Used by the `file` audit backend to persist storage data.
+      - type: volume
+        source: persist_vault_data
+        target: /vault/file
+        volume:
+          nocopy: true # Necessary?
+      # Used to persist audit logs, REQUIRES `file` audit backend enabled.
+      - type: volume
+        source: persist_vault_logs
+        target: /vault/logs
+        volume:
+          nocopy: true # Necessary?
 
 networks:
   # frontend:
   backend:
+
 volumes:
   persist_mongo:
   persist_redis:
+  persist_vault_data: # Bind mounts instead for Vault volumes?
+  persist_vault_logs:
