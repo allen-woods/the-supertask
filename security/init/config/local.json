@@ -9,7 +9,17 @@
   "listener": {
     "tcp": {
       "address": "127.0.0.1:8200",
-      "tls_disable": "true"
+      "http_idle_timeout": "0",
+      "http_read_timeout": "0",
+      "http_read_header_timeout": "10s",
+      "http_write_timeout": "1m",
+      "tls_disable": "true",
+      "tls_min_version": "tls13",
+      "tls_cipher_suites": "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256",
+      "tls_require_and_verify_client_cert": "true",
+      "tls_cert_file": "/etc/certs/vault.crt",
+      "tls_key_file": "/etc/certs/vault.key",
+      "tls_client_ca_file": ""
     }
   }
 }
