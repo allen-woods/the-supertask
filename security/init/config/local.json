@@ -19,7 +19,10 @@
       "tls_cert_file": "/etc/certs/vault.crt",
       "tls_key_file": "/etc/certs/vault.key",
       "tls_require_and_verify_client_cert": "true",
-      "tls_client_ca_file": ""
+      "tls_client_ca_file": "/path/to/ca-cert"
     }
-  }
+  },
+  "api_addr": "http://127.0.0.1:8200",
+  "cluster_addr": "https://127.0.0.1:8200"
 }
+
