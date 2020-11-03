@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Work in progress!
+
 # Generate a Base64 string from the plain text argument $1.
 # Store the result in a file named `cert-phrase` in the current directory.
 echo $(echo -n "${$1}" | \
