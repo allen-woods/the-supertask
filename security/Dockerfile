@@ -11,11 +11,14 @@ RUN ["/bin/ash", "-c", "exec su root -c 'apk update'"]
 # The following adds the `sshpass` CLI utility to fully
 # automate SSH secrets engine and OTP.
 
-# Install (add) the `sshpass` package at version "1.06-r0" for Alpine 3.10.5.
+# Install the `sshpass` package at version "1.06-r0" for Alpine 3.10.5.
 RUN ["/bin/ash", "-c", "exec su root -c 'apk add \"sshpass=1.06-r0\"'"]
 
-# Install (add) the `curl` package at version "7.66.0-r1" for Alpine 3.10.5.
+# Install the `curl` package at version "7.66.0-r1" for Alpine 3.10.5.
 RUN ["/bin/ash", "-c", "exec su root -c 'apk add \"curl=7.66.0-r1\"'"]
+
+# Install the `argon2` package at version "20171227-r2" for Alpine 3.10.5.
+RUN ["/bin/ash", "-c", "exec su root -c 'apk add \"argon2=20171227-r2\"'"]
 
 # Now we can safely upgrade all packages, if necessary.
 RUN ["/bin/ash", "-c", "exec su root -c 'apk upgrade'"]
