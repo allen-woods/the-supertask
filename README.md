@@ -53,6 +53,8 @@ Personal portfolio site and current passion project, tentatively planned for fir
 - [ ] Configure appropriate `dev` and `prod` environment.
 - [ ] Migrate to `docker-machine` when CI/CD pipeline is operational.
 
+---
+
 #### Vault
 
 > **NOTE:**
