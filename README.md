@@ -50,14 +50,14 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 #### Vault
 
-- [ ] Complete `gen_trust_chain` POSIX shell utility. (OpenSSL, Argon2id)
+- [ ] Complete `gen_trust_chain` POSIX shell utility. _(OpenSSL, Argon2id)_
 - [ ] Copy `gen_trust_chain` script into Vault container.
 - [ ] Generate `*.pem` files required by TLS.
 - [ ] Reference `*.pem` files correctly in config where needed.
 - [ ] Complete config in `/vault/config/local.json`.
 - [ ] Create policies for roles determined in ERD.
 - [ ] Run `gpg --gen-key` _offline_.
-- [ ] Store private key(s) _in hardware, **NOT** on a network_.
+- [ ] **Store private key(s) in hardware, _NOT_ on a network**.
 - [ ] Export public key(s) as standard **unarmored base64** or **binary**.
 - [ ] Copy `<key_name>.asc` file(s) into Vault container.
 - [ ] Run `vault operator init` with `-pgp-keys` flag to harden with PGP. ([Details](https://www.vaultproject.io/docs/concepts/pgp-gpg-keybase))
@@ -68,7 +68,13 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 #### CircleCI
 
-- [ ] Placeholder
+> **NOTE:**
+> While this is a "nice-to-have", this topic is ubiquitous and important to understand. _Prioritize gaining experience with this_.
+
+- [ ] Read documentation thoroughly.
+- [ ] Give extra attention to closures and orbs _("secrets" obfuscation)_.
+- [ ] Build CI/CD pipeline. _(revisit and expand this entry based on steps needed)_
+- [ ] Reach :skateboard: level MVP before implementing CI/CD.
 
 ---
 
