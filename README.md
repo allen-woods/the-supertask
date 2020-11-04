@@ -36,7 +36,59 @@ Personal portfolio site and current passion project, tentatively planned for fir
 |                                                                                                                                                                                                                                                                                                                                                              | <img src="https://pkgs.alpinelinux.org/assets/favicon.ico" alt="Alpine icon" width="20" height="20" /> **[Alpine Linux](https://alpinelinux.org/)**                              |
 |                                                                                                                                                                                                                                                                                                                                                              | :gear: **[POSIX Conformant Shell Scripts](https://www.grymoire.com/Unix/Sh.html)**                                                                                               |
 
-### TODO:
+## TODO:
+
+#### Site Plan (ERD)
+
+- [ ] Finalize overview map of site resources.
+- [ ] Finalize detail map of GraphQL models and resolvers.
+- [ ] Finalize single responsibilities of gRPC microservices.
+- [ ] Finalize detail map of MongoDB aggregation pipelines.
+- [ ] Consolidate actions into clearly defined roles.
+
+---
+
+#### Vault
+
+- [ ] Complete `gen_trust_chain` POSIX shell utility. (OpenSSL, Argon2id)
+- [ ] Copy `gen_trust_chain` script into Vault container.
+- [ ] Generate `*.pem` files required by TLS.
+- [ ] Reference `*.pem` files correctly in config where needed.
+- [ ] Complete config in `/vault/config/local.json`.
+- [ ] Create policies for roles determined in ERD.
+- [ ] Run `gpg --gen-key` _offline_.
+- [ ] Store private key(s) _in hardware, **NOT** on a network_.
+- [ ] Export public key(s) as standard **unarmored base64** or **binary**.
+- [ ] Copy `<key_name>.asc` file(s) into Vault container.
+- [ ] Run `vault operator init` with `-pgp-keys` flag to harden with PGP. ([Details](https://www.vaultproject.io/docs/concepts/pgp-gpg-keybase))
+- [ ] Enable PKI secrets engine. ([Details](https://www.vaultproject.io/docs/secrets/pki))
+- [ ] Enable the TLS Certificate authentication method. ([Details](https://www.vaultproject.io/docs/auth/cert))
+
+---
+
+#### CircleCI
+
+- [ ] Placeholder
+
+---
+
+#### GraphQL
+
+- [ ] Placeholder
+
+---
+
+#### gRPC
+
+- [ ] Placeholder
+
+---
+
+#### MongoDB
+
+- [ ] Placeholder
+
+---
 
 - **Clean up this messy README** (in progress)
 - Dockerize local environment (ongoing)
