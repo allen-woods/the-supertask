@@ -4,6 +4,9 @@
 
 # Currently following:
 # https://www.alexedwards.net/blog/how-to-hash-and-verify-passwords-with-argon2-in-go
+#
+# Also:
+# https://security.stackexchange.com/a/130500
 
 argon_pass = "$(gen random string here)"
 argon_salt = "$(gen random string here)"
