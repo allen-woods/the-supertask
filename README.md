@@ -62,9 +62,8 @@ Personal portfolio site and current passion project, tentatively planned for fir
 >
 > The guaranteed computational delay built into Argon2's KBKDF is vital to preventing ASIC / GPU brute force attacks.
 
-- [ ] ~~Complete `gen_trust_chain` POSIX shell utility. (OpenSSL, Argon2id)~~
-- [ ] Complete cert chain tool(s) as Golang binaries.
-- [ ] Copy cert chain tool(s) into Vault container.
+- [ ] Complete `gen_trust_chain` POSIX shell utility. (OpenSSL, Argon2id)
+- [ ] Copy `gen_trust_chain` utility into Vault container.
 - [ ] Generate `*.pem` files required by TLS.
 - [ ] Reference `*.pem` files correctly in config where needed.
 - [ ] Complete config in `/vault/config/local.json`.

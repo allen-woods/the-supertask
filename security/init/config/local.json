@@ -1,28 +1,39 @@
 {
+  "api_addr": "http://127.0.0.1:8200",
+  "cache_size": 0,
+  "cluster_addr": "",
+  "cluster_cipher_suites": "",
+  "cluster_name": "",
+  "default_lease_ttl": 0,
+  "default_max_request_duration": 0,
+  "disable_cache": false,
+  "disable_clustering": false,
+  "disable_indexing": false,
+  "disable_mlock": false,
+  "disable_performance_standby": false,
+  "disable_sealwrap": false,
+  "enable_ui": false,
+  "listener": {
+    "tcp": {
+      "address": "127.0.0.1:8200",
+      "tls_disable": 1
+    }
+  },
+  "log_format": "",
+  "log_level": "",
+  "max_lease_ttl": 0,
+  "pid_file": "",
+  "plugin_directory": "/opt/vault/plugins",
+  "raw_storage_endpoint": false,
+  "seals": [
+    {
+      "disabled": true,
+      "type": "shamir"
+    }
+  ],
   "backend": {
     "file": {
       "path": "/vault/file"
     }
-  },
-  "default_lease_ttl": "24h",
-  "max_lease_ttl": "720h",
-  "listener": {
-    "tcp": {
-      "address": "127.0.0.1:8200",
-      "http_idle_timeout": "0",
-      "http_read_timeout": "0",
-      "http_read_header_timeout": "10s",
-      "http_write_timeout": "1m",
-      "tls_disable": "true",
-      "tls_min_version": "tls13",
-      "tls_cipher_suites": "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256",
-      "tls_cert_file": "/etc/certs/vault.crt",
-      "tls_key_file": "/etc/certs/vault.key",
-      "tls_require_and_verify_client_cert": "true",
-      "tls_client_ca_file": "/path/to/ca-cert"
-    }
-  },
-  "api_addr": "http://127.0.0.1:8200",
-  "cluster_addr": "https://127.0.0.1:8200"
+  }
 }
-
