@@ -64,7 +64,7 @@ function trust {
   '
 
   echo "Hashing password..."
-  # Generate the encoded hash string from Argon2. (KEK is at end of string)
+  # Generate the encoded hash string from Argon2.
   # Length of 60 uses 384 bits of entropy.
   local kek=$(echo -n $passStr | argon2 $saltStr -id -t 5 -m 16 -p 4 -l 60 -e)
 
@@ -73,19 +73,32 @@ function trust {
   tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
   fold -w$(jot -w %i -r 1 20 35) | \
   head -n1)"
+
+  # Parse the salt and hash from kek, convert both to hex, assign to vars.
+  if [[ $kek =~ ^p=4\$(.*)\$(.*)$ ]]; then
+    local kekSalt="$( \
+    echo 0: ${BASH_REMATCH[1]} | xxd -r | \
+    openssl enc -aes-256-ecb -nopad -K 00000000000000000000000000000000 | \
+    xxd -p)"
+
+    local kekHash="$( \
+    echo 0: ${BASH_REMATCH[2]} | xxd -r | \
+    openssl enc -aes-256-ecb -nopad -K 00000000000000000000000000000000 | \
+    xxd -p)"
+  fi
   
-  fek_encd="$( \
-  openssl enc 
-  )"
-  # Generate FEK
-  # Encrypt FEK into FEK* using passStr and encdStr
-  # Store 
+  # Encode FEK into FEK* using kekHash and kekSalt.
+  # FEK* is persisted as fek.enc
+  openssl enc -aes-256-ecb -in fek -out fek.enc \
+  -e -K $kekHash -S $kekSalt
+  
+  # Enforce tight restrictions on fek.enc, root user only.
+  chown root:root fek.enc
+  chmod 0600 fek.enc
+
   # Generate directory structure for our secure files.
-  #
-  # NOTE: add strict chmod and chown settings
-  #
-  mkdir -p $HOME/tls/certs
-  mkdir -p $HOME/tls/private
+  mkdir -m 0600 -p $HOME/tls/certs
+  mkdir -m 0600 -p $HOME/tls/private
 
   # Move current directory to $HOME.
   cd $HOME
