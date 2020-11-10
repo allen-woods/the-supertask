@@ -30,7 +30,7 @@ function trust {
   #
   # NOTE: This becomes base64 encoded with no padding.
   #
-  local saltStr="$( \
+  local rndSalt="$( \
   tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
   fold -w35 | \
   head -n1)"
@@ -44,7 +44,7 @@ function trust {
   #
   # NOTE: This also becomes base64 encoded with no padding.
   #
-  local passStr="$( \
+  local rndPass="$( \
   tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
   fold -w$(jot -w %i -r 1 20 35) | \
   head -n1)"
@@ -59,16 +59,18 @@ function trust {
   ** Your secure STRONG password is as follows:           **
   **********************************************************
 
-  '"$passStr"'
+  '"$rndPass"'
 
   '
 
   echo "Hashing password..."
   # Generate the encoded hash string from Argon2.
   # Length of 60 uses 384 bits of entropy.
-  local kek=$(echo -n $passStr | argon2 $saltStr -id -t 5 -m 16 -p 4 -l 60 -e)
+  local kek=$(echo -n $rndPass | argon2 $rndSalt -id -t 5 -m 16 -p 4 -l 60 -e)
 
   echo "Generating encryption data (1/1)..."
+  
+  # FEK should be kept in memory and purged after operations are complete.
   local fek="$( \
   tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
   fold -w$(jot -w %i -r 1 20 35) | \
