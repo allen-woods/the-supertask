@@ -58,9 +58,9 @@ Personal portfolio site and current passion project, tentatively planned for fir
 #### Vault
 
 > **NOTE:**
-> This is the meat of the backend configuration and is taking me the most time. The rest of the build needs this section of work completed in order to further development in all other areas.
+> The inclusion of Vault is being re-assessed. While it is a robust and thorough secrets management platform, its size and complexity extend beyond the scope of this project.
 >
-> The guaranteed computational delay built into Argon2's KBKDF is vital to preventing ASIC / GPU brute force attacks.
+> The guaranteed computational delay built into Argon2's KBKDF is vital to preventing ASIC / GPU brute force attacks. This list is preserved in the event that stretch goals toward greater security are enacted.
 
 - [ ] Complete `gen_trust_chain` POSIX shell utility. (OpenSSL, Argon2id)
 - [ ] Copy `gen_trust_chain` utility into Vault container.
