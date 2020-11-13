@@ -40,6 +40,7 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 #### Site Plan (ERD)
 
+- [x] First draft of architecture overview.
 - [ ] Finalize overview map of site resources.
 - [ ] Finalize detail map of GraphQL models and resolvers.
 - [ ] Finalize single responsibilities of gRPC microservices.
@@ -50,6 +51,8 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 #### Docker Compose
 
+- [x] Pulled `docker/redis` container.
+- [x] Pulled `docker/mongo` container.
 - [ ] Configure appropriate `dev` and `prod` environment.
 - [ ] Migrate to `docker-machine` when CI/CD pipeline is operational.
 
@@ -62,11 +65,11 @@ Personal portfolio site and current passion project, tentatively planned for fir
 >
 > The guaranteed computational delay built into Argon2's KBKDF is vital to preventing ASIC / GPU brute force attacks. This list is preserved in the event that stretch goals toward greater security are enacted.
 
-- [ ] Complete `gen_trust_chain` POSIX shell utility. (OpenSSL, Argon2id)
-- [ ] Copy `gen_trust_chain` utility into Vault container.
+- [ ] Complete `trust` Golang binary.
+- [ ] Copy `trust` executable into Vault container.
 - [ ] Generate `*.pem` files required by TLS.
 - [ ] Reference `*.pem` files correctly in config where needed.
-- [ ] Complete config in `/vault/config/local.json`.
+- [x] Complete config in `/vault/config/local.json`.
 - [ ] Create policies for roles determined in ERD.
 - [ ] Run `gpg --gen-key` _offline_.
 - [ ] **Store private key(s) in hardware, _NOT_ on a network**.
@@ -84,14 +87,17 @@ Personal portfolio site and current passion project, tentatively planned for fir
 > While this is a "nice-to-have", this topic is ubiquitous and important to understand. _Prioritize gaining experience with this_.
 
 - [ ] Read documentation thoroughly.
-- [ ] Give extra attention to closures and orbs _("secrets" obfuscation)_.
-- [ ] Build CI/CD pipeline. _(revisit and expand this entry based on steps needed)_
+- [ ] Give extra attention to closures and orbs ("secrets" obfuscation).
+- [ ] Build CI/CD pipeline. (revisit and expand this entry based on steps needed)
 - [ ] Reach :skateboard: level MVP before implementing CI/CD.
 
 ---
 
 #### GraphQL
 
+- [x] Wrote schema IDL for value of type `User`.
+- [x] Generated model and resolvers for value of type `User`.
+- [x] Populated resolvers with logic.
 - [ ] Modularize `schema.graphql` into model-specific files.
 - [ ] Write schema IDL for remaining models.
 - [ ] Declare values of type for remaining models as determined in ERD.
@@ -101,32 +107,21 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 #### gRPC
 
+- [x] Implemented Redis with disabled THP support.
 - [ ] Create gRPC miscroservices that correspond to Vault roles.
 - [ ] Implement full CRUD on all microservices where appropriate.
 - [ ] Store documents by `mongo-driver/bson/primitive.ObjectID`, not `int`.
-- [ ] Enforce unique email fields index on `users` microservice. _(MongoDB)_
+- [ ] Enforce unique email fields index on `users` microservice. (MongoDB)
 
 ---
 
 #### MongoDB
 
+- [x] Implemented MongoDB with obfuscated authentication.
+- [x] Implemented POSIX conformant shell scripts for MongoDB.
+- [x] Implemented data store persistence.
 - [ ] Configure `mongod` to use TLS.
 - [ ] Serve daemon with `--directoryperdb` flag.
 - [ ] Generate obfuscated `root` superuser.
 - [ ] Allocate and persist databases that are needed.
 - [ ] Create and persist `dbOwner` admin account for each `gRPC, role` pair.
-
----
-
-## DONE:
-
-- [x] First draft of architecture overview.
-- [x] Pulled `docker/redis` container.
-- [x] Pulled `docker/mongo` container.
-- [x] Implemented MongoDB with obfuscated authentication.
-- [x] Implemented POSIX conformant shell scripts for MongoDB.
-- [x] Implemented Redis with disabled THP support.
-- [x] Implemented data store persistence.
-- [x] Wrote schema IDL for value of type `User`.
-- [x] Generated model and resolvers for value of type `User`.
-- [x] Populated resolvers with logic.

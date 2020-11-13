@@ -27,7 +27,7 @@
   "raw_storage_endpoint": false,
   "seals": [
     {
-      "disabled": true,
+      "disabled": false,
       "type": "shamir"
     }
   ],
