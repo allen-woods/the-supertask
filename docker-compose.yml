@@ -5,7 +5,7 @@ services:
   api:
     container_name: api_svc
     build:
-      context: ./api
+      context: ./ #./api
       dockerfile: ./Dockerfile
     depends_on:
       - redis
@@ -35,7 +35,7 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD_FILE=/usr/local/etc/mongodb/mongo-seed-password
       - MONGO_INITDB_DATABASE=admin
     build:
-      context: ./mongo
+      context: ./ #./mongo
       dockerfile: ./Dockerfile
     depends_on:
       - truth
@@ -58,7 +58,7 @@ services:
   redis:
     container_name: redis_svc
     build:
-      context: ./redis
+      context: ./ #./redis
       dockerfile: ./Dockerfile
     depends_on:
       - truth
@@ -88,7 +88,7 @@ services:
   user:
     container_name: user_svc
     build:
-      context: ./services/user
+      context: ./ #./services/user
       dockerfile: ./Dockerfile
     depends_on:
       - mongo
@@ -100,34 +100,34 @@ services:
     networks:
       - backend
 
-  truth:
-    container_name: truth_src
-    cap_add:
-      # Required for Vault to lock memory (best practice).
-      - IPC_LOCK
-    build:
-      context: ./security
-      dockerfile: ./Dockerfile
-    restart: always
-    ports:
-      - '8200'
-    expose:
-      - '8200'
-    networks:
-      - backend
-    volumes:
-      # Used by the `file` audit backend to persist storage data.
-      - type: volume
-        source: persist_vault_data
-        target: /vault/file
-        volume:
-          nocopy: true # Necessary?
-      # Used to persist audit logs, REQUIRES `file` audit backend enabled.
-      - type: volume
-        source: persist_vault_logs
-        target: /vault/logs
-        volume:
-          nocopy: true # Necessary?
+  # truth:
+  #   container_name: truth_src
+  #   cap_add:
+  #     # Required for Vault to lock memory (best practice).
+  #     - IPC_LOCK
+  #   build:
+  #     context: ./security
+  #     dockerfile: ./Dockerfile
+  #   restart: always
+  #   ports:
+  #     - '8200'
+  #   expose:
+  #     - '8200'
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     # Used by the `file` audit backend to persist storage data.
+  #     - type: volume
+  #       source: persist_vault_data
+  #       target: /vault/file
+  #       volume:
+  #         nocopy: true # Necessary?
+  #     # Used to persist audit logs, REQUIRES `file` audit backend enabled.
+  #     - type: volume
+  #       source: persist_vault_logs
+  #       target: /vault/logs
+  #       volume:
+  #         nocopy: true # Necessary?
 
 networks:
   # frontend:
@@ -136,5 +136,5 @@ networks:
 volumes:
   persist_mongo:
   persist_redis:
-  persist_vault_data: # Bind mounts instead for Vault volumes?
-  persist_vault_logs:
+  # persist_vault_data: # Bind mounts instead for Vault volumes?
+  # persist_vault_logs:
