@@ -5,7 +5,12 @@
 # HashiCorp recommends maintaining root certificate outside of Vault and
 # providing Vault a signed intermediate CA.
 #
-# Following tutorial, we:
+# To do this, we (mostly):
+# 1. Use OpenSSL to generate symmetric key pair.
+# 2. Wrap key using -id-aes256-wrap-pad.
+# 3. Use keys to generate root certificate.
+# 4. Self-sign the root certificate.
+# 5. Generate the intermediate certificate.
 function trust {
   echo "Checking for maximum entropy (This might take a while)..."
   maxEntropy=0
