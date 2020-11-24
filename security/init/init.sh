@@ -12,46 +12,78 @@
 # 4. Self-sign the root certificate.
 # 5. Generate the intermediate certificate.
 function trust {
-  echo "Checking for maximum entropy (This might take a while)..."
-  maxEntropy=0
-  while [ ! $maxEntropy -eq 4096 ]; do
-    #
-    # Do stuff here that generates entropy.
-    #
+  # It is not required to increase available entropy to the maximum (4096)
+  # before using `/dev/urandom`.
+  #
+  # For more detail: "How can I increase /proc/sys/kernel/random/entropy_avail"
+  # (URL) https://security.stackexchange.com/questions/204372/how-can-i-increase-proc-sys-kernel-random-entropy-avail
 
-    # Update max entropy available.
-    maxEntropy=$(cat /proc/sys/kernel/random/entropy_avail);
-  done
-  echo "Maximum entropy reached!"
+  local entropyNow=$(cat /proc/sys/kernel/random/entropy_avail)
+  local entropyMax=$(cat /proc/sys/kernel/random/poolsize)
 
-  # Entropy information:
+  echo '
+  *****************************
+  '"** Starting \`Trust\` Utility"'
+  **
+  '"** Entropy: ${entropyNow} of ${entropyMax}"'
+  *****************************
+  '
+  # Generate a random password
+  # Echo the password to a file
+  # Pass the file into a new encrypted file
+  # Generate a random 32 byte aes "payload"
+  # Generate a random 32 byte aes "ephemeral"
+  # Generate a private RSA key that is 4096
+  # Generate a public key from private key in PEM
+  # Get raw hex from "ephemeral" aes.
+  # Encode "payload" aes 
+
+  # Password Entropy Information:
   # https://advancedweb.hu/what-is-the-optimal-password-length/
 
-  echo "Generating salt..."
-  # Generate a randomized 35 character salt using [:graph:]
-  # character set. ([:alnum:][:punct:])
-  #
-  # This will mandate 224 bits of entropy for all generated salt.
-  #
-  # NOTE: This becomes base64 encoded with no padding.
-  #
-  local rndSalt="$( \
+  echo "** Generating:"
+  echo " - Payload AES"
+  local payload_aes="$( \
   tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
-  fold -w35 | \
+  fold -w32 | \
   head -n1)"
 
+  echo " - Ephemeral AES"
+  local ephemeral_aes="$( \
+  tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
+  fold -w32 | \
+  head -n1)"
+
+  echo " - Private Key"
+  openssl genrsa -out private.pem 4096
+
+  echo " - Public Key"
+  openssl rsa -in private.pem -out public.pem -pubout -outform PEM
+  
+  echo "** Extracting Hex."
+  EPHEMERAL_AES_HEX=$(hexdump -v -e '/1 "%02X"' < ephemeral_aes)
+  
+  echo "** Wrapping:"
+  echo " - Payload AES"
+  openssl enc -id-aes256-wrap-pad -K $EPHEMERAL_AES_HEX -iv A65959A6 -in payload_aes -out payload_wrapped
+  
+  echo " - Ephemeral AES"
+  openssl pkeyutl -encrypt -in ephemeral_aes -out ephemeral_wrapped -pubin -inkey public.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha1 -pkeyopt rsa_mgf1_md:sha1
+
+  echo "** Concatenating RSA AES Wrapped"
+  cat ephemeral_wrapped payload_wrapped > rsa_aes_wrapped
+  
   echo "Generating STRONG random password..."
   # Generate a random password using [:graph:] character set
   # and length ranging from 20 to 35 characters.
   #
-  # This will yield between 128 bits and 224 bits of entropy;
-  # the upper limit being double the minimum government standard.
+  # This will yield between 128 bits and 256 bits of entropy.
   #
   # NOTE: This also becomes base64 encoded with no padding.
   #
   local rndPass="$( \
   tr -cd '[:alnum:][:punct:]' < /dev/urandom | \
-  fold -w$(jot -w %i -r 1 20 35) | \
+  fold -w$(jot -w %i -r 1 20 40) | \
   head -n1)"
 
   echo '
@@ -65,13 +97,13 @@ function trust {
   **********************************************************
 
   '"$rndPass"'
-
   '
 
   echo "Hashing password..."
   # Generate the encoded hash string from Argon2.
   # Length of 60 uses 384 bits of entropy.
-  local kek=$(echo -n $rndPass | argon2 $rndSalt -id -t 5 -m 16 -p 4 -l 60 -e)
+  local hashEnc=$(echo -n $rndPass | argon2 $rndSalt -id -t 5 -m 16 -p 4 -l 60 -e)
+  local hashRaw=$(echo -n $rndPass | argon2 $rndSalt -id -t 5 -m 16 -p 4 -l 60 -r)
 
   echo "Generating encryption data (1/1)..."
   
