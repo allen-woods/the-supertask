@@ -4,6 +4,7 @@ WORKDIR /
 
 # Copy over all config files to initialize Vault.
 COPY --chown=root:root ./init/config /vault/config/
+COPY --chown=root:root ./init /usr/local/init/
 
 # Update the repository so it can see `sshpass` package.
 # RUN ["/bin/ash", "-c", "exec su root -c 'apk update'"]
