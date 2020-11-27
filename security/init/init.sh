@@ -1,22 +1,61 @@
 #!/bin/sh
 
-function init_vault {
-  # Extended params:
-  #   "pgp_keys": [
-  #     "file1.asc",
-  #     "file2.asc",
-  #     "file3.asc"
-  #   ],
-  #   "root_token_pgp_key": "fileX.asc",
+function rand_fmt {
+  if [ ! -z $2] && [ ! -z $3 ]
+  then
+    if [ $2 -eq $3 ]
+    then
+      echo $( \
+      tr -cd ${1:-a-f0-9} < /dev/urandom | \
+      fold -w$2 | \
+      head -n1 \
+      )
+    fi
+  fi
+  echo $( \
+  tr -cd ${1:-a-f0-9} < /dev/urandom | \
+  fold -w$(jot -w %i -r 1 ${2:-40} ${3:-99}) | \
+  head -n1 \
+  )
+}
 
-  # Stop on first error.
+function init_vault {
   set -e
 
-  # Generate `.gnupg` directory in ${HOME}.
   gpg2 --list-keys
-
-  # Set current directory to `.gnupg` in ${HOME}.
   cd ${HOME}/.gnupg
+  local BATCH_FILENAME='.'"$(rand_fmt a-f0-9 16 16)"''
+
+  local n=0
+
+  while [ $n -lt ${1:-4} ]
+  do
+    if [ $n -eq 0 ]
+    then
+      # Create the file.
+      # echo 'batch' > ${BATCH_FILENAME}
+    else
+      # Append to the file.
+      # echo 'batch' >> ${BATCH_FILENAME}
+    fi
+
+    n++
+  done
+
+  echo '
+  *************************
+  ** Secure Passphrase List
+  *************************
+
+  '"IMPORTANT!"'
+  '"These passphrases will not be persisted."'
+  '"Please keep secure copies for later use."'
+  '"Provide them to GPG2's prompt manually."'
+
+  '"1: $(rand_fmt [:alnum:][:punct:])"'
+  '"2: $(rand_fmt [:alnum:][:punct:])"'
+  '"3: $(rand_fmt [:alnum:][:punct:])"'
+  '
 
   # Use multi-line string literal (POSIX doesn't support heredoc).
   echo '
@@ -28,17 +67,17 @@ function init_vault {
   '"Name-Real: Some Name"'
   '"Name-Comment: Some Name"'
   '"Name-Email: somename@site.com"'
-  '"Expire-Date: 0"'
+  '"Expire-Date: 1y"'
   '"%no-ask-passphrase"'
   '"%no-protection"'
   '"%pubring pubring.kbx"'
   '"%secring trustdb.gpg"'
   '"%commit"'
   '"%echo done"'
-  ' > keydetails
+  ' > ${BATCH_FILENAME}
 
   # Generate the key using automated details.
-  gpg2 --verbose --batch --gen-key keydetails
+  gpg2 --verbose --batch --gen-key ${BATCH_FILENAME}
 
   # Set trust to 5 to prevent prompt during encrypt.
   echo -e "5\ny\n" | gpg2 --command-fd 0 --expert --edit-key somename@site.com trust;
@@ -54,6 +93,21 @@ function init_vault {
   # Send decrypted original to stdout.
   gpg2 -d keydetails.asc
   rm keydetails.asc
+
+  mkdir -m 0700 /usr/local/etc
+  chown root:root /usr/local/etc
+
+  echo ''"{"'
+  '"\"root_token_pgp_key\": \"${ROOT_KEY_ASC}\","'
+  '"\"pgp_keys\": ["'
+  '"  \"${KEY_1_ASC}\","'
+  '"  \"${KEY_2_ASC}\","'
+  '"  \"${KEY_3_ASC}\""'
+  '"],"'
+  '"\"secret_shares\": 3,"'
+  '"\"secret_threshold\": 2"'
+  '"}"'
+  ' > /usr/local/etc/sys_init.json
 
   local api_v1="http://127.0.0.1:8200/v1"
   local sys_init=/usr/local/init/sys_init.json

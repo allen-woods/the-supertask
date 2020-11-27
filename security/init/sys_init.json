@@ -1,4 +1,10 @@
 {
-  "secret_shares": 5,
-  "secret_threshold": 3
+  "root_token_pgp_key": "fileX.asc",
+  "pgp_keys": [
+    "file1.asc",
+    "file2.asc",
+    "file3.asc"
+  ],
+  "secret_shares": 3,
+  "secret_threshold": 2
 }

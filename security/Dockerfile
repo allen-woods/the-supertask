@@ -26,6 +26,7 @@ RUN ["/bin/ash", "-c", "exec su root -c 'apk update && apk add \
   \"gnupg=2.2.19-r0\" \
   \"jq=1.6-r0\" \
   \"openssl=1.1.1g-r0\" \
+  \"outils-jot=0.8-r1\" \
   \"sshpass=1.06-r0\" && apk upgrade'"]
 
 # Run in server mode.
