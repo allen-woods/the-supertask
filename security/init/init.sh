@@ -61,12 +61,14 @@ function random_string {
 # Usage:
 # export_keys [revoc_path] [export_path] [prefix_string]
 function export_keys {
-  local arg1=${1:-/root/.gnupg/openpgp-revocs.d/*}
+  local arg1=${1:-${HOME}/.gnupg/openpgp-revocs.d/*}
   local arg2=${2:-${HOME}/.gnupg}
   local arg3=${3:-'key'}
   local n=1
 
   cd $arg2
+  mkdir -m 0600 ./enc
+  chown root:root ./enc
 
   for file in $arg1
   do
@@ -74,7 +76,7 @@ function export_keys {
     gpg2 \
     --export \
     "$(basename "$file" | cut -f 1 -d '.')" | \
-    base64 > "$arg3$n.asc"
+    base64 > "/encoded/keys/$arg3$n.asc"
     $n=$(($n + 1))
   done
 }
@@ -112,7 +114,7 @@ function encrypt_passphrases {
   fi
 
   local arg2=${2:-'key'}
-  local arg3=${3:-${HOME}/.gnupg}
+  local arg3=${3:-/encoded/phrases}
   local file_ext='.asc'
   local plaintext=""
   local n=1
@@ -139,6 +141,103 @@ function encrypt_passphrases {
   -iv $PARAM_IV \
   -in <(echo "$($plaintext | tr ' ' '\n')") \
   -out keyphrase.enc
+}
+
+# Utility function that passes *.asc files into Vault.
+# Usage:
+# pass_keys_into_vault [import_path] [key_prefix_string]
+function pass_keys_into_vault {
+  local arg1=${1:-/encoded/keys}
+  local arg2=${2:-'key'}
+  local file_ext='.asc'
+  local ROOT_KEY_ASC=
+  local KEYS_ASC=""
+  local n=0
+
+  for asc in $arg1
+    $n=$(($n + 1))
+
+    if [ $n -eq 1 ]
+    then
+      ROOT_KEY_ASC="$asc"
+    else
+      if [ $KEYS_ASC = "" ]
+        KEYS_ASC="\"$asc\""
+      else
+        KEYS_ASC="$KEYS_ASC,\"$asc\""
+      fi
+    fi
+  do
+
+  local api_v1="http://127.0.0.1:8200/v1"
+  local sys_init_addr=$api_v1/sys/init
+  local json_data "\{\"root_token_pgp_key\":\"$ROOT_KEY_ASC\",\"pgp_keys\":\[$(echo $KEYS_ASC | tr ',' ',\n')\],\"secret_shares\":$(($n - 1)),\"secret_threshold\":$(($n - 2))\}"
+
+  echo "** Begin Initialization **"
+
+  curl \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -X PUT \
+  -d $json_data \
+  $sys_init_addr | jq
+
+  local response=false
+
+  echo "Verifying initialization..."
+  while [ "$(echo -n $response | grep -w false)" = "false" ]; do
+    response=$(curl \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -X GET \
+    $sys_init_addr)
+  done
+
+  echo "** Init OK! End Initialization **"
+  echo $response | jq
+}
+
+function generate_and_run_batch {
+  local BATCH_FILENAME=".$(random_string a-f0-9 16 16)"
+  local arg1=$(int_uint ${1:-4})
+  local PHRASE=$(generate_passphrases $arg1)
+  local n=0
+
+  for p in $PHRASE
+  do
+    echo ''"%echo Generating Key [$(($n + 1)) / $1]"'
+    '"Key-Type: RSA"'
+    '"Key-Length: 4096"'
+    '"Subkey-Type: RSA"'
+    '"Subkey-Length: 4096"'
+    '"Passphrase: $p"'
+    '"Name-Real: "'
+    '"Name-Email: "'
+    '"Name-Comment: "'
+    '"Expire-Date: 0"'
+    ' >> $BATCH_FILENAME
+
+    $n=$(($n + 1))
+  done
+
+  echo '
+  '"%commit"'
+  '"%echo Done!"'' >> $BATCH_FILENAME
+
+  chown root:root $BATCH_FILENAME
+  chmod 0400 $BATCH_FILENAME
+  
+  gpg2 \
+  --verbose \
+  --batch \
+  --gen-key $BATCH_FILENAME
+
+  rm $BATCH_FILENAME
+}
+
+function init_vault_with_pgp {
+  generate_and_run_batch
+
 }
 
 function init_vault {
@@ -172,17 +271,22 @@ function init_vault {
       '"Name-Email: "'
       '"Name-Comment: "'
       '"Expire-Date: 0"'
-      '"%commit"'' >> ${BATCH_FILENAME}
+      ' >> $BATCH_FILENAME
 
     $n=$(($n + 1))
   done
 
-  echo "%echo Done." >> ${BATCH_FILENAME}
+  echo '
+  '"%commit"'
+  '"%echo Done!"'' >> $BATCH_FILENAME
+
+  chown root:root $BATCH_FILENAME
+  chmod 0400 $BATCH_FILENAME
   
   gpg2 \
   --verbose \
   --batch \
-  --gen-key ${BATCH_FILENAME}
+  --gen-key $BATCH_FILENAME
 
   # This is how to get the hex of each key:
   # for file in /root/.gnupg/openpgp-revocs.d/*; do echo "$(basename "$file" | cut -f 1 -d '.')"; done
