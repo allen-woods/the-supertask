@@ -5,42 +5,140 @@
 # 3. Generate Keys.
 # 4. Copy keys into Vault
 # 5. Pass exported keys into Vault init.
-# Utility function for generating random strings.
-function random_string {
-  if [ ! -z $2] && [ ! -z $3 ]
+
+# Utility function for turning ints into unsigned ints.
+# Usage:
+# int_uint integer
+function int_uint {
+  if [ -z $1 ]
   then
-    if [ $2 -eq $3 ]
+    echo "int_uint: must provide number as argument"
+    exit 1
+  elif [ $1 -lt 0 ]
+  then
+    echo $(($1 * -1))
+  else
+    echo $1
+  fi
+}
+
+# Utility function for generating random strings.
+# Usage:
+# random_string [regex_pattern] [min_length] [max_length]
+function random_string {
+  local arg1=${1:-a-f0-9}
+  local arg2=
+  local arg3=
+
+  if [ ! -z $2 ] && [ ! -z $3 ]
+  then
+    if [ $(int_uint $3) -lt $(int_uint $2) ]
+    then
+      arg2=$(int_uint ${3:-40})
+      arg3=$(int_uint ${2:-99})
+    else
+      arg2=$(int_uint ${2:-40})
+      arg3=$(int_uint ${3:-99})
+    fi
+    if [ $arg2 -eq $arg3 ]
     then
       echo $( \
-      tr -cd ${1:-a-f0-9} < /dev/urandom | \
-      fold -w$2 | \
+      tr -cd $arg1 < /dev/urandom | \
+      fold -w$arg2 | \
+      head -n1 \
+      )
+    else
+      echo $( \
+      tr -cd $arg1 < /dev/urandom | \
+      fold -w$(jot -w %i -r 1 $arg2 $arg3) | \
       head -n1 \
       )
     fi
   fi
-  echo $( \
-  tr -cd ${1:-a-f0-9} < /dev/urandom | \
-  fold -w$(jot -w %i -r 1 ${2:-40} ${3:-99}) | \
-  head -n1 \
-  )
 }
 
 # Utility function for parsing end exporting generated keys.
+# Usage:
+# export_keys [revoc_path] [export_path] [prefix_string]
 function export_keys {
+  local arg1=${1:-/root/.gnupg/openpgp-revocs.d/*}
+  local arg2=${2:-${HOME}/.gnupg}
+  local arg3=${3:-'key'}
   local n=1
-  cd ${2:-${HOME}/.gnupg}
 
-  for file in ${1:-/root/.gnupg/openpgp-revocs.d/*}
+  cd $arg2
+
+  for file in $arg1
   do
-    echo "Exporting: key $n"
-    
+    echo "Exporting: $arg3 $n"
     gpg2 \
     --export \
     "$(basename "$file" | cut -f 1 -d '.')" | \
-    base64 > "key$n.asc"
-
+    base64 > "$arg3$n.asc"
     $n=$(($n + 1))
   done
+}
+
+# Utility function for generating random passphrases.
+# Usage:
+# generate_passphrases [phrase_count] [regex_pattern]
+function generate_passphrases {
+  local arg1=$(int_uint ${1:-4})
+  local arg2=${2:-[:alnum:][:punct:]}
+  local n=0
+  local PHRASE=""
+
+  while [ $n -lt $arg1 ]
+  do
+    if [ PHRASE = "" ]
+    then
+      PHRASE="$(random_string $arg2)"
+    else
+      PHRASE="$PHRASE $(random_string $arg2)"
+    fi
+    $n=$(($n + 1))
+  done
+  echo $PHRASE
+}
+
+# Utility function for encrypting passphrases to an output file.
+# Usage:
+# encrypt_passphrases <passphrase_string> [prefix_string] [export_path]
+function encrypt_passphrases {
+  if [ -z $1 ]
+  then
+    echo "encrypt_passphrases: must pass string of space-delimited passphrases as argument"
+    exit 1
+  fi
+
+  local arg2=${2:-'key'}
+  local arg3=${3:-${HOME}/.gnupg}
+  local file_ext='.asc'
+  local plaintext=""
+  local n=1
+
+  cd $arg3
+
+  for phrase in $1
+  do
+    if [ plaintext = "" ]
+      plaintext="$arg2$n$file_ext:$phrase"
+    else
+      plaintext="$plaintext $arg2$n$file_ext:$phrase"
+    fi
+    $n=$(($n + 1))
+  done
+
+  local PARAM_K=00000000000000000000000000000000
+  local PARAM_IV=00000000000000000000000000000000
+
+  openssl \
+  aes-256-cbc \
+  -a \
+  -K $PARAM_K \
+  -iv $PARAM_IV \
+  -in <(echo "$($plaintext | tr ' ' '\n')") \
+  -out keyphrase.enc
 }
 
 function init_vault {
@@ -49,13 +147,20 @@ function init_vault {
   # local min=[ $3 -lt $2 ] && $3 || $2
   # local max=[ $2 -gt $3 ] && $2 || $3
 
-  
-  local BATCH_FILENAME='.'"$(rand_fmt a-f0-9 16 16)"''
+
+  local BATCH_FILENAME=".$(random_string a-f0-9 16 16)"
+  local arg1=${1:-4}
+  local PHRASE=""
   local n=0
 
   while [ $n -lt ${1:-4} ]
   do
-      PHRASE[$n]="$(rand_fmt [:alnum:][:punct:])"
+    if [ PHRASE = "" ]
+    then
+      PHRASE="$(random_string)"
+    else
+      PHRASE="$PHRASE $(random_string)"
+    fi
 
       echo ''"%echo Generating Key [$(($n + 1)) / $1]"'
       '"Key-Type: RSA"'
