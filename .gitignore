@@ -1,3 +1,5 @@
 !.gitkeep
 !init.sh
 .env
+.asc
+.enc
