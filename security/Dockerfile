@@ -4,7 +4,7 @@ WORKDIR /
 
 # Copy over all config files to initialize Vault.
 COPY --chown=root:root ./config /vault/config/
-COPY --chown=root:root ./init /usr/local/init/
+COPY --chown=root:root ./scripts /etc/profile.d/
 
 # Update the repository so it can see `sshpass` package.
 # RUN ["/bin/ash", "-c", "exec su root -c 'apk update'"]
@@ -14,7 +14,6 @@ COPY --chown=root:root ./init /usr/local/init/
 #
 # - argon2    \"argon2=20171227-r2\"
 # - curl      \"curl=7.66.0-r1\"
-# - gawk      \"gawk=5.0.1-r0\"
 # - gnupg     \"gnupg=2.2.19-r0\"
 # - jot       \"outils-jot=0.8-r1\"
 # - jq        \"jq=1.6-r0\"
@@ -24,7 +23,6 @@ COPY --chown=root:root ./init /usr/local/init/
 # Upgrade apps in the apk repository, where possible.
 RUN ["/bin/ash", "-c", "exec su root -c 'apk update && apk add \
   \"curl=7.66.0-r1\" \
-  \"gawk=5.0.1-r0\" \
   \"gnupg=2.2.19-r0\" \
   \"jq=1.6-r0\" \
   \"openssl=1.1.1g-r0\" \
