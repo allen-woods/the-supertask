@@ -109,7 +109,7 @@ function generate_passphrases {
 # encrypt_passphrases <passphrase_string> [prefix_string] [export_path]
 function encrypt_passphrases {
   local arg1="$1"
-  if [ -z arg1 ]
+  if [ -z $arg1 ]
   then
     echo "encrypt_passphrases: must pass string of space-delimited passphrases as argument"
     exit 1
@@ -125,7 +125,7 @@ function encrypt_passphrases {
 
   for phrase in $arg1
   do
-    if [ -z plaintext ]
+    if [ -z $plaintext ]
     then
       plaintext="$arg2$n$file_ext:$phrase"
     else
@@ -242,30 +242,10 @@ function generate_and_run_batch {
 
 function init_vault_with_pgp {
   local arg1=$(int_uint ${1:-4})
-  echo "Calling generate_passphrases..."
   local phrases=$(generate_passphrases $arg1)
-  echo "Calling generate_and_run_batch..."
+
   generate_and_run_batch "$phrases"
-  echo "Calling: export_keys..."
   export_keys
-  echo "Calling: encrypt_passphrases..."
   encrypt_passphrases "$phrases"
-  echo "Calling: pass_keys_into_vault..."
   pass_keys_into_vault
 }
-
-# Set trust to 5 to prevent prompt during encrypt.
-# echo -e "5\ny\n" | gpg2 --command-fd 0 --expert --edit-key somename@site.com trust;
-
-# Test to confirm creation and permission level of key.
-# gpg2 --list-keys
-
-# Test to confirm encrypt / decrypt capabilities of key.
-# gpg2 -e -a -r somename@site.com ${BATCH_FILENAME}
-
-# Delete temporary files.
-# rm keydetails
-
-# Send decrypted original to stdout.
-# gpg2 -d keydetails.asc
-# rm keydetails.asc
