@@ -109,7 +109,7 @@ function generate_passphrases {
 # encrypt_passphrases <passphrase_string> [prefix_string] [export_path]
 function encrypt_passphrases {
   local arg1="$1"
-  if [ -z $arg1 ]
+  if [ "$arg1" = "" ]
   then
     echo "encrypt_passphrases: must pass string of space-delimited passphrases as argument"
     exit 1
@@ -125,11 +125,11 @@ function encrypt_passphrases {
 
   for phrase in $arg1
   do
-    if [ -z $plaintext ]
+    if [ "$plaintext" = "" ]
     then
-      plaintext="$arg2$n$file_ext:$phrase"
+      plaintext="$arg2"''"$n"''"$file_ext"':'"$phrase"
     else
-      plaintext="$plaintext $arg2$n$file_ext:$phrase"
+      plaintext="$plaintext"' '"$arg2"''"$n"''"$file_ext"':'"$phrase"
     fi
     n=$(($n + 1))
   done
@@ -160,8 +160,8 @@ function pass_keys_into_vault {
   local arg1=${1:-/encoded/keys/*}
   local arg2=${2:-'key'}
   local file_ext='.asc'
-  local ROOT_KEY_ASC=""
-  local KEYS_ASC=""
+  local ROOT_KEY_ASC=
+  local KEYS_ASC=
   local n=0
 
   for asc in $arg1
