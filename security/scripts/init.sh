@@ -109,7 +109,7 @@ function generate_passphrases {
 # encrypt_passphrases <passphrase_string> [prefix_string] [export_path]
 function encrypt_passphrases {
   local arg1="$1"
-  if [ "$arg1" = "" ]
+  if [ -z arg1 ]
   then
     echo "encrypt_passphrases: must pass string of space-delimited passphrases as argument"
     exit 1
@@ -125,11 +125,11 @@ function encrypt_passphrases {
 
   for phrase in $arg1
   do
-    if [ "$plaintext" = "" ]
+    if [ -z plaintext ]
     then
-      plaintext="$arg2"''"$n"''"$file_ext"':'"$phrase"
+      plaintext="$arg2$n$file_ext$phrase"
     else
-      plaintext="$plaintext"' '"$arg2"''"$n"''"$file_ext"':'"$phrase"
+      plaintext="$plaintext $arg2$n$file_ext$phrase"
     fi
     n=$(($n + 1))
   done
