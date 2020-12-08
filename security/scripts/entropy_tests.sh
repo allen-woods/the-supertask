@@ -55,6 +55,10 @@ function entropy_tests {
   wget -c http://webhome.phy.duke.edu/~rgb/General/dieharder/dieharder-3.31.1.tgz -O - | tar -xz -C /dieharder_src/
   cd /dieharder_src/*
   ./autogen.sh
+
+  echo "$sec_header"
+  echo "  Patching DieHarder 3.31.1..."
+  echo "$sec_header"
   
   # * * * * * Perform Surgery on Broken Install * * * * *
 
@@ -67,28 +71,17 @@ function entropy_tests {
   sed -i '129s/.*/# /' ./dieharder.spec
   sed -i '129s/.*/# /' ./dieharder.spec.in
 
-  # ---------------- BITS.C
-
-  # Patch line 414 to fix "bufbits set but unused" error message.
-  sed -i '414s/.*/ bdelta = sizeof(unsigned int)\*CHAR_BIT - bufbits;/' ./libdieharder/bits.c
-  # Patch line 421 to remove `rmax_bits` where `bufbits` should be.
-  sed -i '421s/.*/   printf(\"bufbits = %d  bdelta = %d\\n\",bufbits,bdelta);/' ./libdieharder/bits.c
-
-  # ---------------- DAB_DCT.C
-
-  # Insert new line 39 to define missing `M_PI` constant.
-  sed -i '39i #define M_PI     3.14159265358979323846' ./libdieharder/dab_dct.c
-  # Patch line 290 to remove unused `pos` variable.
-  sed -i '290s/.*/\ /' ./libdieharder/dab_dct.c
-  # Patch line 302 to remove unused `pos` variable.
-  sed -i '302s/.*/\ /' ./libdieharder/dab_dct.c
-
   # ---------------- LIBDIEHARDER.H
+  # Insert new line 66 to define `M_PI` constant.
+  sed -i '66i #define M_PI    3.14159265358979323846' ./include/dieharder/libdieharder.h
+  # Insert new line 262 to create `uint` typedef.
+  sed -i '262i typedef unsigned int uint;' ./include/dieharder/libdieharder.h
+  # Insert new line 263 to clean up formatting.
+  sed -i '263i \ ' ./include/dieharder/libdieharder.h
 
-  # Insert new line 261 to create `uint` typedef.
-  sed -i '261i typedef unsigned int uint;' ./include/dieharder/libdieharder.h
-  # Insert new line 262 to clean up formatting.
-  sed -i '262i \ ' ./include/dieharder/libdieharder.h
+  echo "$sec_header"
+  echo "  Compiling DieHarder 3.31.1..."
+  echo "$sec_header"
 
   make install
 
