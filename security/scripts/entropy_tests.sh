@@ -17,11 +17,11 @@ function entropy_tests {
   mkdir -pm 0700 /tmp/test/make && \
   chown root:root /tmp/test/make && \
   cd /tmp/test/make
-  wget http://www.fourmilab.ch/random/random.zip
-  unzip random.zip
-  make
+  wget http://www.fourmilab.ch/random/random.zip > /dev/null 2>&1
+  unzip random.zip > /dev/null 2>&1
+  make > /dev/null 2>&1
   mv ./ent /tmp/test/ && cd /tmp/test
-  dd if=/dev/urandom of=/tmp/test/urandomfile bs=1 count=16384
+  dd if=/dev/urandom of=/tmp/test/urandomfile bs=1 count=16384 > /dev/null 2>&1
 
   echo "$sec_header"
   echo "Running Cryptographic Entropy Test: ENT"
@@ -52,9 +52,9 @@ function entropy_tests {
   mkdir -pm 0700 ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
   echo '%_topdir %(echo $HOME)/rpmbuild' >> ~/.rpmmacros
   mkdir -pm 0700 /dieharder_src && chown root:root /dieharder_src
-  wget -c http://webhome.phy.duke.edu/~rgb/General/dieharder/dieharder-3.31.1.tgz -O - | tar -xz -C /dieharder_src/
+  wget -c --quiet http://webhome.phy.duke.edu/~rgb/General/dieharder/dieharder-3.31.1.tgz -O - | tar -xz -C /dieharder_src/
   cd /dieharder_src/*
-  ./autogen.sh
+  ./autogen.sh > /dev/null 2>&1
 
   echo "$sec_header"
   echo "  Patching DieHarder 3.31.1..."
@@ -81,9 +81,10 @@ function entropy_tests {
 
   echo "$sec_header"
   echo "  Compiling DieHarder 3.31.1..."
+  echo "  (This may take a while.)"
   echo "$sec_header"
 
-  make install
+  make install > /dev/null 2>&1
 
   echo "$sec_header"
   echo "Running Cryptographic Entropy Test: DieHarder"
@@ -98,13 +99,13 @@ function entropy_tests {
   echo "$sec_header"
   
   # Remove pakcages needed to build ENT and DieHarder.
-  apk.static del \
-  chrpath \
-  gsl \
-  gsl-dev \
-  gsl-doc \
-  libtool \
-  make \
-  rpm-dev \
-  build-base
+  # apk.static del \
+  # chrpath \
+  # gsl \
+  # gsl-dev \
+  # gsl-doc \
+  # libtool \
+  # make \
+  # rpm-dev \
+  # build-base
 }
