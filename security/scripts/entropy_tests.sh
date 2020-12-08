@@ -72,12 +72,12 @@ function entropy_tests {
   # Patch line 421 to remove `rmax_bits` where `bufbits` should be.
   sed -i '421s/.*/   printf(\"bufbits = %d  bdelta = %d\\n\",bufbits,bdelta);/' ./libdieharder/bits.c
   
-  sed -i '1212s/.*/ unsigned int *tmp;/' ./libdieharder/bits.c
   # # Insert new line 1213 to create pointer variable.
   # sed -i '1213i unsigned int \*ptr;' ./libdieharder/bits.c
   
   # # Insert new line 1216 to assign address of `tmp` to `ptr`
   # sed -i '1216i \ ptr = \&tmp;' ./libdieharder/bits.c
+
 
   # # Patch line 1217 to fix "while referencing tmp" error message.
   # sed -i '1217s/.*/ btmp = (char \*)(ptr + 2);/' ./libdieharder/bits.c
