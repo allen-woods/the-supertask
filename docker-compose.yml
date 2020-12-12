@@ -131,6 +131,9 @@ services:
       - type: bind
         source: ./security/encoded
         target: /encoded
+      - type: bind
+        source: ./security/public
+        target: /public
 
 networks:
   # frontend:
