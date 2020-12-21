@@ -129,8 +129,8 @@ services:
         volume:
           nocopy: true # Necessary?
       - type: bind
-        source: ./security/encoded
-        target: /encoded
+        source: ./security/pgp
+        target: /pgp
       - type: bind
         source: ./security/public
         target: /public

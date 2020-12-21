@@ -63,7 +63,7 @@ function random_string {
 # export_keys [revoc_path] [export_path] [prefix_string]
 function export_keys {
   local arg1=${1:-${HOME}/.gnupg/openpgp-revocs.d/*}
-  local arg2=${2:-/encoded/keys}
+  local arg2=${2:-/pgp/keys}
   local arg3=${3:-'key'}
   local n=1
 
@@ -116,7 +116,7 @@ function encrypt_passphrases {
   fi
 
   local arg2=${2:-'key'}
-  local arg3=${3:-/encoded/phrases}
+  local arg3=${3:-/pgp/phrases}
   local file_ext='.asc'
   local plaintext=
   local n=1
@@ -157,7 +157,7 @@ function encrypt_passphrases {
 # Usage:
 # pass_keys_into_vault [import_path] [key_prefix_string]
 function pass_keys_into_vault {
-  local arg1=${1:-/encoded/keys/*}
+  local arg1=${1:-/pgp/keys/*}
   local arg2=${2:-'key'}
   local file_ext='.asc'
   local ROOT_KEY_ASC=
