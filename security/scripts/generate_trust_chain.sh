@@ -23,15 +23,15 @@ function generate_trust_chain {
 function create_trust_path {
   local output=${output:-"Trust Paths Created!"}
 
-  if [ -d "/tls/$1" ]
+  if [ -d "/tls/${1}" ]
   then
-    output="SKIPPING: directory /tls/$1 already created."
+    output="SKIPPING: directory /tls/${1} already created."
   else
     mkdir -pm ${2:-0755} /tls/$1/private
     mkdir -m ${2:-0755} /tls/$1/certs
   fi
 
-  echo "$output"
+  echo "${output}"
 }
 
 function populate_trust_path {
@@ -47,51 +47,106 @@ function populate_trust_path {
   fi
 }
 
-function write_pipe_test {
-  # When n = 0, overwrite line 1        (the)
-  # When n = 1, insert new line after 1 (quick)
-  # when n = 2, insert new line after 2 (brown)
-  # when n = 3, insert new line after 3 (fox)
-  # when n = 4, insert new line after 4 (jumps)
-  # when n = 5, insert new line after 5 (over)
-  # when n = 6, insert new line after 6 (the)
-  # when n = 7, insert new line after 7 (lazy)
-  # ... uh oh, "dog." is missing!
+function pipe_w {
+  local pipe=${1:-"test"}
+  local data=${2:-"the quick brown fox jumps over the lazy dog"}
+  local flag=${3:-"--overwrite"}
+  local first_run=0
+  local sync=
 
-  # Remember, in bourne shell, if anything fails, it all fails.
-
-  local data=${1:-"the quick brown fox jumps over the lazy dog"}
-  local pipe=${2:-pp}
-  local n=1
   if [ ! -p $pipe ]
   then
+    # Create the pipe if it doesn't exist.
     mkfifo $pipe
+    
+    # Set `first_run` for proper data handling below.
+    first_run=1
   fi
 
-  # Initialize the pipe with empty data.
-  echo ' ' > $pipe &
-  # Overwrite the
+  if [ $first_run -eq 0 ] && [ "${flag}" == "--overwrite" ]
+  then
+    # Empty the pipe completely, and silently.
+    ( ( echo ' ' >> $pipe & ) && echo "$(cat < ${pipe})" ) > /dev/null 2>&1
+    
+    # Set `first_run` for proper data handling below.
+    first_run=1
+  fi
+
+  if [ $first_run -eq 0 ] && [[ -z $sync ]]
+  then
+    # If we are appending data, front-load contents of pipe.
+    sync="$(cat < ${pipe})"
+  fi
 
   for item in $data
   do
-    if [[ $n -eq 1 ]]
+    if [ $first_run -eq 1 ]
     then
-      # First item overwrites empty data prior to line inserts.
-      sed -i "${n}s/.*/${item}/" $pipe &
-    fi
-    # All items insert after the nth line.
-    sed -i "${n}a ${item}" $pipe &
-    
-    echo "n is ${n}, item is ${item}..."
+      # Pipe is empty, place first item into `sync`.
+      sync="${item}"
 
-    n=$(($n + 1))
+      # Unset `first_run` to indicate start of data collection.
+      first_run=0
+    else
+      # Data has collected at least one thing, append item to `sync`.
+      sync="$(printf "%s\n" "${sync}" "${item}")"
+    fi
   done
+
+  # Silently place contents of `sync` into pipe. 
+  ( echo "${sync}" > $pipe & )
 }
 
-function read_pipe_test {
-  local pipe=${1:-pp}
-  echo $(cat < $pipe)
-  # rm $pipe # Remove pipe?
+function pipe_r {
+  local pipe=${1:-"test"}
+  local item=${2:-0}
+  local flag=${3:-"--no-destroy"}
+  local sync=
+  local data=
+
+  # Require the pipe to exist so we can read from it.
+  if [ -p $pipe ] && [[ ! -z $pipe ]]
+  then
+    # Extract the contents of the pipe.
+    sync="$(cat < ${pipe})"
+
+    if [ $item -eq 0 ]
+    then
+      # Place all `sync` data into requested `data`.
+      data="${sync}"
+
+    elif [ $item -gt 0 ]
+    then
+      # Place requested item from `sync` into `data`.
+      data="$(echo "${sync}" | sed "${item}q;d")"
+
+    fi
+
+    if [ "${flag}" == "--no-destroy" ]
+    then
+      # Pass all previous `sync` data back into pipe.
+      ( echo "${sync}" > $pipe & ) > /dev/null 2>&1
+
+    elif [ "${flag}" == "--keep-item-only" ] && [ $item -gt 0 ]
+    then
+      # Pass only requested `data` (item) back into pipe.
+      ( echo "${data}" > $pipe & ) > /dev/null 2>&1
+
+    elif [ "${flag}" == "--destroy-item" ] && [ $item -gt 0 ]
+    then
+      # Pass mutated data back into pipe with `item` removed.
+      ( echo "$(echo "${sync}" | sed "${item}d")" > $pipe & ) > /dev/null 2>&1
+
+    elif [ "${flag}" == "--destroy-all" ]
+    then
+      # Delete the pipe, silently.
+      ( rm -f $pipe ) > /dev/null 2>&1
+
+    fi
+
+    # Send the requested `data` to stdout.
+    echo "${data}"
+  fi
 }
 
 # function create_certs {
