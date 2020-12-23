@@ -100,7 +100,7 @@ function pipe_w {
 function pipe_r {
   local pipe=${1:-"test"}
   local item=${2:-0}
-  local flag=${3:-"--no-destroy"}
+  local flag=${3:-"--no-delete"}
   local sync=
   local data=
 
@@ -122,22 +122,33 @@ function pipe_r {
 
     fi
 
-    if [ "${flag}" == "--no-destroy" ]
+    if [ "${flag}" == "--no-delete" ]
     then
       # Pass all previous `sync` data back into pipe.
       ( echo "${sync}" > $pipe & ) > /dev/null 2>&1
 
-    elif [ "${flag}" == "--keep-item-only" ] && [ $item -gt 0 ]
+    elif [ "${flag}" == "--item-only" ] && [ $item -gt 0 ]
     then
       # Pass only requested `data` (item) back into pipe.
       ( echo "${data}" > $pipe & ) > /dev/null 2>&1
 
-    elif [ "${flag}" == "--destroy-item" ] && [ $item -gt 0 ]
+    elif [ "${flag}" == "--delete-item" ] && [ $item -gt 0 ]
     then
-      # Pass mutated data back into pipe with `item` removed.
-      ( echo "$(echo "${sync}" | sed "${item}d")" > $pipe & ) > /dev/null 2>&1
+      # Parse the remaining items, if any.
+      local remaining="$(echo "${sync}" | sed "${item}d")"
 
-    elif [ "${flag}" == "--destroy-all" ]
+      if [[ -z $remaining ]]
+      then
+        # Delete the now empty pipe, silently.
+        ( rm -f $pipe ) > /dev/null 2>&1
+
+      else
+        # Pass mutated data back into pipe with `item` removed.
+        ( echo "${remaining}" > $pipe & ) > /dev/null 2>&1
+
+      fi
+
+    elif [ "${flag}" == "--delete-all" ]
     then
       # Delete the pipe, silently.
       ( rm -f $pipe ) > /dev/null 2>&1
