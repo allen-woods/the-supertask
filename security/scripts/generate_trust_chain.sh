@@ -35,128 +35,15 @@ function create_trust_path {
 }
 
 function populate_trust_path {
-  [ ! -f "/tls/$1/serial" ]     && echo 01 >> /tls/$1/serial  || echo "SKIPPING: file /tls/$1/serial already exists."
-  [ ! -f "/tls/$1/index.txt" ]  && touch /tls/$1/index.txt    || echo "SKIPPING: file /tls/$1/index.txt already exists."
+  [ ! -f "/tls/${1}/serial" ]     && echo 01 >> /tls/$1/serial  || echo "SKIPPING: file /tls/$1/serial already exists."
+  [ ! -f "/tls/${1}/index.txt" ]  && touch /tls/$1/index.txt    || echo "SKIPPING: file /tls/$1/index.txt already exists."
 
-  if [ -f "/tls/$1/serial" ] || [ -f "/tls/$1/index" ]
+  if [ -f "/tls/${1}/serial" ] || [ -f "/tls/${1}/index" ]
   then
-    echo "SKIPPING: directory /tls/$1 already populated."
+    echo "SKIPPING: directory /tls/${1} already populated."
   else
     echo 01 >> /tls/$1/serial
     touch /tls/$1/index.txt
-  fi
-}
-
-function pipe_w {
-  local pipe=${1:-"test"}
-  local data=${2:-"the quick brown fox jumps over the lazy dog"}
-  local flag=${3:-"--overwrite"}
-  local first_run=0
-  local sync=
-
-  if [ ! -p $pipe ]
-  then
-    # Create the pipe if it doesn't exist.
-    mkfifo $pipe
-    
-    # Set `first_run` for proper data handling below.
-    first_run=1
-  fi
-
-  if [ $first_run -eq 0 ] && [ "${flag}" == "--overwrite" ]
-  then
-    # Empty the pipe completely, and silently.
-    ( ( echo ' ' >> $pipe & ) && echo "$(cat < ${pipe})" ) > /dev/null 2>&1
-    
-    # Set `first_run` for proper data handling below.
-    first_run=1
-  fi
-
-  if [ $first_run -eq 0 ] && [[ -z $sync ]]
-  then
-    # If we are appending data, front-load contents of pipe.
-    sync="$(cat < ${pipe})"
-  fi
-
-  for item in $data
-  do
-    if [ $first_run -eq 1 ]
-    then
-      # Pipe is empty, place first item into `sync`.
-      sync="${item}"
-
-      # Unset `first_run` to indicate start of data collection.
-      first_run=0
-    else
-      # Data has collected at least one thing, append item to `sync`.
-      sync="$(printf "%s\n" "${sync}" "${item}")"
-    fi
-  done
-
-  # Silently place contents of `sync` into pipe. 
-  ( echo "${sync}" > $pipe & )
-}
-
-function pipe_r {
-  local pipe=${1:-"test"}
-  local item=${2:-0}
-  local flag=${3:-"--no-delete"}
-  local sync=
-  local data=
-
-  # Require the pipe to exist so we can read from it.
-  if [ -p $pipe ] && [[ ! -z $pipe ]]
-  then
-    # Extract the contents of the pipe.
-    sync="$(cat < ${pipe})"
-
-    if [ $item -eq 0 ]
-    then
-      # Place all `sync` data into requested `data`.
-      data="${sync}"
-
-    elif [ $item -gt 0 ]
-    then
-      # Place requested item from `sync` into `data`.
-      data="$(echo "${sync}" | sed "${item}q;d")"
-
-    fi
-
-    if [ "${flag}" == "--no-delete" ]
-    then
-      # Pass all previous `sync` data back into pipe.
-      ( echo "${sync}" > $pipe & ) > /dev/null 2>&1
-
-    elif [ "${flag}" == "--item-only" ] && [ $item -gt 0 ]
-    then
-      # Pass only requested `data` (item) back into pipe.
-      ( echo "${data}" > $pipe & ) > /dev/null 2>&1
-
-    elif [ "${flag}" == "--delete-item" ] && [ $item -gt 0 ]
-    then
-      # Parse the remaining items, if any.
-      local remaining="$(echo "${sync}" | sed "${item}d")"
-
-      if [[ -z $remaining ]]
-      then
-        # Delete the now empty pipe, silently.
-        ( rm -f $pipe ) > /dev/null 2>&1
-
-      else
-        # Pass mutated data back into pipe with `item` removed.
-        ( echo "${remaining}" > $pipe & ) > /dev/null 2>&1
-
-      fi
-
-    elif [ "${flag}" == "--delete-all" ]
-    then
-      # Delete the pipe, silently.
-      ( rm -f $pipe ) > /dev/null 2>&1
-
-    fi
-
-    # Send the requested `data` to stdout.
-    echo "${data}"
   fi
 }
 

@@ -7,7 +7,7 @@ last=0
 function exit_if_not_ok {
   if [ $last -ne 0 ]
   then
-    exit 1
+    return 1
   fi
 }
 
