@@ -7,7 +7,7 @@ function add_packages {
     apk.static -U add haveged && \
     rc-update add haveged
   else
-    exit 1
+    return 1
   fi
   if [ $? -eq 0 ]
   then
@@ -17,6 +17,6 @@ function add_packages {
     outils-jot \
     rng-tools
   else
-    exit 1
+    return 1
   fi
 }

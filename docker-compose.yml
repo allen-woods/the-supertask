@@ -108,6 +108,7 @@ services:
     build:
       context: ./security
       dockerfile: ./Dockerfile
+      target: truth
     restart: always
     ports:
       - '8200'
@@ -121,19 +122,24 @@ services:
         source: persist_vault_data
         target: /vault/file
         volume:
-          nocopy: true # Necessary?
+          nocopy: true
       # Used to persist audit logs, REQUIRES `file` audit backend enabled.
       - type: volume
         source: persist_vault_logs
         target: /vault/logs
         volume:
-          nocopy: true # Necessary?
+          nocopy: true
+      - type: volume
+        source: persist_pgp
+        target: /pgp
+        volume:
+          nocopy: false
       - type: bind
         source: ./security/pgp
-        target: /pgp
-      - type: bind
-        source: ./security/public
-        target: /public
+        target: /pgp_remote
+      # - type: bind
+      #   source: ./security/public
+      #   target: /public
 
 networks:
   # frontend:
@@ -142,5 +148,6 @@ networks:
 volumes:
   persist_mongo:
   persist_redis:
+  persist_pgp:
   persist_vault_data: # Bind mounts instead for Vault volumes?
   persist_vault_logs:

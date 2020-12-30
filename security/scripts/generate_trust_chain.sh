@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Needs to be refactored into individual scripts, etc.
+
 function init {
   local output=${output:-"Trust Chain Initialized!"}
 

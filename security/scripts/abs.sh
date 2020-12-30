@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Utility function for turning ints into unsigned ints (positive only).
+# Utility function for turning ints into unsigned ints (absolute value).
 # Usage:
 # abs <integer>
 function abs {
