@@ -4,6 +4,7 @@ WORKDIR /
 
 COPY --chown=root:root ["./scripts/addPGPPackages.sh",          "/etc/profile.d/"]
 COPY --chown=root:root ["./scripts/abs.sh",                     "/etc/profile.d/"]
+COPY --chown=root:root ["./scripts/echoHorizontalRule.sh",      "/etc/profile.d/"]
 COPY --chown=root:root ["./scripts/encryptPassPhrases.sh",      "/etc/profile.d/"]
 COPY --chown=root:root ["./scripts/escapeString.sh",            "/etc/profile.d/"]
 COPY --chown=root:root ["./scripts/exportPGPKeys.sh",           "/etc/profile.d/"]
@@ -33,20 +34,15 @@ RUN ["/bin/sh", "-c", ". /etc/profile && addPGPPackages && generatePGPData"]
 # RUN ["/bin/sh", "-c", ". /etc/profile && \
 #   entropy_func_name"]
 
-FROM vault:1.5.4 AS truth
+FROM vault:1.5.6 AS supervault
 
 WORKDIR /
 
 COPY --from=pgp_keys /pgp/ /pgp/
 COPY --chown=root:root ./config /vault/config/
-COPY --chown=root:root ./scripts/passPGPKeysIntoVault.sh /etc/profile.d/
-COPY --chown=root:root ./scripts/initVaultWithPGP.sh /etc/profile.d/
+COPY --chown=root:root ["./scripts/echoHorizontalRule.sh",    "/etc/profile.d/"]
+COPY --chown=root:root ["./scripts/initVaultWithPGP.sh",      "/etc/profile.d/"]
+COPY --chown=root:root ["./scripts/passPGPKeysIntoVault.sh",  "/etc/profile.d/"]
 
 RUN ["/bin/sh", "-c", ". /etc/profile && initVaultWithPGP"]
 CMD ["server"]
-
-# # Chain commands in RUN to reduce number of intermediate containers.
-# # RUN ["/bin/sh", "-c", ". /etc/profile && \
-# #   alpine_to_stable && add_packages"]
-# # && entropy_tests"]
-# CMD ["server"]

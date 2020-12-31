@@ -102,14 +102,16 @@ services:
 
   truth:
     container_name: truth_src
-    cap_add:
-      # Required for Vault to lock memory (best practice).
-      - IPC_LOCK
     build:
       context: ./security
       dockerfile: ./Dockerfile
-      target: truth
+      target: supervault
     restart: always
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+    cap_add:
+      # Required for Vault to lock memory (best practice).
+      - IPC_LOCK
     ports:
       - '8200'
     expose:
@@ -134,9 +136,9 @@ services:
         target: /pgp
         volume:
           nocopy: false
-      - type: bind
-        source: ./security/pgp
-        target: /pgp_remote
+      # - type: bind
+      #   source: ./security/pgp
+      #   target: /pgp_remote
       # - type: bind
       #   source: ./security/public
       #   target: /public
