@@ -1,0 +1,6 @@
+[ ! "$(cat < /etc/apk/repositories | grep -o 'latest-stable')" ] && sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories
+apk update
+apk add busybox-static
+apk add apk-tools-static
+apk.static upgrade --no-self-upgrade --available --simulate
+apk.static upgrade --no-self-upgrade --available

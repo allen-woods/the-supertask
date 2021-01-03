@@ -1,0 +1,12 @@
+Patched APK repositories to latest stable version of Alpine.
+Updated APK repositories.
+Added package busybox-static.
+Added package apk-tools-static.
+Checked for breaking changes in latest version of Alpine.
+Upgraded to latest version of Alpine.
+Added package gnupg using static tools.
+Created directory for keys.
+Created directory for phrases.
+Conditionally processed new PGP batch file with new random passphrases.
+Conditionally exported new PGP keys.
+Conditionally encrypted new pass phrases.

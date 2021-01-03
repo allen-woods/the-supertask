@@ -1,0 +1,6 @@
+apk.static add gnupg
+mkdir -p /pgp/keys >/dev/null 2>&1
+mkdir /pgp/phrases >/dev/null 2>&1
+[ ! "$(ls -A /pgp/keys/ 2>/dev/null)" ] && pgp_generate_and_run_batch "$(pgp_generate_pass_phrases)"
+[ ! "$(ls -A /pgp/keys/ 2>/dev/null)" ] && pgp_export_keys
+[ ! "$(ls -A /pgp/keys/ 2>/dev/null)" ] && pgp_encrypt_pass_phrases

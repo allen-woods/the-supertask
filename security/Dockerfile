@@ -1,39 +1,52 @@
+# 1 - Compile entropy tests.
+FROM alpine:3.10.5 AS entropy_tests
+
+WORKDIR /
+
+COPY --chown=root:root ["./shared/txt/init_apk.txt", "."]
+COPY --chown=root:root ["./entropy_tests/txt/instructions.txt", "."]
+COPY --chown=root:root ["./entropy_tests/txt/instruction_messages.txt", "."]
+COPY --chown=root:root ["./shared/scripts/run_install_instructions.sh", "/etc/profile.d/"]
+# More deps go here
+RUN ["/bin/sh", "-c", ". /etc/profile && run_install_instructions"]
+
+# 2 - Generate certificates.
+FROM alpine:3.10.5 AS cert_authority
+
+WORKDIR /
+
+COPY --chown=root:root ["./shared/txt/init_apk.txt", "."]
+COPY --chown=root:root ["./cert_authority/txt/instructions.txt", "."]
+COPY --chown=root:root ["./cert_authority/txt/instruction_messages.txt", "."]
+COPY --chown=root:root ["./shared/scripts/run_install_instructions.sh", "/etc/profile.d/"]
+# More deps go here
+RUN ["/bin/sh", "-c", ". /etc/profile && run_install_instructions"]
+
+# 3 - Generate PGP keys.
 FROM alpine:3.10.5 AS pgp_keys
 
 WORKDIR /
 
-COPY --chown=root:root ["./scripts/addPGPPackages.sh",          "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/abs.sh",                     "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/echoHorizontalRule.sh",      "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/encryptPassPhrases.sh",      "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/escapeString.sh",            "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/exportPGPKeys.sh",           "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/generateAndRunPGPBatch.sh",  "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/generatePassPhrases.sh",     "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/generatePGPData.sh",         "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/initVaultWithPGP.sh",        "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/passPGPKeysIntoVault.sh",    "/etc/profile.d/"]
-COPY --chown=root:root ["./scripts/randomString.sh",            "/etc/profile.d/"]
-RUN ["/bin/sh", "-c", ". /etc/profile && addPGPPackages && generatePGPData"]
+COPY --chown=root:root ["./shared/scripts/abs.sh",                          "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/scripts/escape_string.sh",                "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/scripts/random_string.sh",                "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/scripts/run_install_instructions.sh",        "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/txt/init_apk.txt",                        "."]
+COPY --chown=root:root ["./pgp_keys/txt/instructions.txt",                  "."]
+COPY --chown=root:root ["./pgp_keys/txt/instruction_messages.txt",          "."]
+COPY --chown=root:root ["./pgp_keys/scripts/pgp_encrypt_pass_phrases.sh",   "/etc/profile.d/"]
+COPY --chown=root:root ["./pgp_keys/scripts/pgp_export_keys.sh",            "/etc/profile.d/"]
+COPY --chown=root:root ["./pgp_keys/scripts/pgp_generate_and_run_batch.sh", "/etc/profile.d/"]
+COPY --chown=root:root ["./pgp_keys/scripts/pgp_generate_pass_phrases.sh",  "/etc/profile.d/"]
+COPY --chown=root:root ["./pgp_keys/scripts/pgp_init_vault.sh",             "/etc/profile.d/"]
+COPY --chown=root:root ["./pgp_keys/scripts/pgp_pass_keys_into_vault.sh",   "/etc/profile.d/"]
+RUN ["/bin/sh", "-c", ". /etc/profile && run_install_instructions"]
+
+# RUN ["/bin/sh", "-c", ". /etc/profile && addPGPPackages && generatePGPData"]
 # COPY --chown=root:root ./scripts/pipeWrite.sh /etc/profile.d/
 # COPY --chown=root:root ./scripts/pipeRead.sh /etc/profile.d/
 
-# FROM alpine:3.10.5 AS ca_files
-
-# WORKDIR /
-# # We need to copy scripts related to certificates
-# COPY --chown=root:root ./scripts/ca_files /etc/profile.d/
-# RUN ["/bin/sh", "-c", ". /etc/profile && \
-#   generate_trust_chain"]
-
-# FROM alpine:3.10.5 AS entropy_tools
-
-# WORKDIR /
-# # We need to copy scripts related to entropy tools
-# COPY --chown=root:root ./scripts/entropy_tools /etc/profile.d/
-# RUN ["/bin/sh", "-c", ". /etc/profile && \
-#   entropy_func_name"]
-
+# 4 - Copy DieHarder, Certificate, PGP data into Vault.
 FROM vault:1.5.6 AS supervault
 
 WORKDIR /
