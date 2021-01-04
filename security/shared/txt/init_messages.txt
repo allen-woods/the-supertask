@@ -4,6 +4,3 @@ Added package busybox-static.
 Added package apk-tools-static.
 Checked for breaking changes in latest version of Alpine.
 Upgraded to latest version of Alpine.
-Added package openssl using static tools.
-Added package outils-jot using static tools.
-Created root certificate.

@@ -1,7 +1,7 @@
 #!/bin/sh
 
-function generateAndRunPGPBatch {
-  local BATCH_FILENAME=".$(randomString a-f0-9 16 16)"
+function pgp_generate_and_run_batch {
+  local BATCH_FILENAME=".$(random_string a-f0-9 16 16)"
   local PHRASE="$1"
   local n=0
   local count=0

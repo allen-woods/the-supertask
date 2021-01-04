@@ -1,0 +1,3 @@
+Added package openssl using static tools.
+Added package outils-jot using static tools.
+Created root certificate.

@@ -7,3 +7,12 @@
 # }
 
 # This will be a strong visual feedback for status messages and installation progress.
+
+pretty_print_header() {
+  local PATH_STRING="$(pwd)"
+  if [ "${PATH_STRING}" == "/" ]
+  then
+    # Just use the slash.
+  else
+    # Use the address broken by "/"
+}

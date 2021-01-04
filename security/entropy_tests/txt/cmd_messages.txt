@@ -1,16 +1,10 @@
-Patched APK repositories to latest stable version of Alpine.
-Updated APK repositories.
-Added package busybox-static.
-Added package apk-tools-static.
-Checked for breaking changes in latest version of Alpine.
-Upgraded to latest version of Alpine.
-Added package openrc using static tools.
-Added package haveged using static tools.
 Added package build-base using static tools.
 Added package chrpath using static tools.
 Added package gsl using static tools.
 Added package gsl-dev using static tools.
+Added package haveged using static tools.
 Added package libtool using static tools.
+Added package openrc using static tools.
 Added package rng-tools using static tools.
 Added package rpm-dev using static tools.
 Scheduled haveged to run under openrc.
@@ -22,15 +16,19 @@ Built Ent using Make.
 Moved Ent into testbed.
 Removed zip archive of Ent.
 Created directory for RPM build of DieHarder.
+Changed ownership of RPM build directory.
 Generated RPM macros.
 Created directory for source code of DieHarder.
-Downloaded tarball of DieHarder.
-Changed to directory for source code of DieHarder.
+Changed ownership of source code directory.
+Downloaded and extracted tarball of DieHarder.
+Changed to source code directory of DieHarder.
+Executed autogen script.
 Patched out-dated dependencies in DieHarder.
 Removed variable expansion in DieHarder.
-Patched out-dated dependencies in DieHarder[2].
-Removed variable expansion in DieHarder[2].
+Patched out-dated dependencies in DieHarder.
+Removed variable expansion in DieHarder.
 Added missing constant in DieHarder.
 Added missing typedef in DieHarder.
 Added missing data in DieHarder.
+Please wait, compiling DieHarder...
 Compiled DieHarder using Make.

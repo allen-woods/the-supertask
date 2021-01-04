@@ -1,6 +1,6 @@
 #!/bin/sh
 
-function pipeRead {
+function pipe_read {
   local pipe=${1:-"test"}
   local item=${2:-0}
   local flag=${3:-"--no-delete"}

@@ -2,8 +2,8 @@
 
 # Utility function for generating random strings.
 # Usage:
-# randomString [regex_pattern] [min_length] [max_length]
-randomString() {
+# random_string [regex_pattern] [min_length] [max_length]
+random_string() {
   local arg1=${1:-a-f0-9}
   local arg2=
   local arg3=
@@ -47,5 +47,5 @@ randomString() {
     )
   fi
 
-  echo -n $(escapeString $output)
+  echo -n $(escape_string $output)
 }

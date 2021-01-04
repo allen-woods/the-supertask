@@ -2,7 +2,7 @@
 
 # NOTE: pass incoming data in the form ''"${data}"''
 
-function pipeWrite {
+function pipe_write {
   local pipe=${1:-"test"}
   local data=${2:-"the quick brown fox jumps over the lazy dog"}
   local flag=${3:-"--append"}

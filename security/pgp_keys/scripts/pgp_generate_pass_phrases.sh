@@ -2,8 +2,8 @@
 
 # Utility function for generating random passphrases.
 # Usage:
-# generatePassPhrases [phrase_count] [regex_pattern]
-function generatePassPhrases {
+# pgp_generate_pass_phrases [phrase_count] [regex_pattern]
+function pgp_generate_pass_phrases {
   local arg1=$(abs ${1:-4})
   local arg2=${2:-[[:alnum:]][[:punct:]]}
   local n=0
@@ -13,9 +13,9 @@ function generatePassPhrases {
   do
     if [ -z PHRASE ]
     then
-      PHRASE="$(randomString $arg2)"
+      PHRASE="$(random_string $arg2)"
     else
-      PHRASE="$PHRASE $(randomString $arg2)"
+      PHRASE="$PHRASE $(random_string $arg2)"
     fi
     n=$(($n + 1))
   done

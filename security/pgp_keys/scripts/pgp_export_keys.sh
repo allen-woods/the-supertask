@@ -2,8 +2,8 @@
 
 # Utility function for parsing end exporting generated keys.
 # Usage:
-# exportPGPKeys [revoc_path] [export_path] [prefix_string]
-function exportPGPKeys {
+# pgp_export_keys [revoc_path] [export_path] [prefix_string]
+function pgp_export_keys {
   local arg1=${1:-${HOME}/.gnupg/openpgp-revocs.d/*}
   local arg2=${2:-/pgp/keys}
   local arg3=${3:-'key'}
@@ -13,8 +13,6 @@ function exportPGPKeys {
   
   for file in $arg1
   do
-    echo "Exporting: $arg3 $n"
-
     gpg2 \
     --export \
     "$(basename "$file" | cut -f 1 -d '.')" | \

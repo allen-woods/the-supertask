@@ -1,0 +1,8 @@
+Added package gnupg using static tools.
+Created directory for keys.
+Created directory for phrases.
+Processed PGP batch file with random passphrases.
+Exported PGP keys.
+Received valid 32-byte hex string of random data.
+Received valid 16-byte hex string of random data.
+Encrypted pass phrases.
