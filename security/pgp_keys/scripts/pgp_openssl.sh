@@ -2,7 +2,7 @@
 
 extract_openssl_latest_version() {
   # Extract the latest version number from the source download page.
-  env SOURCE_VERSION=$( \
+  export SOURCE_VERSION=$( \
     echo "$(curl https://www.openssl.org/source/index.html)" | \
     grep -o '"openssl-.*.tar.gz"' | \
     grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}' | \
@@ -29,8 +29,14 @@ compile_patched_openssl() {
 create_openssl_run_script() {
   cd $HOME/local/bin/
   printf '%s\n' '#!/bin/sh' 'env LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh
+  chmod 755 ./openssl.sh
 }
 
+create_openssl_alias() {
+  alias OPENSSL_V111="$HOME/local/bin/openssl.sh"
+}
+
+# TODO: Create individual functions for each line below.
 create_keys() {
   openssl rand -out payload_aes 32
   openssl rand -out ephemeral_aes 32
