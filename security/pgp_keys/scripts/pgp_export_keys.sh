@@ -15,8 +15,8 @@ function pgp_export_keys {
   do
     gpg2 \
     --export \
-    "$(basename "$file" | cut -f 1 -d '.')" | \
-    base64 > "$arg2/$arg3$n.asc"
+    "$(basename "${file}" | cut -f 1 -d '.')" | \
+    base64 > "${arg2}/${arg3}${n}.asc"
 
     n=$(($n + 1))
   done

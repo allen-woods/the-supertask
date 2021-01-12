@@ -1,6 +1,6 @@
 #!/bin/sh
 
-extract_openssl_latest_version() {
+pgp_parse_openssl_latest_version() {
   # Extract the latest version number from the source download page.
   export SOURCE_VERSION=$( \
     echo "$(curl https://www.openssl.org/source/index.html)" | \
@@ -10,29 +10,30 @@ extract_openssl_latest_version() {
   )
 }
 
-download_and_extract_openssl_latest_version() {
+pgp_download_and_extract_openssl_latest_version() {
   mkdir -p $HOME/build
   curl -O https://www.openssl.org/source/openssl-${SOURCE_VERSION}.tar.gz | \
   tar -zx -C $HOME/build
 }
 
-enable_aes_wrapping_in_openssl() {
-  sed -i 's/\(.*\)BIO_get_cipher_ctx(benc, \&ctx);/\1BIO_get_cipher_ctx(benc, \&ctx);\n\1EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);/g' openssl-${SOURCE_VERSION}/apps/enc.c
+pgp_enable_aes_wrapping_in_openssl() {
+  cd $HOME/build
+  sed -i 's/\(.*\)BIO_get_cipher_ctx(benc, \&ctx);/\1BIO_get_cipher_ctx(benc, \&ctx);\n\1EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);/g' ./openssl-${SOURCE_VERSION}/apps/enc.c
 }
 
-compile_patched_openssl() {
+pgp_compile_patched_openssl() {
   ./config --prefix=$HOME/local --openssldir=$HOME/local/ssl
   make -j$(grep -c ^processor /proc/cpuinfo)
   make install
 }
 
-create_openssl_run_script() {
+pgp_create_openssl_run_script() {
   cd $HOME/local/bin/
-  printf '%s\n' '#!/bin/sh' 'env LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh
+  printf '%s\n' '#!/bin/sh' 'export LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh
   chmod 755 ./openssl.sh
 }
 
-create_openssl_alias() {
+pgp_create_openssl_alias() {
   alias OPENSSL_V111="$HOME/local/bin/openssl.sh"
 }
 
