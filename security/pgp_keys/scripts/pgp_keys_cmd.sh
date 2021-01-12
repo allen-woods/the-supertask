@@ -5,25 +5,25 @@
 cmd_01() { export SKIP_INSTALL="$(ls -A /pgp/keys/ 2>/dev/null)$(ls -A /pgp/phrases/ 2>/dev/null)"; };
 cmd_02() { [ ! "${SKIP_INSTALL}" ] && apk.static add gnupg; };
 # BEGIN: custom build of OpenSSL with AES wrapping enabled.
-cmd_03() { [ ! "${SKIP_INSTALL}" ] && pgp_parse_openssl_latest_version; };
-cmd_04() { [ ! "${SKIP_INSTALL}" ] && pgp_download_and_extract_openssl_latest_version; };
-cmd_05() { [ ! "${SKIP_INSTALL}" ] && pgp_enable_aes_wrapping_in_openssl; };
-cmd_06() { [ ! "${SKIP_INSTALL}" ] && pgp_compile_patched_openssl; };
-cmd_07() { [ ! "${SKIP_INSTALL}" ] && pgp_create_openssl_run_script; };
-cmd_08() { [ ! "${SKIP_INSTALL}" ] && pgp_create_openssl_alias; };
+cmd_03() { [ ! "${SKIP_INSTALL}" ] && parse_openssl_latest_version; };
+cmd_04() { [ ! "${SKIP_INSTALL}" ] && download_and_extract_openssl_latest_version; };
+cmd_05() { [ ! "${SKIP_INSTALL}" ] && enable_aes_wrapping_in_openssl; };
+cmd_06() { [ ! "${SKIP_INSTALL}" ] && compile_patched_openssl; };
+cmd_07() { [ ! "${SKIP_INSTALL}" ] && create_openssl_run_script; };
+cmd_08() { [ ! "${SKIP_INSTALL}" ] && create_openssl_alias; };
 # END: custom build of OpenSSL with AES wrapping enabled.
 cmd_09() { [ ! "${SKIP_INSTALL}" ] && mkdir -pm 0700 /pgp/keys; };
 cmd_10() { [ ! "${SKIP_INSTALL}" ] && mkdir -m 0700 /pgp/phrases; };
 # TODO: Write pass phrases to pipe in dedicated function.
-cmd_11() { [ ! "${SKIP_INSTALL}" ] && pgp_generate_and_run_batch "$(pgp_generate_pass_phrases)"; };
-cmd_12() { [ ! "${SKIP_INSTALL}" ] && pgp_export_keys; };
+cmd_11() { [ ! "${SKIP_INSTALL}" ] && generate_and_run_batch "$(generate_pass_phrases)"; };
+cmd_12() { [ ! "${SKIP_INSTALL}" ] && export_keys; };
 # Generate payload_aes.
 # TODO: Write payload_aes to pipe in dedicated function.
 cmd_13() { [ ! "${SKIP_INSTALL}" ] && OPENSSL_V111 rand -out payload_aes 32; };
 # Wrap sensitive data in payload_aes. (data*)
-# TODO: pipe in "data_raw".
-# TODO: persist "data_wrapped".
-cmd_14() { [ ! "${SKIP_INSTALL}" ] && OPENSSL_V111 enc -id-aes256-wrap-pad -K $(hexdump -v -e '/1 "%02X"' < payload_aes) -iv A65959A6 -in data_raw -out data_wrapped; };
+# TODO: pipe in "pgp_data.raw".
+# TODO: persist "pgp_data.enc".
+cmd_14() { [ ! "${SKIP_INSTALL}" ] && OPENSSL_V111 enc -id-aes256-wrap-pad -K $(hexdump -v -e '/1 "%02X"' < payload_aes) -iv A65959A6 -in pgp_data.raw -out pgp_data.enc; };
 # Generate ephemeral_aes.
 # TODO: Write "ephemeral_aes" to pipe in dedicated function.
 cmd_15() { [ ! "${SKIP_INSTALL}" ] && OPENSSL_V111 rand -out ephemeral_aes 32; };

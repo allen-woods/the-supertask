@@ -13,12 +13,6 @@ function pipe_write {
   then
     # Create the pipe if it doesn't exist.
     mkfifo $pipe
-
-    # Prevent privilege escalation attacks on pipe.
-    chown root:root $pipe
-
-    # Restrict access to the pipe, write only.
-    su root -c "chmod 0200 ${pipe}"
     
     # Set `first_run` for proper data handling below.
     first_run=1
@@ -26,14 +20,8 @@ function pipe_write {
 
   if [ $first_run -eq 0 ] && [ "${flag}" == "--overwrite" ]
   then
-    # Restrict access to the pipe, read-write only.
-    su root -c "chmod 0600 ${pipe}"
-
     # Empty the pipe completely, and silently.
     ( ( echo ' ' >> $pipe & ) && echo "$(cat < ${pipe})" ) > /dev/null 2>&1
-
-    # Restrict access to the pipe, write only.
-    su root -c "chmod 0200 ${pipe}"
     
     # Set `first_run` for proper data handling below.
     first_run=1
@@ -41,14 +29,8 @@ function pipe_write {
 
   if [ $first_run -eq 0 ] && [[ -z $sync ]]
   then
-    # Restrict access to the pipe, read only.
-    su root -c "chmod 0400 ${pipe}"
-
     # If we are appending data, front-load contents of pipe.
     sync=''"$(cat < ${pipe})"''
-
-    # Restrict access to the pipe, write only.
-    su root -c "chmod 0200 ${pipe}"
   fi
 
   for item in $data
@@ -66,13 +48,6 @@ function pipe_write {
     fi
   done
 
-  # Restrict access to the pipe, write only.
-  su root -c "chmod 0200 ${pipe}"
-
   # Silently place contents of `sync` into pipe. 
   ( echo ''"${sync}"'' > $pipe & )
-
-  # Restrict all access to the pipe.
-  # (Applying 0100 causes `ps` output to hang; hacky "not allowed".)
-  su root -c "chmod 0100 ${pipe}"
 }
