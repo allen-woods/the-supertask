@@ -4,7 +4,7 @@
 cmd_01() { apk.static add openssl; };
 cmd_02() { apk.static add outils-jot; };
 # Write randomly generated password into pipe.
-cmd_03() { pipe_write "name_of_pipe" ''"$(random_string [[:alnum:]][[:punct:]] 20 99)"'' --append; };
+cmd_03() { pipe_write "name_of_pipe" $(random_string [[:alnum:]][[:punct:]] 20 99) --append; }; # TODO: Find out IF this is failing.
 # Root config.
 cmd_04() { mkdir -pm 0700 /tls/root/certs; };
 cmd_05() { mkdir -m 0700 /tls/root/private; };
@@ -23,9 +23,10 @@ cmd_16() { cp /tls/root/openssl.cnf.root /tls/intermediate/openssl.cnf.intermedi
 cmd_17() { cert_authority_patch_intermediate_cnf; };
 # Root cert creation.
 cmd_18() { cd /tls/root; };
-cmd_19() {
-  cmd_17 && $(pipe_read "name_of_pipe" 1 --no-delete) | openssl genpkey \
-  -out private/cakey.pem \
+cmd_19() { # TODO: Find out WHY this is failing.
+  cmd_18
+  echo "$(pipe_read "name_of_pipe" 1 --no-delete)" | openssl genpkey \
+  -out ./private/cakey.pem \
   -outform PEM \
   -pass stdin \
   -aes_256_gcm \
@@ -33,7 +34,8 @@ cmd_19() {
   -pkeyopt rsa_keygen_bits:4096
 }
 cmd_20() {
-  cmd_17 && $(pipe_read "name_of_pipe" 1 --no-delete) | openssl req \
+  # cmd_18
+  $(pipe_read "name_of_pipe" 1 --no-delete) | openssl req \
   -new \
   -x509 \
   -sha512 \
@@ -41,15 +43,16 @@ cmd_20() {
   -passin stdin \
   -config openssl.cnf.root \
   -extensions v3_ca \
-  -key private/cakey.pem \
-  -out certs/cacert.pem \
+  -key ./private/cakey.pem \
+  -out ./certs/cacert.pem \
   -outform PEM
 }
 # Intermediate cert creation.
 cmd_21() { cd /tls/intermediate; };
 cmd_22() {
-  cmd_20 && $(pipe_read "name_of_pipe" 1 --no-delete) | openssl genpkey \
-  -out private/intermediate.cakey.pem \
+  # cmd_21
+  $(pipe_read "name_of_pipe" 1 --no-delete) | openssl genpkey \
+  -out ./private/intermediate.cakey.pem \
   -outform PEM \
   -pass stdin \
   -aes_256_gcm \
@@ -57,26 +60,28 @@ cmd_22() {
   -pkeyopt rsa_keygen_bits:4096
 }
 cmd_23() {
-  cmd_20 && $(pipe_read "name_of_pipe" 1 --no-delete) | openssl req \
+  # cmd_21
+  $(pipe_read "name_of_pipe" 1 --no-delete) | openssl req \
   -new \
   -sha512 \
   -days 365 \
   -passin stdin \
   -config openssl.cnf.intermediate \
-  -key private/intermediate.cakey.pem \
-  -out csr/intermediate.csr.pem \
+  -key ./private/intermediate.cakey.pem \
+  -out ./csr/intermediate.csr.pem \
   -outform PEM
 }
 cmd_24() {
-  cmd_20 && $(pipe_read "name_of_pipe" 1 --delete-all) | openssl ca \
+  # cmd_21
+  $(pipe_read "name_of_pipe" 1 --delete-all) | openssl ca \
   -config openssl.cnf.intermediate
   -extensions v3_intermediate_ca
   -days 365
   -notext
   -batch
   -passin stdin
-  -in csr/intermediate.csr.pem
-  -out certs/intermediate.cacert.pem
+  -in ./csr/intermediate.csr.pem
+  -out ./certs/intermediate.cacert.pem
   -outform PEM
 }
 # # Certificate bundle.

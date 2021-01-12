@@ -18,11 +18,16 @@ FROM alpine:3.10.5 AS cert_authority
 
 WORKDIR /
 
-COPY --chown=root:root ["./shared/scripts/init_apk.sh",                   "/etc/profile.d/"]
-COPY --chown=root:root ["./shared/txt/init_messages.txt",                 "."]
-COPY --chown=root:root ["./cert_authority/scripts/cert_authority_cmd.sh", "/etc/profile.d/"]
-COPY --chown=root:root ["./cert_authority/txt/cmd_messages.txt",          "."]
-COPY --chown=root:root ["./shared/scripts/run_install.sh",                "/etc/profile.d"]
+COPY --chown=root:root ["./shared/scripts/init_apk.sh",                                       "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/scripts/pipe_read.sh",                                      "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/scripts/pipe_write.sh",                                     "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/scripts/random_string.sh",                                  "/etc/profile.d/"]
+COPY --chown=root:root ["./shared/txt/init_messages.txt",                                     "."]
+COPY --chown=root:root ["./cert_authority/scripts/cert_authority_patch_root_cnf.sh",          "/etc/profile.d/"]
+COPY --chown=root:root ["./cert_authority/scripts/cert_authority_patch_intermediate_cnf.sh",  "/etc/profile.d/"]
+COPY --chown=root:root ["./cert_authority/scripts/cert_authority_cmd.sh",                     "/etc/profile.d/"]
+COPY --chown=root:root ["./cert_authority/txt/cmd_messages.txt",                              "."]
+COPY --chown=root:root ["./shared/scripts/run_install.sh",                                    "/etc/profile.d/"]
 
 RUN ["/bin/sh", "-c", ". /etc/profile && \
   run_install init /init_messages.txt && \
