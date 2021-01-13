@@ -67,12 +67,12 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 - [ ] Complete `trust` Golang binary.
 - [ ] Copy `trust` executable into Vault container.
-- [ ] Generate `*.pem` files required by TLS.
-- [ ] Reference `*.pem` files correctly in config where needed.
+- [x] Generate `*.pem` files required by TLS.
+- [x] Reference `*.pem` files correctly in config where needed.
 - [x] Complete config in `/vault/config/local.json`.
 - [ ] Create policies for roles determined in ERD.
 - [x] Run `gpg --gen-key` _offline_.
-- [ ] **Store private key(s) in hardware, _NOT_ on a network**.
+- [x] **Store private key(s) in hardware, _NOT_ on a network**.
 - [ ] Export public key(s) as standard **unarmored base64** or **binary**.
 - [x] Copy `<key_name>.asc` file(s) into Vault container.
 - [x] Run `vault operator init` with `-pgp-keys` flag to harden with PGP. ([Details](https://www.vaultproject.io/docs/concepts/pgp-gpg-keybase))

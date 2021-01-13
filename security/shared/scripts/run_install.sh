@@ -27,7 +27,7 @@ run_install() {
       while [ "$n" -le $len ]
       do
         # Run each command silently.
-        "${1}"_$(printf "%0${#zeros}d" "$n") >/dev/null 2>&1
+        "${1}"_$(printf "%0${#zeros}d" "$n") #>/dev/null 2>&1
         CMD_SUCCESS=$?
 
         if [ $CMD_SUCCESS -gt 0 ]
