@@ -131,14 +131,14 @@ services:
         target: /vault/logs
         volume:
           nocopy: true
-      - type: volume
-        source: persist_pgp
-        target: /pgp
-        volume:
-          nocopy: false
-      # - type: bind
-      #   source: ./security/pgp
-      #   target: /pgp_remote
+      # - type: volume
+      #   source: persist_pgp
+      #   target: /pgp
+      #   volume:
+      #     nocopy: false
+      - type: bind
+        source: ./security/pgp_keys/data
+        target: /pgp/
       # - type: bind
       #   source: ./security/public
       #   target: /public

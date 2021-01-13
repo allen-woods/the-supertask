@@ -1,8 +1,8 @@
 #!/bin/sh
 
 function pgp_generate_and_run_batch {
-  local BATCH_FILENAME=".$(random_string a-f0-9 16 16)"
-  local PHRASE="$1"
+  local BATCH_FILENAME="/tmp/.$(random_string a-f0-9 16 16)"
+  local PHRASE="${1}"
   local n=0
   local count=0
 
@@ -18,7 +18,7 @@ function pgp_generate_and_run_batch {
     '"Key-Length: 4096"'
     '"Subkey-Type: RSA"'
     '"Subkey-Length: 4096"'
-    '"Passphrase: $p"'
+    '"Passphrase: ${p}"'
     '"Name-Real: Thomas Tester"'
     '"Name-Email: thomas@testing.com"'
     '"Name-Comment: This is an automated test key."'

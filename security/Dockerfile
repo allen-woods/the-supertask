@@ -18,6 +18,8 @@ FROM alpine:3.10.5 AS cert_authority
 
 WORKDIR /
 
+COPY --chown=root:root ["./cert_authority/secret/.admin",                 "/root/"]
+
 COPY --chown=root:root ["./shared/scripts/init_apk.sh",                   "/etc/profile.d/"]
 COPY --chown=root:root ["./shared/scripts/abs.sh",                        "/etc/profile.d/"]
 COPY --chown=root:root ["./shared/scripts/escape_string.sh",              "/etc/profile.d/"]

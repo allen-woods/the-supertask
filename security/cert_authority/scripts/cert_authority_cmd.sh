@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# All functions unique to cert_authority should reside here.
-
 # Add deps.
 cmd_01() { apk.static add openssl; };
 cmd_02() { apk.static add outils-jot; };
@@ -107,7 +105,7 @@ cmd_23() {
 }
 cmd_24() {
   cmd_21
-  local ADMIN_CONTACT= # To be determined.
+  local ADMIN_CONTACT=$(cat $HOME/.admin | head -n1)
   echo "$(pipe_read "/name_of_pipe" 1 --delete-all)" | openssl ca \
   -config ./openssl.cnf.intermediate \
   -extensions v3_intermediate_ca \
@@ -127,6 +125,7 @@ cmd_24() {
 # # cert.
 # #
 # # This means we can't pass a bundle to Vault safely.
+# # Preserved here for convenience only.
 # #
 # cmd_25() {
 #   cat \
