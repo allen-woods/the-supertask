@@ -63,15 +63,16 @@ parse_openssl_latest_version() {
   export OPENSSL_SOURCE_VERSION=$( \
     echo "$(curl https://www.openssl.org/source/index.html)" | \
     grep -o '"openssl-.*.tar.gz"' | \
-    grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}' | \
-    head -n1 \
+    grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}.' | \
+    sed 's/.$//' | \
+    head -n1
   )
   echo "Found Version: ${OPENSSL_SOURCE_VERSION}"
 }
 
 download_and_extract_openssl_latest_version() {
-  curl -O https://www.openssl.org/source/openssl-${OPENSSL_SOURCE_VERSION}.tar.gz
-  tar -zxf openssl-${OPENSSL_SOURCE_VERSION}.tar.gz
+  wget -c https://www.openssl.org/source/openssl-${OPENSSL_SOURCE_VERSION}.tar.gz -O - | tar -xz -C $HOME/build/
+  cd $HOME/build
   rm -f openssl-${OPENSSL_SOURCE_VERSION}.tar.gz
   echo "$(ls -la .)"
 }
