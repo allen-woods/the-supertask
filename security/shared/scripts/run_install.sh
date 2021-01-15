@@ -37,7 +37,6 @@ run_install() {
   return 1;             # Go no further, install library missing.
 
   create_instructions   # Call install_lib method to load names of functions into pipe.
-
   [ ! $? -eq 0 ] && echo "ERROR: Failed to call create_instructions"; \
   return 1;             # Go no further, critical error.
 
@@ -46,12 +45,13 @@ run_install() {
   while [ "${INSTALL_FUNC_NAME}" != "EOF" ]
   do
     read_instruction    # Read next instruction.
-
     [ ! $? -eq 0 ] && echo "ERROR: failed to call read_instruction"; \
     return 1;           # Go no further, critical error.
 
     [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue # Conditionally halt if "EOF" found.
-    # TODO: add support for "quiet", "status", and "verbose" modes.
+    #################################################################
+    # TODO: add support for "quiet", "status", and "verbose" modes. #
+    #################################################################
     $INSTALL_FUNC_NAME &# Run function whose name is read in background.
     PROC_ID=$( \
       ps -o pid,args | \
