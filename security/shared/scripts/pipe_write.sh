@@ -2,6 +2,12 @@
 
 # NOTE: pass incoming data in the form ''"${data}"''
 
+# TODO:
+# This function needs to be rewritten to operate more like a stream containing several heredocs.
+# The way I plan on doing this is by prepending and appending EOFN, where N is the data insertion count.
+# This way, more complex data can be stored in one place without the need of multiple pipes for clarity.
+# Ideally, each EOF block would have a name. This could be achieved using EOFN_{name here}_ syntax.
+
 function pipe_write {
   local pipe=${1:-"test"}
   local data=${2:-"the quick brown fox jumps over the lazy dog"}

@@ -2,46 +2,47 @@
 
 # TODO: Rewrite these functions to not cd into other directories, or at least to go back to the original directory once finished.
 
-cmd_01() { export SKIP_INSTALL="$(ls -A /pgp/keys/ 2>/dev/null)$(ls -A /pgp/phrases/ 2>/dev/null)"; };
-cmd_02() { [ -z $SKIP_INSTALL ] && apk.static add curl; };
-cmd_03() { [ -z $SKIP_INSTALL ] && apk.static add gnupg; };
+cmd_01() { export SKIP_INSTALL="$(ls -A /pgp/keys/ 2>/dev/null)$(ls -A /pgp/phrases/ 2>/dev/null)" && bump_cmd; };
+cmd_02() { [ -z $SKIP_INSTALL ] && apk.static add build-base && bump_cmd; };
+cmd_03() { [ -z $SKIP_INSTALL ] && apk.static add gnupg && bump_cmd; };
 # BEGIN: custom build of OpenSSL with AES wrapping enabled.
-cmd_04() { [ -z $SKIP_INSTALL ] && create_openssl_compilation_directories; };
-cmd_05() { [ -z $SKIP_INSTALL ] && parse_openssl_latest_version; };
-cmd_06() { [ -z $SKIP_INSTALL ] && cd $HOME/build; };
-cmd_07() { [ -z $SKIP_INSTALL ] && download_and_extract_openssl_latest_version; };
-cmd_08() { [ -z $SKIP_INSTALL ] && enable_aes_wrapping_in_openssl; };
-cmd_09() { [ -z $SKIP_INSTALL ] && compile_patched_openssl; };
-cmd_10() { [ -z $SKIP_INSTALL ] && create_openssl_run_script; };
-cmd_11() { [ -z $SKIP_INSTALL ] && create_openssl_alias; };
+cmd_04() { [ -z $SKIP_INSTALL ] && create_openssl_compilation_directories && bump_cmd; };
+cmd_05() { [ -z $SKIP_INSTALL ] && parse_openssl_latest_version && bump_cmd; };
+cmd_06() { [ -z $SKIP_INSTALL ] && cd $HOME/build && bump_cmd; };
+cmd_07() { [ -z $SKIP_INSTALL ] && download_and_extract_openssl_latest_version && bump_cmd; };
+cmd_08() { [ -z $SKIP_INSTALL ] && enable_aes_wrapping_in_openssl && bump_cmd; };
+cmd_09() { [ -z $SKIP_INSTALL ] && compile_patched_openssl && bump_cmd; };
+cmd_10() { [ -z $SKIP_INSTALL ] && create_openssl_run_script && bump_cmd; };
+cmd_11() { [ -z $SKIP_INSTALL ] && create_openssl_alias && bump_cmd; };
 # END: custom build of OpenSSL with AES wrapping enabled.
-cmd_12() { [ -z $SKIP_INSTALL ] && mkdir -pm 0700 /pgp/keys; };
-cmd_13() { [ -z $SKIP_INSTALL ] && mkdir -m 0700 /pgp/phrases; };
+cmd_12() { [ -z $SKIP_INSTALL ] && mkdir -pm 0700 /pgp/keys && bump_cmd; };
+cmd_13() { [ -z $SKIP_INSTALL ] && mkdir -m 0700 /pgp/phrases && bump_cmd; };
 # TODO: Write pass phrases to pipe in dedicated function.
-cmd_14() { [ -z $SKIP_INSTALL ] && generate_and_run_batch "$(generate_pass_phrases)"; };
-cmd_15() { [ -z $SKIP_INSTALL ] && export_keys; };
-# Generate payload_aes.
-# TODO: Write payload_aes to pipe in dedicated function.
-cmd_16() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 rand -out payload_aes 32; };
-# Wrap sensitive data in payload_aes. (data*)
-# TODO: pipe in "pgp_data.raw".
-# TODO: persist "pgp_data.enc".
-cmd_17() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 enc -id-aes256-wrap-pad -K $(hexdump -v -e '/1 "%02X"' < payload_aes) -iv A65959A6 -in pgp_data.raw -out pgp_data.enc; };
-# Generate ephemeral_aes.
-# TODO: Write "ephemeral_aes" to pipe in dedicated function.
-cmd_18() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 rand -out ephemeral_aes 32; };
-# Wrap payload_aes in ephemeral_aes. (payload*)
-# TODO: pipe in "payload_aes".
-# TODO: write "payload_wrapped" to pipe?
-cmd_19() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 enc -id-aes256-wrap-pad -K $(hexdump -v -e '/1 "%02X"' < ephemeral_aes) -iv A65959A6 -in payload_aes -out payload_wrapped; };
-# Generate RSA key pair.
-# TODO: write keys to pipe in dedicated function(s).
-# TODO: perist "public.key".
-cmd_20() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 genpkey -out private.pem -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:4096; };
-cmd_21() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 rsa -in private.pem -inform PEM -out public.pem -outform PEM -pubout; };
-# Wrap ephemeral_aes in public.key. (ephemeral*)
-# TODO: write "ephemeral_wrapped" to pipe in dedicated function.
-cmd_22() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 pkeyutl -encrypt -in ephemeral_aes -out ephemeral_wrapped -pubin -inkey public.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha1 -pkeyopt rsa_mgf1_md:sha1; };
+cmd_14() { [ -z $SKIP_INSTALL ] && generate_and_run_batch "$(generate_pass_phrases)" && bump_cmd; };
+cmd_15() { [ -z $SKIP_INSTALL ] && export_keys && bump_cmd; };
+# # Generate payload_aes.
+# # TODO: Write payload_aes to pipe in dedicated function.
+# cmd_18() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 rand -out payload_aes 32; };
+# # Wrap sensitive data in payload_aes. (data*)
+# # TODO: pipe in "pgp_data.raw".
+# # TODO: persist "pgp_data.enc".
+# cmd_19() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 enc -id-aes256-wrap-pad -K $(hexdump -v -e '/1 "%02X"' < payload_aes) -iv A65959A6 -in pgp_data.raw -out pgp_data.enc; };
+# # Generate ephemeral_aes.
+# # TODO: Write "ephemeral_aes" to pipe in dedicated function.
+# cmd_20() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 rand -out ephemeral_aes 32; };
+# # Wrap payload_aes in ephemeral_aes. (payload*)
+# # TODO: pipe in "payload_aes".
+# # TODO: write "payload_wrapped" to pipe?
+# cmd_21() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 enc -id-aes256-wrap-pad -K $(hexdump -v -e '/1 "%02X"' < ephemeral_aes) -iv A65959A6 -in payload_aes -out payload_wrapped; };
+# # Generate RSA key pair.
+# # TODO: write keys to pipe in dedicated function(s).
+# # TODO: perist "public.key".
+# cmd_22() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 genpkey -out private.pem -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:4096; };
+# cmd_23() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 rsa -in private.pem -inform PEM -out public.pem -outform PEM -pubout; };
+# # Wrap ephemeral_aes in public.key. (ephemeral*)
+# # TODO: write "ephemeral_wrapped" to pipe in dedicated function.
+# cmd_24() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 pkeyutl -encrypt -in ephemeral_aes -out ephemeral_wrapped -pubin -inkey public.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha1 -pkeyopt rsa_mgf1_md:sha1; };
+
 # Concatenate ephemeral*, payload* into single file. (rsa_aes_wrapped)
 # TODO: pipe "ephemeral_wrapped", "payload_wrapped" into file.
 # Resulting Files:
@@ -51,7 +52,9 @@ cmd_22() { [ -z $SKIP_INSTALL ] && OPENSSL_V111 pkeyutl -encrypt -in ephemeral_a
 
 # Use payload to encrypt pass phrases.
 # cmd_08() { [ ! "$(ls -A /pgp/keys/ 2>/dev/null)" ] && pgp_encrypt_pass_phrases; };
-cmd_len() { echo 22; };
+cmd_len() { echo 15; }; # 24; };
+# Bump the command number by one.
+bump_cmd() { INSTALL_CMD_COMPLETED=$(($INSTALL_CMD_COMPLETED + 1)); echo "Bumped to ${INSTALL_CMD_COMPLETED}."; };
 
 create_openssl_compilation_directories() {
   mkdir $HOME/build
@@ -61,11 +64,11 @@ create_openssl_compilation_directories() {
 parse_openssl_latest_version() {
   # Extract the latest version number from the source download page.
   export OPENSSL_SOURCE_VERSION=$( \
-    echo "$(curl https://www.openssl.org/source/index.html)" | \
+    wget https://www.openssl.org/source/index.html -O - | \
     grep -o '"openssl-.*.tar.gz"' | \
-    grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}.' | \
-    sed 's/.$//' | \
-    head -n1
+    grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}.tar' | \
+    head -n1 | \
+    sed 's/.tar$//'
   )
   echo "Found Version: ${OPENSSL_SOURCE_VERSION}"
 }
@@ -82,6 +85,7 @@ enable_aes_wrapping_in_openssl() {
 }
 
 compile_patched_openssl() {
+  cd $HOME/build/openssl-${OPENSSL_SOURCE_VERSION}
   ./config --prefix=$HOME/local --openssldir=$HOME/local/ssl
   make -j$(grep -c ^processor /proc/cpuinfo)
   make install

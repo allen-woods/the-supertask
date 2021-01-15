@@ -1,6 +1,6 @@
 # The Supertask
 
-Personal portfolio site and current passion project, tentatively planned for first production deployment by year's end, 2020.
+Personal portfolio site and current passion project, tentatively planned for first production deployment in Q2, 2021.
 
 ## Mission Statement
 
@@ -125,3 +125,13 @@ Personal portfolio site and current passion project, tentatively planned for fir
 - [ ] Generate obfuscated `root` superuser.
 - [ ] Allocate and persist databases that are needed.
 - [ ] Create and persist `dbOwner` admin account for each `gRPC, role` pair.
+
+## CURRENT FOCUS:
+
+The installation process for each build stage of the `truth_src` container currently uses multiple files. The commands are held in a dedicated `*.sh` file and the corresponding status messages are held in a separate `*.txt` file.
+
+The thinking was that being able to silence the output of each function in the installation process would benefit the end user due to a "quiet" mode. The most efficient way of silencing was to loop over the functions and direct their output signals to `/dev/null`.
+
+Unfortunately, using a loop appears to create race conditions with asynchronous code involving `wget` and `tar`. Also, each installation process is unique and requires specific steps to be confirmed before continuing with the rest of the install.
+
+This means the installation process needs to be rethought, such that functional steps and their status messages are unified within one "library" file and steps in the process are incremented conditionally upon verified success.
