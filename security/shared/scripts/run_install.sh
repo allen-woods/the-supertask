@@ -1,26 +1,22 @@
 #!/bin/sh
 
 # Name: run_install
-# Desc: A method that executes a sequence of installation commands
-#       as defined by the `create_instructions` method found in
-#       /etc/profile.d/install_lib.sh
+# Desc: A method that executes a sequence of installation commands as defined by the `create_instructions`
+#       method found in /etc/profile.d/install_lib.sh
 
 run_install() {
-  local OPT="${1}"
+  local OPT=$1
   local OUTPUT_MODE=1   # Default setting, status messages displayed only.
-  local OUTPUT_OPT=     # String used to run commands in quiet/verbose mode.
 
   case $OPT in          # Check incoming arguments.
     -Q|--quiet)
       OUTPUT_MODE=0     # Strict silent mode, nothing displayed.
-      OUTPUT_OPT=--quiet
       ;;
     -S|--status)
       #                 # Do nothing to default settings.
       ;;
     -V|--verbose)
       OUTPUT_MODE=2     # Strict verbose mode, everything displayed.
-      OUTPUT_OPT=--verbose
       ;;
     *)
       echo "Bad Argument!"
@@ -49,17 +45,15 @@ run_install() {
     return 1;           # Go no further, critical error.
 
     [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue # Conditionally halt if "EOF" found.
-    #################################################################
-    # TODO: add support for "quiet", "status", and "verbose" modes. #
-    #################################################################
-    $INSTALL_FUNC_NAME &# Run function whose name is read in background.
+
+    ( $INSTALL_FUNC_NAME $OUTPUT_MODE & )  # Pass expected output, func silences as needed.
     PROC_ID=$( \
       ps -o pid,args | \
       grep "${INSTALL_FUNC_NAME}" | \
       grep -v "grep" | \
       awk '{print $1}' \
     ) #                 # Extract PID of background process.
-    wait PROC_ID        # Wait for the process to finish.
+    [ ! -z "${PROC_ID}" ] && wait PROC_ID # Wait for the process to finish (if there is one).
     [ ! $? -eq 0 ] && echo "ERROR: ${INSTALL_FUNC_NAME} (or wait ${PROC_ID}) encountered a problem."; \
     return 1;           # Go no further, unknown or unexpected error.
   done
