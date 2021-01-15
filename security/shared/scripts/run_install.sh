@@ -44,37 +44,41 @@ run_install() {
       ;;
   esac
 
-  if [ ! -f /etc/profile.d/install_lib.sh ]
-  then
-    echo "ERROR: Install Library File Missing: /etc/profile.d/install_lib.sh"
-    return 1            # Go no further, install library missing.
-  fi
+  [ ! -f /etc/profile.d/install_lib.sh ] && echo "ERROR: \
+  Install Library File Missing: /etc/profile.d/install_lib.sh"; \
+  return 1;             # Go no further, install library missing.
 
   create_instructions   # Call install_lib method to load names of functions into pipe.
-  if [ ! $? -eq 0 ]
-  then
-    echo "ERROR: Failed to call create_install_instructions"
-    return 1            # Go no further, critical error.
-  fi
 
-  export INSTALL_FUNC_NAME=
+  [ ! $? -eq 0 ] && echo "ERROR: Failed to call create_instructions"; \
+  return 1;             # Go no further, critical error.
+
+  export INSTALL_FUNC_NAME= # Environment variable to which read instruction is assigned.
 
   while [ "${INSTALL_FUNC_NAME}" != "EOF" ]
   do
-    read -u3 INSTALL_FUNC_NAME                        # Read next instruction.
-    [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue   # Conditionally halt if "EOF" found.
-    $INSTALL_FUNC_NAME  # Run function whose name is read.
-    PROC_ID=$(ps -o pid,args | grep "${INSTALL_FUNC_NAME}" | grep -v "grep" | awk '{print $1}')
-    # Extract the PID from the last executed instruction using line above.
+    read_instruction    # Read next instruction.
+
+    [ ! $? -eq 0 ] && echo "ERROR: failed to call read_instruction"; \
+    return 1;           # Go no further, critical error.
+
+    [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue # Conditionally halt if "EOF" found.
+
+    $INSTALL_FUNC_NAME &# Run function whose name is read in background.
+    PROC_ID=$( \
+      ps -o pid,args | \
+      grep "${INSTALL_FUNC_NAME}" | \
+      grep -v "grep" | \
+      awk '{print $1}' \
+    ) #                 # Extract PID of background process.
     wait PROC_ID        # Wait for the process to finish.
+    [ ! $? -eq 0 ] && echo "ERROR: ${INSTALL_FUNC_NAME} (or wait ${PROC_ID}) encountered a problem."; \
+    return 1;           # Go no further, unknown or unexpected error.
   done
 
   delete_instructions   # Remove the pipe once it's empty.
-  if [ ! $? -eq 0 ]
-  then
-    echo "ERROR: failed to call delete_install_instructions"
-    return 1
-  fi
+  [ ! $? -eq 0 ] && echo "ERROR: failed to call delete_instructions"; \
+  return 1;             # Go no further, critical error.
 }
 
 # run_install() {
