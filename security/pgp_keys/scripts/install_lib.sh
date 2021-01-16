@@ -8,27 +8,53 @@
 #         - read_instruction      A method for reading instruction names from the non-blocking pipe.
 #         - update_instructions   A method for placing instruction names into the non-blocking pipe.
 #         - delete_instructions   A method for deleting the non-blocking pipe and any instructions inside.
+#         - pretty_print          A method for printing text in a concise, colorful, "pretty" way.
 #       All methods must accept a single argument, OPT, whose value is assumed to always be 0, 1, or 2.
 #       Evaluations of OPT should be interpreted as follows:
 #         - 0: Output of any kind must be silenced using redirection to `/dev/null 2>&1`.
 #         - 1: Status messages should be sent to stdout, all other output(s) silenced.
 #         - 2: All output should be sent to stdout and `--verbose` options should be applied wherever possible.
 
+check_skip_install() {
+  # Steps required to confirm already installed go here.
+}
+
 create_instructions() {
   local OPT=$1
   case $OPT in
     0)
-      # quiet
+      # completely silent
+      exec 4>/dev/null  # stdout:   disabled  (Shell process)
+      exec 5>/dev/null  # echo:     disabled  (Status command)
+      exec 2>/dev/null  # stderr:   disabled
+      set +v #          # verbose:  disabled
+      ;;
     1)
-      # status
+      # status only
+      exec 4>/dev/null  # stdout:   disabled  (Shell process)
+      exec 5>&1         # echo:     ENABLED   (Status command)
+      exec 2>/dev/null  # stderr:   disabled
+      set +v #          # verbose:  disabled
+      ;;
     2)
       # verbose
+      exec 4>&1         # stdout:   ENABLED   (Shell process)
+      exec 5>&1         # echo:     ENABLED   (Status command)
+      exec 2>&1         # stderr:   ENABLED
+      set -v #          # verbose:  ENABLED
+      ;;
     *)
       # do nothing
   esac
-  mkfifo /tmp/instructs
-  exec 3<> /tmp/instructs
-  unlink /tmp/instructs
+
+  mkfifo /tmp/instructs 1>&4
+  echo "Created pipe for instructions." 1>&5
+
+  exec 3<> /tmp/instructs 1>&4
+  echo "Executed file descriptor to unblock pipe." 1>&5
+
+  unlink /tmp/instructs 1>&4
+  echo "Unlinked the unblocked pipe." 1>&5
 }
 
 read_instruction() {
@@ -44,6 +70,14 @@ update_instructions() {
 }
 
 delete_instructions() {
-  exec 3>&-
-  rm -f /tmp/instructs
+  exec 2>&1             # Restore stderr
+  exec 3>&-             # Remove file descriptor 3
+  exec 4>&-             # Remove file descriptor 4
+  exec 5>&-             # Remove file descriptor 5
+  rm -f /tmp/instructs  # Force deletion of pipe
+  set +v #              # Cancel verbose mode
+}
+
+pretty_print() {
+  # TODO: Write this function.
 }

@@ -32,7 +32,11 @@ run_install() {
   Install Library File Missing: /etc/profile.d/install_lib.sh"; \
   return 1;             # Go no further, install library missing.
 
-  create_instructions   # Call install_lib method to load names of functions into pipe.
+  [ "$(check_skip_install)" == "SKIP" ] && echo "SKIPPING: \
+  Already installed."; \
+  return 0;             # Go no further, already installed.
+
+  create_instructions $OUTPUT_MODE # Call install_lib method to load names of functions into pipe.
   [ ! $? -eq 0 ] && echo "ERROR: Failed to call create_instructions"; \
   return 1;             # Go no further, critical error.
 
