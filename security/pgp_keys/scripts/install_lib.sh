@@ -9,11 +9,14 @@
 #         - update_instructions   A method for placing instruction names into the non-blocking pipe.
 #         - delete_instructions   A method for deleting the non-blocking pipe and any instructions inside.
 #         - pretty_print          A method for printing text in a concise, colorful, "pretty" way.
+#
 #       All methods must accept a single argument, OPT, whose value is assumed to always be 0, 1, or 2.
 #       Evaluations of OPT should be interpreted as follows:
 #         - 0: Output of any kind must be silenced using redirection to `/dev/null 2>&1`.
 #         - 1: Status messages should be sent to stdout, all other output(s) silenced.
 #         - 2: All output should be sent to stdout and `--verbose` options should be applied wherever possible.
+#
+# * * * BEGIN STANDARDIZED METHODS  * * * * * * * * * * * * * *
 
 check_skip_install() {
   # Steps required to confirm already installed go here.
@@ -23,28 +26,32 @@ create_instructions() {
   local OPT=$1
   case $OPT in
     0)
-      # completely silent
+      # completely silent * * * * * * * * * * * * * * * * * * *
+      #
       exec 4>/dev/null  # stdout:   disabled  (Shell process)
       exec 5>/dev/null  # echo:     disabled  (Status command)
       exec 2>/dev/null  # stderr:   disabled
       set +v #          # verbose:  disabled
       ;;
     1)
-      # status only
+      # status only * * * * * * * * * * * * * * * * * * * * * *
+      #
       exec 4>/dev/null  # stdout:   disabled  (Shell process)
       exec 5>&1         # echo:     ENABLED   (Status command)
       exec 2>/dev/null  # stderr:   disabled
       set +v #          # verbose:  disabled
       ;;
     2)
-      # verbose
+      # verbose * * * * * * * * * * * * * * * * * * * * * * * *
+      #
       exec 4>&1         # stdout:   ENABLED   (Shell process)
       exec 5>&1         # echo:     ENABLED   (Status command)
       exec 2>&1         # stderr:   ENABLED
       set -v #          # verbose:  ENABLED
       ;;
     *)
-      # do nothing
+      # do nothing  * * * * * * * * * * * * * * * * * * * * * *
+      #
   esac
 
   mkfifo /tmp/instructs 1>&4
@@ -78,6 +85,12 @@ delete_instructions() {
   set +v #              # Cancel verbose mode
 }
 
+# EXAMPLE SYNTAX:
+# pretty_print  -H|--header -N|--name="name of setion"  -D|--desc="desription of section"
+# pretty_print  -B|--body   -M|--message="message text" -C|--class="class_name"
+# pretty_print  -F|--footer -T|--text="text to display"
 pretty_print() {
   # TODO: Write this function.
 }
+
+# * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
