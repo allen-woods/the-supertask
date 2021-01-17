@@ -7,6 +7,7 @@
 run_install() {
   local OPT=$1
   local OUTPUT_MODE=1   # Default setting, status messages displayed only.
+  local PROC_ID=        # Variable for capturing PID of installation function(s).
 
   case $OPT in          # Check incoming arguments.
     -Q|--quiet)
@@ -54,7 +55,7 @@ run_install() {
 
     [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue # Conditionally halt if "EOF" found.
 
-    ( $INSTALL_FUNC_NAME & )  # Pass expected output, func silences as needed.
+    ( $INSTALL_FUNC_NAME & )  # Run in background so we can grab the PID and wait on it.
     PROC_ID=$( \
       ps -o pid,args | \
       grep "${INSTALL_FUNC_NAME}" | \

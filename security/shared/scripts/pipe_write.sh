@@ -22,28 +22,29 @@ function pipe_crud {
   then
     echo "Bad Argument(s)!"
     echo "Usage: $0 --pipe=<pipe_path> --head=<document_id> --crud=<crud_action> --data=\"<data=here>\""
-    echo "" # Breathing space
+    echo "" # Breathing space #################################################################################
     echo "  --pipe=<pipe_path>     : Path and filename of pipe."
     echo "  --head=<document_id>   : Identifier of target document for CRUD action."
     echo "  --crud=<crud_action>   : Crud action to perform on target document, as follows:"
-    echo "" # Breathing space
+    echo "" # Breathing space #################################################################################
     echo "                           create : Creates a new document with name document_id."
     echo "                           read   : Reads the document named document_id, as specified by --data."
     echo "                           update : Updates the document named document_id, as specified by --data."
     echo "                           delete : Deletes the document named document_id, as specified by --data."
-    echo "" # Breathing space
+    echo "" # Breathing space #################################################################################
     echo "  --data=\"<data=here>\" : Double-quoted, space delimited data, as follows:"
-    echo "" # Breathing space
+    echo "" # Breathing space #################################################################################
     echo "                           Create : variable=value"
     echo "                           Read   : variable (1)"
     echo "                           Update : variable=value *"
     echo "                           Delete : variable (1)"
-    echo "" # Breathing space
+    echo "" # Breathing space #################################################################################
     echo "                                  * NOTE: When updating with a new variable, that variable will be"
     echo "                                          appended to the contents of document named document_id."
-    echo "" # Breathing space
+    echo "" # Breathing space #################################################################################
     echo "                                  1 NOTE: To read or delete the entire document named document_id,"
     echo "                                          use --data=\"--\"."
+    echo "" # Trailing white space ############################################################################
     return 1;
   fi
 
@@ -58,12 +59,23 @@ function pipe_crud {
 
   case $CRUD in
     create)
-      # If the pipe does not yet exist, create it.
-      if [ ! -p $PIPE ]
+      if [ ! -p $PIPE ] # Nothing exists.
       then
+        # The pipe does not yet exist, so create it.
         mkfifo $PIPE
+
+        # Make the pipe non-blocking.
+        exec 7<> $PIPE
+
+        # Unlink the pipe to complete the non-blocking behavior.
+        unlink $PIPE
+
+        # Create the document and its data; since only one document in pipe, append EOF at the end.
+        printf '%s\n' "BOF ${HEAD}" $DATA "EOF" > $PIPE
       else
-        # if the head does not yet exist in pipe, create it.
+        # if the head does not yet exist in pipe, create it and place the data into it.
+
+      fi
       ;;
     read)
       # Read code here
