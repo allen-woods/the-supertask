@@ -54,7 +54,7 @@ run_install() {
 
     [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue # Conditionally halt if "EOF" found.
 
-    ( $INSTALL_FUNC_NAME $OUTPUT_MODE & )  # Pass expected output, func silences as needed.
+    ( $INSTALL_FUNC_NAME & )  # Pass expected output, func silences as needed.
     PROC_ID=$( \
       ps -o pid,args | \
       grep "${INSTALL_FUNC_NAME}" | \
