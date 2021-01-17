@@ -69,11 +69,7 @@ read_instruction() {
 }
 
 update_instructions() {
-  printf '%s\n' \
-  instruct \
-  names \
-  go \
-  here 1>&3
+  printf '%s\n' "$@" 1>&3
 }
 
 delete_instructions() {
@@ -88,9 +84,49 @@ delete_instructions() {
 # EXAMPLE SYNTAX:
 # pretty_print  -H|--header -N|--name="name of setion"  -D|--desc="desription of section"
 # pretty_print  -B|--body   -M|--message="message text" -C|--class="class_name"
-# pretty_print  -F|--footer -T|--text="text to display"
+# pretty_print  -F|--footer -T|--text="text to display" 
 pretty_print() {
-  # TODO: Write this function.
+  local OPT_1=$1
+  case $OPT_1 in
+    -H|--header)
+    ;;
+    -B|--body)
+    ;;
+    -F|--footer)
+    ;;
+    *)
+    # Do nothing
 }
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
+
+patch_etc_apk_repositories() { sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories; };
+apk_update() { apk update; };
+apk_add_busybox_static() { apk add busybox-static; };
+apk_add_apk_tools_static() { apk add apk-tools-static; };
+apk_static_upgrade_simulate() { apk.static upgrade --no-self-upgrade --available --simulate; };
+apk_static_upgrade() { apk.static upgrade --no-self-upgrade --available; };
+apk_static_add_build_base() { apk.static add build-base; };
+apk_static_add_gnupg() { apk.static add gnupg; };
+apk_static_add_perl() { apk.static add perl; };
+create_home_build_dir() { mkdir $HOME/build; };
+create_home_local_ssl_dir() { mkdir -p $HOME/local/ssl; };
+export_openssl_source_version_wget() { export OPENSSL_SOURCE_VERSION="$(wget -c https://www.openssl.org/source/index.html -O -)"; };
+openssl_source_version_grep_version_str() { OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | grep -o '\"openssl-.*.tar.gz\"')"; };
+openssl_source_version_grep_version_num() { OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}.tar')"; };
+openssl_source_version_head_first_result() { OPENSSL_SOURCE_VERSION="$(printf '%s\n' "${OPENSSL_SOURCE_VERSION}" | head -n1)"; };
+openssl_source_version_sed_remove_tar() { OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | sed 's/.tar$//')"; };
+change_to_home_build_dir() { cd $HOME/build; };
+download_openssl_source_version() { wget -c https://openssl.org/source/openssl-${OPENSSL_SOURCE_VERSION}.tar.gz; };
+extract_openssl_source_version() { tar -xzf openssl-${OPENSSL_SOURCE_VERSION}.tar.gz; };
+remove_openssl_source_archive() { rm -f openssl-${OPENSSL_SOURCE_VERSION}.tar.gz; };
+enable_aes_wrapping_in_openssl() { sed -i 's/\(.*\)BIO_get_cipher_ctx(benc, \&ctx);/\1BIO_get_cipher_ctx(benc, \&ctx);\n\1EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);/g' ./openssl-${OPENSSL_SOURCE_VERSION}/apps/enc.c; };
+change_to_home_build_openssl_version_dir() { cd $HOME/build/openssl-${OPENSSL_SOURCE_VERSION}; };
+config_openssl_version_build() { ./config --prefix=$HOME/local --openssldir=$HOME/local/ssl; };
+make_j_grep_openssl_version_build() { make -j$(grep -c ^processor /proc/cpuinfo); };
+make_install_openssl_version_build() { make install; };
+change_to_home_local_bin_dir() { cd $HOME/local/bin/; };
+create_openssl_version_run_script() { printf '%s\n' '#!/bin/sh' 'export LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh; };
+protect_openssl_version_run_script() { chmod 755 ./openssl.sh; };
+create_openssl_version_alias() { alias OPENSSL_V111="$HOME/local/bin/openssl.sh"; };
+# Generation of PGP Data to begin here

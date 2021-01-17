@@ -36,8 +36,12 @@ run_install() {
   Already installed."; \
   return 0;             # Go no further, already installed.
 
-  create_instructions $OUTPUT_MODE # Call install_lib method to load names of functions into pipe.
+  create_instructions $OUTPUT_MODE # Call install_lib method to create pipe where function names are stored.
   [ ! $? -eq 0 ] && echo "ERROR: Failed to call create_instructions"; \
+  return 1;             # Go no further, critical error.
+
+  update_instructions   # Call install_lib method to store function names in pipe.
+  [ ! $? -eq 0 ] && echo "ERROR: Failed to call update_instructions"; \
   return 1;             # Go no further, critical error.
 
   export INSTALL_FUNC_NAME= # Environment variable to which read instruction is assigned.
