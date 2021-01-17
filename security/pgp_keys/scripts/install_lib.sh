@@ -129,4 +129,12 @@ change_to_home_local_bin_dir() { cd $HOME/local/bin/; };
 create_openssl_version_run_script() { printf '%s\n' '#!/bin/sh' 'export LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh; };
 protect_openssl_version_run_script() { chmod 755 ./openssl.sh; };
 create_openssl_version_alias() { alias OPENSSL_V111="$HOME/local/bin/openssl.sh"; };
-# Generation of PGP Data to begin here
+# Generate phrases - write to pipe
+# Generate random payload - write to pipe
+# Generate random ephemeral - write to pipe
+# Generate private key - write to pipe
+# Generate public key - write to pipe
+# Wrap phrases in payload (pgp_data.enc) - persist on disk
+# Wrap payload in ephemeral - write to pipe
+# Wrap ephemeral in public key - write to pipe
+# Print ephemeral* and payload* to file (rsa_aes_wrapped) - perist on disk
