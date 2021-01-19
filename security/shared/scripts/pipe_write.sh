@@ -10,16 +10,65 @@
 
 # pipe_write --pipe=/desired_pipe_name --head=desired_data_name [--crud=create | --crud=update] --data="<data separated by spaces>"
 
-function pipe_crud {
-  # Declare local vars.
+pipe_crud() {
+
   local PIPE=
   local HEAD=
   local CRUD=
   local DATA=
 
-  # Check incoming arguments.
-  if [[ "${PIPE}" == "" || "${HEAD}" == "" || "${CRUD}" == "" || "${DATA}" == "" ]]
-  then
+  # Parse our arguments.
+  for OPT in "$@"
+  do
+    [[ "$(echo -n ${OPT} | grep -e --pipe=)" != "" ]] && PIPE=$(echo -n $OPT | sed 's/--pipe=\(.*\)/\1/')
+    [[ "$(echo -n ${OPT} | grep -e --head=)" != "" ]] && HEAD=$(echo -n $OPT | sed 's/--head=\(.*\)/\1/')
+    [[ "$(echo -n ${OPT} | grep -e --crud=)" != "" ]] && CRUD=$(echo -n $OPT | sed 's/--crud=\(.*\)/\1/')
+    [[ "$(echo -n ${OPT} | grep -e --data=)" != "" ]] && DATA="$(echo -n ${OPT} | sed 's/--data=\"\(.*\)\"/\1/')"
+  done
+
+
+  # If any arguments failed to contain data, send usage info and return 1.
+  [[ "${PIPE}" == "" || "${HEAD}" == "" || "${CRUD}" == "" || "${DATA}" == "" ]] && usage
+
+  case $CRUD in
+    create)
+      if [ ! -p $PIPE ] # Nothing exists yet.
+      then
+        # The pipe does not yet exist, so create it.
+        mkfifo $PIPE
+
+        # Create the document whose id is given in HEAD and insert its DATA.
+        # PIPE must hold "EOP" and a single space as its last two lines.
+        printf '%s\n' "BOF ${HEAD}" $DATA 'EOF' 'EOP' ' ' > $PIPE
+      else
+        # The pipe already exists.
+
+        # Check for the existence of a document in PIPE whose id matches HEAD.
+        while IFS= read -r -u 7 line
+        do
+
+        done
+
+        # If a matching document does not already exist, insert one.
+        # Otherwise, silently fail rather than overwrite.
+      fi
+      ;;
+    read)
+      # Read code here
+      ;;
+    update)
+      # Update code here
+      ;;
+    delete)
+      # Delete code here
+      ;;
+    *)
+      # Handle bad argument here.
+      usage
+      ;;
+  esac
+
+  usage() {
     echo "Bad Argument(s)!"
     echo "Usage: $0 --pipe=<pipe_path> --head=<document_id> --crud=<crud_action> --data=\"<data=here>\""
     echo "" # Breathing space #################################################################################
@@ -46,53 +95,7 @@ function pipe_crud {
     echo "                                          use --data=\"--\"."
     echo "" # Trailing white space ############################################################################
     return 1;
-  fi
-
-  # Parse our arguments.
-  for OPT in "$@"
-  do
-    [[ "$(echo -n ${OPT} | grep -e --pipe=)" != "" ]] && PIPE=$(echo -n $OPT | sed 's/--pipe=\(.*\)/\1/')
-    [[ "$(echo -n ${OPT} | grep -e --head=)" != "" ]] && HEAD=$(echo -n $OPT | sed 's/--head=\(.*\)/\1/')
-    [[ "$(echo -n ${OPT} | grep -e --crud=)" != "" ]] && CRUD=$(echo -n $OPT | sed 's/--crud=\(.*\)/\1/')
-    [[ "$(echo -n ${OPT} | grep -e --data=)" != "" ]] && DATA="$(echo -n ${OPT} | sed 's/--data=\"\(.*\)\"/\1/')"
-  done
-
-  case $CRUD in
-    create)
-      if [ ! -p $PIPE ] # Nothing exists.
-      then
-        # The pipe does not yet exist, so create it.
-        mkfifo $PIPE
-
-        # Make the pipe non-blocking.
-        exec 7<> $PIPE
-
-        # Unlink the pipe to complete the non-blocking behavior.
-        unlink $PIPE
-
-        # Create the document and its data; since only one document in pipe, append EOF at the end.
-        printf '%s\n' "BOF ${HEAD}" $DATA "EOF" > $PIPE
-      else
-        # if the head does not yet exist in pipe, create it and place the data into it.
-
-      fi
-      ;;
-    read)
-      # Read code here
-      ;;
-    update)
-      # Update code here
-      ;;
-    delete)
-      # Delete code here
-      ;;
-    *)
-      # Handle bad argument here.
-      ;;
-  esac
-
-  [ ! -p $PIPE ] && mkfifo $PIPE
-
+  }
 }
 
 # Old version below * * * * *

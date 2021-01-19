@@ -62,10 +62,13 @@ create_instructions() {
 
   unlink /tmp/instructs 1>&4
   echo "Unlinked the unblocked pipe." 1>&5
+
+  $(echo ' ' 1>&3) 1>&4
+  echo "Inserted blank space into unbloked pipe." 1>&5
 }
 
 read_instruction() {
-  read -u3 INSTALL_FUNC_NAME
+  read -u 3 INSTALL_FUNC_NAME
 }
 
 update_instructions() {

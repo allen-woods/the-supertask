@@ -47,13 +47,13 @@ run_install() {
 
   export INSTALL_FUNC_NAME= # Environment variable to which read instruction is assigned.
 
-  while [ "${INSTALL_FUNC_NAME}" != "EOF" ]
+  while [ "${INSTALL_FUNC_NAME}" != "EOP" ] #       # Loop as long as we haven't reached EOP. (End of Pipe)
   do
     read_instruction    # Read next instruction.
     [ ! $? -eq 0 ] && echo "ERROR: failed to call read_instruction"; \
     return 1;           # Go no further, critical error.
 
-    [ "${INSTALL_FUNC_NAME}" == "EOF" ] && continue # Conditionally halt if "EOF" found.
+    [ "${INSTALL_FUNC_NAME}" == "EOP" ] && continue # Conditionally halt if "EOP" found.
 
     ( $INSTALL_FUNC_NAME & )  # Run in background so we can grab the PID and wait on it.
     PROC_ID=$( \
