@@ -2,15 +2,12 @@
 
 pipe_crud()
 ( #             # Run in a subshell to prevent leaks.
-
   local PIPE=   #             # The name of the pipe.
   local DOC_ID= #             # The descriptor of the current document.
   local CRUD=   #             # The action to perform on the current document.
   local DATA=   #             # The variables container in the current document.
   local HOOK=   #             # Optional behavior to perform after CRUD action(s).
-
   local SYNC=   #             # A variable used as a data store between CRUD actions.
-
   for OPT in "$@"             # Parse our arguments.
   do
     local illegal_arg=1       # Presume there is an illegal argument.
@@ -19,20 +16,17 @@ pipe_crud()
     [[ "$(echo -n ${OPT} | grep -e --crud=)" != "" ]] && CRUD=$(echo -n $OPT | sed 's/--crud=\(.*\)/\1/') && illegal_arg=0
     [[ "$(echo -n ${OPT} | grep -e --data=)" != "" ]] && DATA="$(echo -n ${OPT} | sed 's/--data=\"\(.*\)\"/\1/')" && illegal_arg=0
     [[ "$(echo -n ${OPT} | grep -e --hook=)" != "" ]] && HOOK="$(echo -n ${OPT} | sed 's/--hook=\(.*\)/\1/')" && illegal_arg=0
-
     if [ ! $illegal_arg -eq 0 ]
     then
       usage     #             # If we found an illegal argument, show usage and return 1.
       return 1
     fi
   done
-
   if [ -z $PIPE ] || [ -z $DOC_ID ] || [ -z $CRUD ] || [ -z $DATA ]
   then
     usage       #             # If we didn't receive all required arguments, show usage and return 1.
     return 1
   fi
-
   case $CRUD in
     create) ################################################################# CRUD Action: Create
       if [ ! -p $PIPE ] # no pipe
