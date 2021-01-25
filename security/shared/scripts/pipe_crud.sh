@@ -140,7 +140,8 @@ pipe_crud()
               for read_var_name in $DATA # look for data
               do
                 local read_req_data_match=$(echo -n "${read_doc_contents}" | sed "s/\(${read_var_name}\)=\(.*\),/\1=\2/")
-                if [ ! -z read_req_data_match ] then
+                if [ ! -z read_req_data_match ]
+                then
                   [ -z read_req_data ] && \
                   read_req_data="${read_req_data_match}," || \
                   read_req_data="${read_req_data} ${read_req_data_match},"
@@ -232,6 +233,7 @@ pipe_crud()
             fi
           fi
         fi
+      fi
       ;;
     delete) ################################################################# CRUD Action: Delete
       if [ ! -p $PIPE ] # no pipe
@@ -306,22 +308,6 @@ pipe_crud()
       return 1
       ;;
   esac
-
-  handle_no_pipe_error() {
-    if [ ! -p $PIPE ]
-    then
-      echo "ERROR: Pipe ${PIPE} does not exist."
-      return 1
-    fi
-  }
-
-  handle_no_doc_error() {
-    if [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ]
-    then
-      echo "ERROR: Document ID ${DOC_ID} not found."
-      return 1
-    fi
-  }
 
   read_lines_into_sync() {
     while IFS= read -r LINE
