@@ -122,10 +122,10 @@ pipe_crud()
             echo "ERROR: Document ID ${DOC_ID} not found." # error out
             return 1
           else # yes doc found
-            local doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\)\(.*\)\(EOF=${DOC_ID}\)/\1 \2 \3/")"
+            local read_doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\)\(.*\)\(EOF=${DOC_ID}\)/\1 \2 \3/")"
             if [ "${DATA}" == "--" ] # no data
             then
-              printf '%s\n' $doc_contents # print entire doc
+              printf '%s\n' $read_doc_contents # print entire doc
 
               # TODO: conditionally restore based on HOOK
 
@@ -139,7 +139,7 @@ pipe_crud()
               local read_req_data_missing=1
               for read_var_name in $DATA # look for data
               do
-                local read_req_data_match=$(echo -n "${doc_contents}" | sed "s/\(${read_var_name}\)=\(.*\),/\1=\2/")
+                local read_req_data_match=$(echo -n "${read_doc_contents}" | sed "s/\(${read_var_name}\)=\(.*\),/\1=\2/")
                 if [ ! -z read_req_data_match ] then
                   [ -z read_req_data ] && \
                   read_req_data="${read_req_data_match}," || \
@@ -168,46 +168,70 @@ pipe_crud()
       fi
       ;;
     update) ################################################################# CRUD Action: Update
-      # Focusing on writing this section, code subject to heavy refactoring.
-      handle_no_pipe_error
-      [ ! $? -eq 0 ] && return 1
-
-      read_lines_into_sync
-
-      if [ "$(echo -n \"${SYNC}\" | grep -e ${DOC_ID})" != "" ]             # If there is a match
+      if [ ! -p $PIPE ] # no pipe
       then
-        local HEAD=$(echo -n "${SYNC}" | sed 's/\(.*\)\(BOF='"${DOC_ID}"'\)\(.*\)\(EOF='"${DOC_ID}"'\)\(.*\)/\1\2/')
-        local BODY=$(echo -n "${SYNC}" | sed 's/\(.*\)\(BOF='"${DOC_ID}"'\)\(.*\)\(EOF='"${DOC_ID}"'\)\(.*\)/\3/')
-        local TAIL=$(echo -n "${SYNC}" | sed 's/\(.*\)\(BOF='"${DOC_ID}"'\)\(.*\)\(EOF='"${DOC_ID}"'\)\(.*\)/\4\5/')
-
-        for item in $DATA
-        do
-          local ITEM_NEEDS_APPENDING=1           #                          # Presume the item needs to be appended
-          local var_name=$(echo -n $item | sed 's/\(.*\)=\(.*\),/\1/')      # Parse the variable name from `item`
-          local val_data=$(echo -n $item | sed 's/\(.*\)=\(.*\),/\2/')      # Parse the value data from `item`
-
-          # On the line below, we first look for a match from `var_name`, then replace its val_data.
-          # Lastly, we tell the script the variable does not to be appended to this document.
-          [[ "$(echo -n \"${BODY}\" | grep -e ${var_name})" != "" ]] && \
-          BODY=$(echo -n "${BODY}" | sed 's/\(.*\)\('"${var_name}"'\)=\(.*\),\(.*\)/\1\2='"${val_data}"',\4') && \
-          ITEM_NEEDS_APPENDING=0
-
-          if [ ! $ITEM_NEEDS_APPENDING -eq 0 ]
+        echo "ERROR: Pipe ${PIPE} doesn't exist." # error out
+        return 1
+      else # yes pipe
+        if [ "${DOC_ID}" == "--" ] # no doc id
+        then
+          echo "ERROR: Must provide name of document." # error out
+          return 1
+        else # yes doc id - (could be iterator)
+          read_lines_into_sync
+          if [ -z $(echo -n \"${SYNC}\" | grep -e ${DOC_ID}) ] # no doc found
           then
-            BODY="${BODY} ${item}" #             # Append any new variables we find, along with their values.
-          fi
-        done
+            # TODO: conditionally restore based on HOOK
 
-        SYNC="${HEAD} ${BODY} ${TAIL}"
-        ( printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE & )
-        SYNC=
-      else
-        ( \
-          printf '%s\n' $SYNC "BOF=${DOC_ID}" $DATA "EOF=${DOC_ID}" \
-          'EOP' ' ' >> $PIPE & \
-        )
-        SYNC=
-      fi
+            ( \
+              printf '%s\n' $SYNC \
+              'EOP' ' ' >> $PIPE & \
+            ) # restore contents of pipe before return 1
+            SYNC= # empty sync when finished
+            echo "ERROR: Document ${DOC_ID} does not exist or was deleted." # error out
+            return 1
+          else # yes doc found
+            local update_doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 \2 \3/")"
+            if [ "${DATA}" == "--" ] # no data
+            then
+              # TODO: conditionally restore based on HOOK
+
+              ( \
+                printf '%s\n' $SYNC \
+                'EOP' ' ' >> $PIPE & \
+              ) # restore contents of pipe before return 1
+              SYNC= # empty sync when finished
+              echo "ERROR: Must provide document data." # error out
+              return 1
+            else # yes data - (could be iterator)
+              local update_req_data=
+              # local update_req_data_missing=1
+              for update_var_val_pair in $DATA # look for data
+              do
+                local update_var_name=$(echo -n $update_var_val_pair | sed 's/\(.*\)=\(.*\),/\1/')
+                local update_val_data="$(echo -n $update_var_val_pair | sed 's/\(.*\)=\(.*\),/\2/')"
+                local update_req_data_match=$(echo -n "${update_doc_contents}" | sed "s/\(${update_var_name}\)=\(.*\),/\1=${update_val_data}/")
+                if [ -z update_req_data_match ] then # no data found
+                  [ -z update_req_data ] && \
+                  update_req_data="${update_var_name}=${update_val_data}," || \
+                  update_req_data="${update_req_data} ${update_var_name}=${update_val_data}," # append new data to doc
+                else # yes data found
+                  [ -z update_req_data ] && \
+                  update_req_data="${update_req_data_match}," || \
+                  update_req_data="${update_req_data} ${update_req_data_match}," # update only data
+                fi
+              done
+              SYNC="$(echo -n ${SYNC} | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 ${update_req_data} \3/")"
+              # TODO: conditionally restore based on HOOK
+
+              ( \
+                printf '%s\n' $SYNC \
+                'EOP' ' ' >> $PIPE & \
+              ) # restore contents of pipe
+              SYNC= # empty sync when finished
+            fi
+          fi
+        fi
       ;;
     delete) ################################################################# CRUD Action: Delete
       if [ ! -p $PIPE ] # no pipe
