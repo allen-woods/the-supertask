@@ -348,7 +348,7 @@ pipe_crud()
     echo "" # Breathing space #################################################################################
     echo "  --hook=<option>        : An optional behavior to perform along with CRUD action(s), as follows:"
     echo "" # Breathing space #################################################################################
-    echo "                           TBD."
+    echo "                           This feature is not yet implemented."
     echo "" # Trailing white space ############################################################################
   }
 )
