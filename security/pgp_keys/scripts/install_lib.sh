@@ -19,7 +19,7 @@
 # * * * BEGIN STANDARDIZED METHODS  * * * * * * * * * * * * * *
 
 check_skip_install() {
-  # Steps required to confirm already installed go here.
+  # TODO: Steps required to confirm already installed go here.
 }
 
 create_instructions() {
@@ -72,7 +72,8 @@ read_instruction() {
 }
 
 update_instructions() {
-  printf '%s\n' "$@" 1>&3
+  # TODO: Place list of function names in this library inside printf call.
+  # printf '%s\n' "$@" 1>&3
 }
 
 delete_instructions() {
@@ -175,11 +176,11 @@ download_openssl_source_version() {
   wget -c https://openssl.org/source/openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
   echo -e "" 1>&5
 }
-extract_openssl_source_version() {
+extract_openssl_source_version_tar() {
   tar -xzf openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
   echo -e "" 1>&5
 }
-remove_openssl_source_archive() {
+remove_openssl_source_version_tar() {
   rm -f openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
   echo -e "" 1>&5
 }
