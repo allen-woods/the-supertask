@@ -1,15 +1,15 @@
 #!/bin/sh
 
 # Name: run_install
-# Desc: A method that executes a sequence of installation commands as defined by the `create_instructions`
-#       method found in /etc/profile.d/install_lib.sh
+# Desc: A method that executes a sequence of installation commands, as defined by the `update_instructions`
+#       method found in /etc/profile.d/install_lib.sh, in a manner that prevents race conditions.
 
 run_install() {
   local OPT=$1
   local OUTPUT_MODE=1   # Default setting, status messages displayed only.
   local PROC_ID=        # Variable for capturing PID of installation function(s).
 
-  case $OPT in      # Check incoming arguments.
+  case $OPT in          # Check incoming arguments.
     -Q|--quiet)
       OUTPUT_MODE=0     # Strict silent mode, nothing displayed.
       ;;
@@ -67,14 +67,11 @@ run_install() {
         echo "ERROR: failed to call read_instruction"
         return 1        # Go no further, critical error.
       fi
-
       if [ "${INSTALL_FUNC_NAME}" == "EOP" ]
       then
-        continue # Conditionally halt if "EOP" found.
+        continue        # Conditionally halt if "EOP" found.
       fi
-
-      # ( $INSTALL_FUNC_NAME & ) # Run in background so we can grab the PID and wait on it.
-      $INSTALL_FUNC_NAME
+      $INSTALL_FUNC_NAME # Execute the instruction
       PROC_ID=$( \
         ps -o pid,args | \
         grep -e ${INSTALL_FUNC_NAME} | \
@@ -82,16 +79,16 @@ run_install() {
         awk '{print $1}' | \
         sed 's/PID//' | \
         head -n1 \
-      ) #                 # Extract PID of background process.
+      ) #               # Extract PID of background process.
       if [ ! -z "${PROC_ID}" ]
       then
-        wait $PROC_ID # Wait for the process to finish (if there is one).
+        wait $PROC_ID   # Wait for the process to finish (if there is one).
         sleep 0.25s
       fi
       if [ ! $? -eq 0 ]
       then
         echo "ERROR: ${INSTALL_FUNC_NAME} (or wait ${PROC_ID}) encountered a problem."
-        return 1          # Go no further, unknown or unexpected error.
+        return 1        # Go no further, unknown or unexpected error.
       fi
     fi
   done

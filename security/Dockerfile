@@ -56,8 +56,7 @@ COPY --chown=root:root ["./shared/scripts/random_string.sh",                "/et
 # COPY --chown=root:root ["./pgp_keys/scripts/pgp_init_vault.sh",             "/etc/profile.d/"]
 # COPY --chown=root:root ["./pgp_keys/scripts/pgp_pass_keys_into_vault.sh",   "/etc/profile.d/"]
 
-RUN ["/bin/sh", "-c", ". /etc/profile && run_install --verbose"]
-CMD ["/bin/sh"]
+RUN ["/bin/sh", "-c", ". /etc/profile && run_install --status"]
 
 # RUN ["/bin/sh", "-c", ". /etc/profile && addPGPPackages && generatePGPData"]
 # COPY --chown=root:root ./scripts/pipeWrite.sh /etc/profile.d/
