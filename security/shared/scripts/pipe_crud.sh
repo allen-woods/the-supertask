@@ -176,6 +176,7 @@ pipe_crud()
           read_lines_into_sync
           if [ -z $(echo -n \"${SYNC}\" | grep -e ${DOC_ID}) ] # no doc found
           then
+
             # TODO: conditionally restore based on HOOK
 
             ( \
@@ -189,6 +190,7 @@ pipe_crud()
             local update_doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 \2 \3/")"
             if [ "${DATA}" == "--" ] # no data
             then
+
               # TODO: conditionally restore based on HOOK
 
               ( \
@@ -206,7 +208,8 @@ pipe_crud()
                 local update_var_name=$(echo -n $update_var_val_pair | sed 's/\(.*\)=\(.*\),/\1/')
                 local update_val_data="$(echo -n $update_var_val_pair | sed 's/\(.*\)=\(.*\),/\2/')"
                 local update_req_data_match=$(echo -n "${update_doc_contents}" | sed "s/\(${update_var_name}\)=\(.*\),/\1=${update_val_data}/")
-                if [ -z update_req_data_match ] then # no data found
+                if [ -z update_req_data_match ] # no data found
+                then
                   [ -z update_req_data ] && \
                   update_req_data="${update_var_name}=${update_val_data}," || \
                   update_req_data="${update_req_data} ${update_var_name}=${update_val_data}," # append new data to doc
@@ -217,6 +220,7 @@ pipe_crud()
                 fi
               done
               SYNC="$(echo -n ${SYNC} | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 ${update_req_data} \3/")"
+
               # TODO: conditionally restore based on HOOK
 
               ( \
@@ -266,7 +270,8 @@ pipe_crud()
               for delete_var_name in $DATA # look for data
               do
                 local delete_req_data_match=$(echo -n "${doc_contents}" | sed "s/\(${delete_var_name}\)=\(.*\),/\1=\2/")
-                if [ ! -z delete_req_data_match ] then
+                if [ ! -z delete_req_data_match ]
+                then
                   [ -z delete_req_data ] && \
                   delete_req_data="${delete_req_data_match}," || \
                   delete_req_data="${delete_req_data} ${delete_req_data_match},"

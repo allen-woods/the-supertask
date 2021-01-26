@@ -20,6 +20,7 @@
 
 check_skip_install() {
   # TODO: Steps required to confirm already installed go here.
+  echo -n "OK"
 }
 
 create_instructions() {
@@ -64,16 +65,48 @@ create_instructions() {
   echo "Unlinked the unblocked pipe." 1>&5
 
   $(echo ' ' 1>&3) 1>&4
-  echo "Inserted blank space into unbloked pipe." 1>&5
+  echo "Inserted blank space into unblocked pipe." 1>&5
 }
 
 read_instruction() {
   read -u 3 INSTALL_FUNC_NAME
+
 }
 
 update_instructions() {
-  # TODO: Place list of function names in this library inside printf call.
-  # printf '%s\n' "$@" 1>&3
+  printf '%s\n' \
+  patch_etc_apk_repositories \
+  apk_update \
+  apk_add_busybox_static \
+  apk_add_apk_tools_static \
+  apk_static_upgrade_simulate \
+  apk_static_upgrade \
+  apk_static_add_build_base \
+  apk_static_add_gnupg \
+  apk_static_add_linux_headers \
+  apk_static_add_perl \
+  create_home_build_dir \
+  create_home_local_ssl_dir \
+  export_openssl_source_version_wget \
+  openssl_source_version_grep_version_str \
+  openssl_source_version_grep_version_num \
+  openssl_source_version_head_first_result \
+  openssl_source_version_sed_remove_tar \
+  change_to_home_build_dir \
+  download_openssl_source_version \
+  extract_openssl_source_version_tar \
+  remove_openssl_source_version_tar \
+  enable_aes_wrapping_in_openssl \
+  change_to_home_build_openssl_version_dir \
+  config_openssl_version_build \
+  make_j_grep_openssl_version_build \
+  make_install_openssl_version_build \
+  change_to_home_local_bin_dir \
+  create_openssl_version_run_script \
+  protect_openssl_version_run_script \
+  create_openssl_version_alias \
+  EOP \
+  ' ' 1>&3
 }
 
 delete_instructions() {
@@ -100,125 +133,151 @@ pretty_print() {
     ;;
     *)
     # Do nothing
+    ;;
+  esac
 }
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
 patch_etc_apk_repositories() {
   sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
-  echo -e "" 1>&5 # These are status messages that have fg/bg commands (colors).
+  echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
 }
 apk_update() {
   apk update 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mApk Update\033[0m" 1>&5
 }
 apk_add_busybox_static() {
   apk add busybox-static 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
 }
 apk_add_apk_tools_static() {
   apk add apk-tools-static 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mAdded APK Static Tools\033[0m" 1>&5
 }
 apk_static_upgrade_simulate() {
   apk.static upgrade --no-self-upgrade --available --simulate 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
 }
 apk_static_upgrade() {
   apk.static upgrade --no-self-upgrade --available 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
 }
 apk_static_add_build_base() {
   apk.static add build-base 1>&4
   echo -e "" 1>&5
 }
+apk_static_add_gcc() {
+  # Unused, included for completeness.
+  apk.static add gcc 1>&4
+  echo -e "\033[7;33mAdded GCC\033[0m" 1>&5
+}
 apk_static_add_gnupg() {
   apk.static add gnupg 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mAdded GnuPG\033[0m" 1>&5
+}
+apk_static_add_linux_headers() {
+  apk.static add linux-headers 1>&4
+  echo -e "\033[7;33mAdded Linux Headers\033[0m" 1>&5
+}
+apk_static_add_make() {
+  # Unused, included for completeness.
+  apk.static add make 1>&4
+  echo -e "\033[7;33mAdded Make\033[0m" a>&5
 }
 apk_static_add_perl() {
   apk.static add perl 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mAdded Perl\033[0m" 1>&5
 }
 create_home_build_dir() {
   mkdir $HOME/build 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mCreated ${HOME}/build directory\033[0m" 1>&5
 }
 create_home_local_ssl_dir() {
   mkdir -p $HOME/local/ssl 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mCreated ${HOME}/local/ssl directory\033[0m" 1>&5
 }
 export_openssl_source_version_wget() {
   export OPENSSL_SOURCE_VERSION="$(wget -c https://www.openssl.org/source/index.html -O -)" 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mSaved OpenSSL.org HTML File to Variable Using WGET\033[0m" 1>&5
 }
 openssl_source_version_grep_version_str() {
   OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | grep -o '\"openssl-.*.tar.gz\"')" 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mParsed OpenSSL Version Strings from HTML Syntax\033[0m" 1>&5
 }
 openssl_source_version_grep_version_num() {
   OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}.tar')" 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mParsed OpenSSL Version Release Numbers from Strings\033[0m" 1>&5
 }
 openssl_source_version_head_first_result() {
   OPENSSL_SOURCE_VERSION="$(printf '%s\n' "${OPENSSL_SOURCE_VERSION}" | head -n1)" 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mParsed Latest Stable Version of OpenSSL from Release Numbers\033[0m" 1>&5
 }
 openssl_source_version_sed_remove_tar() {
   OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | sed 's/.tar$//')" 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mRemoved Unwanted Trailing Data from Latest Stable\033[0m" 1>&5
 }
 change_to_home_build_dir() {
   cd $HOME/build 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mChanged Current Directory to ${HOME}/build\033[0m" 1>&5
 }
 download_openssl_source_version() {
   wget -c https://openssl.org/source/openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mDownloaded Source TAR for Latest Stable OpenSSL\033[0m" 1>&5
 }
 extract_openssl_source_version_tar() {
   tar -xzf openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mExtracted Source TAR for Latest Stable OpenSSL\033[0m" 1>&5
 }
 remove_openssl_source_version_tar() {
   rm -f openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mForced Removal of Source TAR File\033[0m" 1>&5
 }
 enable_aes_wrapping_in_openssl() {
   sed -i 's/\(.*\)BIO_get_cipher_ctx(benc, \&ctx);/\1BIO_get_cipher_ctx(benc, \&ctx);\n\1EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);/g' ./openssl-${OPENSSL_SOURCE_VERSION}/apps/enc.c 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mPatched OpenSSL to Enable AES Wrapping\033[0m" 1>&5
 }
 change_to_home_build_openssl_version_dir() {
   cd $HOME/build/openssl-${OPENSSL_SOURCE_VERSION} 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mChanged Current Directory to ${HOME}/build/openssl-${OPENSSL_SOURCE_VERSION}\033[0m" 1>&5
 }
 config_openssl_version_build() {
   ./config --prefix=$HOME/local --openssldir=$HOME/local/ssl 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mConfigured Build of OpenSSL\033[0m" 1>&5
 }
 make_j_grep_openssl_version_build() {
   make -j$(grep -c ^processor /proc/cpuinfo) 1>&4
-  echo -e "" 1>&5
+  echo -e "Ran Make With -j Option" 1>&5
+}
+make_openssl_version_build() {
+  # Unused, included for completeness.
+  make 1>&4
+  echo -e "\033[7;33mRan Make With No Arguments\033[0m" 1>&5
+}
+make_test_openssl_version_build() {
+  # Unused, included for completeness.
+  make test 1>&4
+  echo -e "\033[7;33mRan Make Test\033[0m" 1>&5
 }
 make_install_openssl_version_build() {
   make install 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mRan Make Install to Build OpenSSL\033[0m" 1>&5
 }
 change_to_home_local_bin_dir() {
   cd $HOME/local/bin/ 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mChanged Current Directory to ${HOME}/local/bin\033[0m" 1>&5
 }
 create_openssl_version_run_script() {
   printf '%s\n' '#!/bin/sh' 'export LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mCreated OpenSSL Run Script\033[0m" 1>&5
 }
 protect_openssl_version_run_script() {
   chmod 755 ./openssl.sh 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mProtected Run Script Using CHMOD\033[0m" 1>&5
 }
 create_openssl_version_alias() {
   alias OPENSSL_V111="$HOME/local/bin/openssl.sh" 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mCreated Alias for AES Wrap Enabled OpenSSL\033[0m" 1>&5
 }
 # Generate phrases - write to pipe
 # Generate random payload - write to pipe
