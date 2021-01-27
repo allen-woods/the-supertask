@@ -168,7 +168,7 @@ apk_static_upgrade() {
 }
 apk_static_add_build_base() {
   apk.static add build-base 1>&4
-  echo -e "" 1>&5
+  echo -e "\033[7;33mAdded Build Base\033[0m" 1>&5
 }
 apk_static_add_gcc() {
   # Unused, included for completeness.
