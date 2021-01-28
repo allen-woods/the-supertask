@@ -413,3 +413,25 @@ generate_tls_intermediate_certs_cacert_pem() {
 unset_environment_variables() {
   # TODO: Unset all env vars used.
 }
+
+# # Certificate bundle.
+# #
+# # NOTE:
+# # These functions will not be used per Vault's advice to only
+# # provide the intermediate cert to Vault's config, not the root
+# # cert.
+# #
+# # This means we can't pass a bundle to Vault safely.
+# # Preserved here for completeness only.
+# #
+# cmd_25() {
+#   cat \
+#   /tls/intermediate/certs/intermediate.cacert.pem \
+#   /tls/root/certs/cacert.pem > tls/intermediate/certs/ca-chain-bundle.cert.pem
+# }
+# cmd_26() {
+#   openssl verify \
+#   -CAfile \
+#   /tls/root/certs/cacert.pem \
+#   /tls/intermediate/certs/ca-chain-bundle.cert.pem
+# }

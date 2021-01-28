@@ -307,3 +307,67 @@ compile_dieharder_using_make_install() {
   make install 1>&4
   echo -e "\033[7;33mRan Make to Build Installation of DieHarder Test Suite\033[0m" 1>&5
 }
+# Begin: Run ENT
+change_dir_to_tmp_test() {
+  cd /tmp/test 1>&4
+  echo -e "\033[7;33mChanged Current Directory to /tmp/test\033[0m" 1>&5
+}
+generate_urandom_file_using_dd() {
+  dd if=/dev/urandom of=/tmp/test/urandomfile bs=1 count=16384 1>&4
+  echo -e "\033[7;33mGenerated Urandom File Using DD\033[0m" 1>&5
+}
+pass_urandom_file_to_ent_no_args() {
+  ./ent /tmp/test/urandomfile 1>&4
+  echo -e "\033[7;33mPassed Urandom File to ENT Without Arguments\033[0m" 1>&5
+}
+pass_urandom_file_to_ent_with_args() {
+  ./ent -b -c /tmp/test/urandomfile 1>&4
+  echo -e "\033[7;33mPassed Urandom File to ENT With Arguments -b -c\033[0m" 1>&5
+}
+display_available_random_entropy() {
+  local AMOUNT=$(cat /proc/sys/kernel/random/entropy_avail)
+  local TOTAL=$(cat /proc/sys/kernal/random/poolsize)
+  local RATIO=$(($AMOUNT / $TOTAL))
+  local HIGH_RISK=$((1 / 3))
+  local MED_RISK=$((2 / 3))
+  local ALERT_LEVEL=
+  if [ $RATIO -le $HIGH_RISK ]
+  then
+    ALERT_LEVEL=31
+  elif [ $RATIO -gt $HIGH_RISK ] && [ $RATIO -le $MED_RISK ]
+  then
+    ALERT_LEVEL=33
+  elif [ $RATIO -gt $MED_RISK ]
+  then
+    ALERT_LEVEL=32
+  fi
+  echo -e "\033[7;${ALERT_LEVEL}mRandom Entropy Avail: ${AMOUNT}\033[0m" 1>&5
+  echo -e "\033[7;${ALERT_LEVEL}mRandom Entropy Total: ${TOTAL}\033[0m" 1>&5
+}
+# End: Run ENT
+
+# Begin: Run RNG-TEST
+# change_dir_to_tmp_test
+pass_dev_random_to_rngtest() {
+  cat /dev/random | rngtest -c 100000 1>&4
+  echo -e "\033[7;33mPassed Dev Random to RNG-TEST\033[0m" 1>&5
+}
+rim_raf_tmp_test_dir() {
+  rm -rf /tmp/test 1>&4
+  echo -e "\033[7;33mRecursively Deleted /tmp/test Diretory\033[0m" 1>&5
+}
+# display_available_random_entropy
+# End: Run RNG-TEST
+
+# Begin: Run DIEHARDER
+change_dir_to_slash() {
+  cd / 1>&4
+  echo -e "\033[7;33mChanged Current Directory to /\033[0m"
+}
+run_all_dieharder_tests() {
+  echo -e "\033[7;33mPreparing to Run DieHarder. Please Wait..." 1>&5
+  dieharder - a 1>&4
+  echo -e "\033[7;33mSuessfully Ran Entire DieHarder Test Suite\033[0m" 1>&5
+}
+# display_available_random_entropy
+# End: Run DIEHARDER
