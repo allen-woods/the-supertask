@@ -123,6 +123,7 @@ update_instructions() {
   rim_raf_tmp_test_dir \
   display_available_random_entropy \
   change_dir_to_slash \
+  change_dir_to_dieharder_src \
   run_all_dieharder_tests \
   display_available_random_entropy \
   EOP \
@@ -293,7 +294,7 @@ insert_new_line_262_libdieharder_h() {
   echo -e "\033[7;33mInserted New Line 262 into $(pwd)/include/dieharder/libdieharder.h\033[0m" 1>&5
 }
 compile_dieharder_using_make_install() {
-  echo -e "\033[7;33mCompiling DieHarder Test Suite. Please Wait..." 1>&5
+  echo -e "\033[7;33mCompiling DieHarder Test Suite. Please Wait...\033[0m" 1>&5
   make install 1>&4
   echo -e "\033[7;33mRan Make to Build Installation of DieHarder Test Suite\033[0m" 1>&5
 }
@@ -315,18 +316,17 @@ pass_urandom_file_to_ent_with_args() {
 }
 display_available_random_entropy() {
   local AMOUNT=$(cat /proc/sys/kernel/random/entropy_avail)
-  local TOTAL=$(cat /proc/sys/kernal/random/poolsize)
-  local RATIO=$(($AMOUNT / $TOTAL))
-  local HIGH_RISK=$((1 / 3))
-  local MED_RISK=$((2 / 3))
+  local TOTAL=$(cat /proc/sys/kernel/random/poolsize)
+  local HIGH_RISK=1365
+  local MED_RISK=2731
   local ALERT_LEVEL=
-  if [ $RATIO -le $HIGH_RISK ]
+  if [ $AMOUNT -le $HIGH_RISK ]
   then
     ALERT_LEVEL=31
-  elif [ $RATIO -gt $HIGH_RISK ] && [ $RATIO -le $MED_RISK ]
+  elif [ $AMOUNT -gt $HIGH_RISK ] && [ $AMOUNT -le $MED_RISK ]
   then
     ALERT_LEVEL=33
-  elif [ $RATIO -gt $MED_RISK ]
+  elif [ $AMOUNT -gt $MED_RISK ]
   then
     ALERT_LEVEL=32
   fi
@@ -334,6 +334,7 @@ display_available_random_entropy() {
   echo -e "\033[7;${ALERT_LEVEL}mRandom Entropy Total: ${TOTAL}\033[0m" 1>&5
 }
 pass_dev_random_to_rngtest() {
+  echo -e "\033[7;33mPreparing to Run RNG-TEST. Please Wait...\033[0m"
   cat /dev/random | rngtest -c 100000 1>&4
   echo -e "\033[7;33mPassed Dev Random to RNG-TEST\033[0m" 1>&5
 }
@@ -346,7 +347,7 @@ change_dir_to_slash() {
   echo -e "\033[7;33mChanged Current Directory to /\033[0m"
 }
 run_all_dieharder_tests() {
-  echo -e "\033[7;33mPreparing to Run DieHarder. Please Wait..." 1>&5
-  dieharder - a 1>&4
+  echo -e "\033[7;33mPreparing to Run DieHarder. Please Wait...\033[0m" 1>&5
+  dieharder -a 1>&4
   echo -e "\033[7;33mSuessfully Ran Entire DieHarder Test Suite\033[0m" 1>&5
 }

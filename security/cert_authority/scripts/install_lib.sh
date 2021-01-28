@@ -211,7 +211,7 @@ create_tls_root_private_dir() {
   echo -e "\033[7;33mCreated /tls/root/private Directory\033[0m" 1>&5
 }
 initialize_tls_root_serial_file() {
-  echo 01 > /tls/root/serial 1>&4
+  echo 01 > /tls/root/serial # 1>&4
   echo -e "\033[7;33mInitialized Root Serial File\033[0m" 1>&5
 }
 initialize_tls_root_index_file() {
@@ -307,7 +307,7 @@ create_tls_intermediate_private_dir() {
   echo -e "\033[7;33mCreated /tls/intermediate/private Directory\033[0m" 1>&5
 }
 initialize_tls_intermediate_serial_file() {
-  echo 01 > /tls/intermediate/serial 1>&4
+  echo 01 > /tls/intermediate/serial # 1>&4
   echo -e "\033[7;33mInitialized Intermediate Serial File\033[0m" 1>&5
 }
 initialize_tls_intermediate_index_file() {
@@ -315,7 +315,7 @@ initialize_tls_intermediate_index_file() {
   echo -e "\033[7;33mInitialized Intermediate Index File\033[0m" 1>&5
 }
 initialize_tls_intermediate_crlnumber() {
-  echo 01 > /tls/intermediate/crlnumber 1>&4
+  echo 01 > /tls/intermediate/crlnumber # 1>&4
   echo -e "\033[7;33mInitialized Intermediate CRL Number\033[0m" 1>&5
 }
 copy_root_conf_as_intermediate_conf() {
@@ -418,6 +418,10 @@ generate_tls_intermediate_certs_cacert_pem() {
 }
 unset_environment_variables() {
   # TODO: Unset all env vars used.
+  unset ADMIN_CONTACT
+  unset ROOT_CA_CONF_PATH
+  unset INTERMEDIATE_CA_CONF_PATH
+  echo -e "\033[7;33mAll Environment Variables Now Unset\033[0m"
 }
 
 # # Certificate bundle.
