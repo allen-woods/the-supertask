@@ -56,16 +56,16 @@ create_instructions() {
   esac
 
   mkfifo /tmp/instructs 1>&4
-  echo "Created pipe for instructions." 1>&5
+  echo -e "\033[7;37mCreated pipe for instructions.\033[0m" 1>&5
 
   exec 3<> /tmp/instructs 1>&4
-  echo "Executed file descriptor to unblock pipe." 1>&5
+  echo -e "\033[7;37mExecuted file descriptor to unblock pipe.\033[0m" 1>&5
 
   unlink /tmp/instructs 1>&4
-  echo "Unlinked the unblocked pipe." 1>&5
+  echo -e "\033[7;37mUnlinked the unblocked pipe.\033[0m" 1>&5
 
   $(echo ' ' 1>&3) 1>&4
-  echo "Inserted blank space into unblocked pipe." 1>&5
+  echo -e "\033[7;37mInserted blank space into unblocked pipe.\033[0m" 1>&5
 }
 
 read_instruction() {
@@ -89,6 +89,7 @@ update_instructions() {
   apk_static_add_libtool \
   apk_static_add_openrc \
   apk_static_add_rng_tools \
+  apk_static_add_rpm \
   apk_static_add_rpm_dev \
   create_tmp_test_make_dir \
   change_dir_to_tmp_test_make \
@@ -98,10 +99,13 @@ update_instructions() {
   move_ent_files \
   delete_ent_zip_file \
   create_home_rpmbuild_dir \
-  chown_root_home_rpmbuild_dir \
   generate_home_rpmmacros_file \
   create_dieharder_src_dir \
-  chown_root_dieharder_src_dir \
+  export_dieharder_version_wget \
+  dieharder_version_grep_version_str \
+  dieharder_version_grep_version_num \
+  dieharder_version_tail_last_result \
+  dieharder_version_sed_remove_tgz \
   download_dieharder_latest_release \
   change_dir_to_dieharder_src \
   run_autogen_script \
@@ -123,7 +127,6 @@ update_instructions() {
   rim_raf_tmp_test_dir \
   display_available_random_entropy \
   change_dir_to_slash \
-  change_dir_to_dieharder_src \
   run_all_dieharder_tests \
   display_available_random_entropy \
   EOP \
@@ -197,6 +200,10 @@ apk_static_add_rng_tools() {
   apk.static add rng-tools 1>&4
   echo -e "\033[7;33mAdded RNG Tools\033[0m" 1>&5
 }
+apk_static_add_rpm() {
+  apk.static add rpm 1>&4
+  echo -e "\033[7;33mAdded RPM\033[0m" 1>&5
+}
 apk_static_add_rpm_dev() {
   apk.static add rpm-dev 1>&4
   echo -e "\033[7;33mAdded RPM Dev\033[0m" 1>&5
@@ -237,24 +244,45 @@ create_home_rpmbuild_dir() {
   mkdir -pm 0700 $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
   echo -e "\033[7;33mCreated ${HOME}/rpmbuild Directory\033[0m" 1>&5
 }
-chown_root_home_rpmbuild_dir() {
-  chown root:root $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
-  echo -e "\033[7;33mChanged Ownership of ${HOME}/rpmbuild to Root User\033[0m" 1>&5
-}
+# chown_root_home_rpmbuild_dir() {
+#   chown root:root $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
+#   echo -e "\033[7;33mChanged Ownership of ${HOME}/rpmbuild to Root User\033[0m" 1>&5
+# }
 generate_home_rpmmacros_file() {
-  echo '%_topdir %(echo $HOME)/rpmbuild' >> $HOME/.rpmmacros 1>&4
+  # echo '%_topdir %(echo $HOME)/rpmbuild'
+  echo "%_topdir ${HOME}/rpmbuild" >> $HOME/.rpmmacros # 1>&4
   echo -e "\033[7;33mGenerated ${HOME}/.rpmmacros File\033[0m" 1>&5
 }
 create_dieharder_src_dir() {
   mkdir -pm 0700 /dieharder_src 1>&4
   echo -e "\033[7;33mCreated /dieharder_src Directory\033[0m" 1>&5
 }
-chown_root_dieharder_src_dir() {
-  chown root:root /dieharder_src 1>&4
-  echo -e "\033[7;33mChanged Ownership of /dieharder_src to Root User\033[0m" 1>&5
+# chown_root_dieharder_src_dir() {
+#   chown root:root /dieharder_src 1>&4
+#   echo -e "\033[7;33mChanged Ownership of /dieharder_src to Root User\033[0m" 1>&5
+# }
+export_dieharder_version_wget() {
+  export DIEHARDER_VERSION="$(wget -c http://webhome.phy.duke.edu/~rgb/General/dieharder.php -O -)" 1>&4
+  echo -e "\033[7;33mExported DIEHARDER_VERSION Environment Variable\033[0m" 1>&5
+}
+dieharder_version_grep_version_str() {
+  DIEHARDER_VERSION="$(echo ${DIEHARDER_VERSION} | grep -o '\"dieharder/dieharder-.*.tgz\"')" 1>&4
+  echo -e "\033[7;33mParsed DieHarder Version Strings from HTML Syntax\033[0m" 1>&5
+}
+dieharder_version_grep_version_num() {
+  DIEHARDER_VERSION="$(echo ${DIEHARDER_VERSION} | grep -o '[0-9]\{1\}.[0-9]\{1,\}.[0-9]\{1,\}.tgz')" 1>&4
+  echo -e "\033[7;33mParsed DieHarder Version Release Numbers from Strings\033[0m" 1>&5
+}
+dieharder_version_tail_last_result() {
+  DIEHARDER_VERSION="$(printf '%s\n' "${DIEHARDER_VERSION}" | tail -n1)" 1>&4
+  echo -e "\033[7;33mParsed Latest Stable Version of DieHarder from Release Numbers\033[0m" 1>&5
+}
+dieharder_version_sed_remove_tgz() {
+  DIEHARDER_VERSION="$(echo ${DIEHARDER_VERSION} | sed 's/.tgz$//')" 1>&4
+  echo -e "\033[7;33mRemoved Unwanted Trailing Data from Latest Stable\033[0m" 1>&5
 }
 download_dieharder_latest_release() {
-  wget -c http://webhome.phy.duke.edu/~rgb/General/dieharder/dieharder.tgz -O - | tar -xz -C /dieharder_src/ 1>&4
+  wget -c http://webhome.phy.duke.edu/~rgb/General/dieharder/dieharder-${DIEHARDER_VERSION}.tgz -O - | tar -xz -C /dieharder_src/ 1>&4
   echo -e "\033[7;33mDownloaded Latest Release of DieHarder to /dieharder_src\033[0m" 1>&5
 }
 change_dir_to_dieharder_src() {
@@ -293,6 +321,9 @@ insert_new_line_262_libdieharder_h() {
   sed -i '263i \ ' ./include/dieharder/libdieharder.h 1>&4
   echo -e "\033[7;33mInserted New Line 262 into $(pwd)/include/dieharder/libdieharder.h\033[0m" 1>&5
 }
+# sed -ie '306s/RPM_TOPDIR = \$(HOME)\/Src\/rpm_tree/RPM_TOPDIR = \$(HOME)\/rpmbuild/' ./Makefile
+# sed -ie '306s/RPM_TOPDIR = \$(HOME)\/Src\/rpm_tree/RPM_TOPDIR = \$(HOME)\/rpmbuild/' ./Makefile.in
+# sed -ie '179s/RPM_TOPDIR=\$(HOME)\/Src\/rpm_tree/RPM_TOPDIR=\$(HOME)\/rpmbuild/' ./Makefile.am
 compile_dieharder_using_make_install() {
   echo -e "\033[7;33mCompiling DieHarder Test Suite. Please Wait...\033[0m" 1>&5
   make install 1>&4
@@ -335,7 +366,7 @@ display_available_random_entropy() {
 }
 pass_dev_random_to_rngtest() {
   echo -e "\033[7;33mPreparing to Run RNG-TEST. Please Wait...\033[0m"
-  cat /dev/random | rngtest -c 100000 1>&4
+  cat /dev/random | rngtest -c 1000 1>&4
   echo -e "\033[7;33mPassed Dev Random to RNG-TEST\033[0m" 1>&5
 }
 rim_raf_tmp_test_dir() {
