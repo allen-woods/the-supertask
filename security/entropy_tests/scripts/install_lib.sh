@@ -113,6 +113,18 @@ update_instructions() {
   insert_uint_type_def_libdieharder_h \
   insert_new_line_262_libdieharder_h \
   compile_dieharder_using_make_install \
+  change_dir_to_tmp_test \
+  generate_urandom_file_using_dd \
+  pass_urandom_file_to_ent_no_args \
+  pass_urandom_file_to_ent_with_args \
+  display_available_random_entropy \
+  change_dir_to_tmp_test \
+  pass_dev_random_to_rngtest \
+  rim_raf_tmp_test_dir \
+  display_available_random_entropy \
+  change_dir_to_slash \
+  run_all_dieharder_tests \
+  display_available_random_entropy \
   EOP \
   ' ' 1>&3
 }
@@ -307,7 +319,6 @@ compile_dieharder_using_make_install() {
   make install 1>&4
   echo -e "\033[7;33mRan Make to Build Installation of DieHarder Test Suite\033[0m" 1>&5
 }
-# Begin: Run ENT
 change_dir_to_tmp_test() {
   cd /tmp/test 1>&4
   echo -e "\033[7;33mChanged Current Directory to /tmp/test\033[0m" 1>&5
@@ -344,10 +355,6 @@ display_available_random_entropy() {
   echo -e "\033[7;${ALERT_LEVEL}mRandom Entropy Avail: ${AMOUNT}\033[0m" 1>&5
   echo -e "\033[7;${ALERT_LEVEL}mRandom Entropy Total: ${TOTAL}\033[0m" 1>&5
 }
-# End: Run ENT
-
-# Begin: Run RNG-TEST
-# change_dir_to_tmp_test
 pass_dev_random_to_rngtest() {
   cat /dev/random | rngtest -c 100000 1>&4
   echo -e "\033[7;33mPassed Dev Random to RNG-TEST\033[0m" 1>&5
@@ -356,10 +363,6 @@ rim_raf_tmp_test_dir() {
   rm -rf /tmp/test 1>&4
   echo -e "\033[7;33mRecursively Deleted /tmp/test Diretory\033[0m" 1>&5
 }
-# display_available_random_entropy
-# End: Run RNG-TEST
-
-# Begin: Run DIEHARDER
 change_dir_to_slash() {
   cd / 1>&4
   echo -e "\033[7;33mChanged Current Directory to /\033[0m"
@@ -369,5 +372,3 @@ run_all_dieharder_tests() {
   dieharder - a 1>&4
   echo -e "\033[7;33mSuessfully Ran Entire DieHarder Test Suite\033[0m" 1>&5
 }
-# display_available_random_entropy
-# End: Run DIEHARDER
