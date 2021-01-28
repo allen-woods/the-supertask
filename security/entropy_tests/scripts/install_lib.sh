@@ -138,28 +138,6 @@ delete_instructions() {
   set +v #              # Cancel verbose mode
 }
 
-# EXAMPLE SYNTAX:
-# pretty_print  -H|--header -N|--name="name of setion"  -D|--desc="desription of section"
-# pretty_print  -B|--body   -M|--message="message text" -C|--class="class_name"
-# pretty_print  -F|--footer -T|--text="text to display"
-
-# TODO: Write `pretty_print`
-
-pretty_print() {
-  local OPT_1=$1
-  case $OPT_1 in
-    -H|--header)
-    ;;
-    -B|--body)
-    ;;
-    -F|--footer)
-    ;;
-    *)
-    # Do nothing
-    ;;
-  esac
-}
-
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
 patch_etc_apk_repositories() {

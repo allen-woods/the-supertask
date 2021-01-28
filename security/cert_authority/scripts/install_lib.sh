@@ -198,7 +198,8 @@ apk_static_add_outils_jot() {
 }
 generate_random_password_in_pipe() {
   # TODO: Replace this with the new pipe_crud method
-  pipe_write "/name_of_pipe" $(random_string [[:alnum:]][[:punct:]] 20 99) --append 1>&4
+  pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=create --data="cert_chain_password=$(random_string [[:alnum:]][[:punct:]] 20 99),"
+  # pipe_write "/name_of_pipe" $(random_string [[:alnum:]][[:punct:]] 20 99) --append 1>&4
   echo -e "\033[7;33mGenerated Secure Password in Pipe\033[0m" 1>&5
 }
 create_tls_root_certs_dir() {
@@ -346,7 +347,8 @@ change_dir_to_tls_root() {
   echo -e "\033[7;33mChanged Current Directory to /tls/root\033[0m" 1>&5
 }
 generate_tls_root_private_cakey_pem() {
-  echo "$(pipe_read "/name_of_pipe" 1 --no-delete)" | openssl genpkey \
+  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  openssl genpkey \
   -out ./private/cakey.pem \
   -outform PEM \
   -pass stdin \
@@ -356,7 +358,8 @@ generate_tls_root_private_cakey_pem() {
   echo -e "\033[7;33mGenerated Root Private CAKEY PEM\033[0m" 1>&5
 }
 generate_tls_root_certs_cacert_pem() {
-  echo "$(pipe_read "/name_of_pipe" 1 --no-delete)" | openssl req \
+  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  openssl req \
   -new \
   -x509 \
   -sha512 \
@@ -374,7 +377,8 @@ change_dir_to_tls_intermediate() {
   cd /tls/intermediate 1>&4
 }
 generate_tls_intermediate_private_cakey_pem() {
-  echo "$(pipe_read "/name_of_pipe" 1 --no-delete)" | openssl genpkey \
+  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  openssl genpkey \
   -out ./private/intermediate.cakey.pem \
   -outform PEM \
   -pass stdin \
@@ -384,7 +388,8 @@ generate_tls_intermediate_private_cakey_pem() {
   echo -e "\033[7;33mGenerated Intermediate Private CAKEY PEM\033[0m" 1>&5
 }
 generate_tls_intermediate_csr_csr_pem() {
-  echo "$(pipe_read "/name_of_pipe" 1 --no-delete)" | openssl req \
+  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  openssl req \
   -new \
   -sha512 \
   -passin stdin \
@@ -398,7 +403,8 @@ generate_tls_intermediate_csr_csr_pem() {
 generate_tls_intermediate_certs_cacert_pem() {
   # TODO: Place all identifying information inside of the .admin file, export using sed '##q;d' of desired line
   local ADMIN_CONTACT=$(cat $HOME/.admin | head -n1)
-  echo "$(pipe_read "/name_of_pipe" 1 --delete-all)" | openssl ca \
+  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  openssl ca \
   -config ./openssl.cnf.intermediate \
   -extensions v3_intermediate_ca \
   -days 365 \
