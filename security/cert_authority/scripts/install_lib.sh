@@ -179,7 +179,6 @@ apk_static_add_outils_jot() {
 generate_random_password_in_pipe() {
   # TODO: Replace this with the new pipe_crud method
   pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=create --data="cert_chain_password=$(random_string [[:alnum:]][[:punct:]] 20 99),"
-  # pipe_write "/name_of_pipe" $(random_string [[:alnum:]][[:punct:]] 20 99) --append 1>&4
   echo -e "\033[7;33mGenerated Secure Password in Pipe\033[0m" 1>&5
 }
 create_tls_root_certs_dir() {

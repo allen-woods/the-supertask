@@ -1,7 +1,6 @@
 #!/bin/sh
 
-pipe_crud()
-( #             # Run in a subshell to prevent leaks.
+pipe_crud() {
   local PIPE=   #             # The name of the pipe.
   local DOC_ID= #             # The descriptor of the current document.
   local CRUD=   #             # The action to perform on the current document.
@@ -11,20 +10,51 @@ pipe_crud()
   for OPT in "$@"             # Parse our arguments.
   do
     local illegal_arg=1       # Presume there is an illegal argument.
-    [[ "$(echo -n ${OPT} | grep -e --pipe=)" != "" ]] && PIPE=$(echo -n $OPT | sed 's/--pipe=\(.*\)/\1/') && illegal_arg=0
-    [[ "$(echo -n ${OPT} | grep -e --doc-id=)" != "" ]] && DOC_ID=$(echo -n $OPT | sed 's/--doc-id=\(.*\)/\1/') && illegal_arg=0
-    [[ "$(echo -n ${OPT} | grep -e --crud=)" != "" ]] && CRUD=$(echo -n $OPT | sed 's/--crud=\(.*\)/\1/') && illegal_arg=0
-    [[ "$(echo -n ${OPT} | grep -e --data=)" != "" ]] && DATA="$(echo -n ${OPT} | sed 's/--data=\"\(.*\)\"/\1/')" && illegal_arg=0
-    [[ "$(echo -n ${OPT} | grep -e --hook=)" != "" ]] && HOOK="$(echo -n ${OPT} | sed 's/--hook=\(.*\)/\1/')" && illegal_arg=0
+    if [ "$(echo -n ${OPT} | grep -e --pipe=)" != "" ]
+    then
+      PIPE="$(echo -n ${OPT} | sed 's/--pipe=\(.*\)/\1/')"
+      illegal_arg=0
+      echo "found pipe arg"
+    fi
+
+    if [ "$(echo ${OPT} | grep -e --doc-id=)" != "" ]
+    then
+      DOC_ID="$(echo ${OPT} | sed 's/--doc-id=\(.*\)/\1/')"
+      illegal_arg=0
+      echo "found doc arg"
+    fi
+
+    if [ "$(echo ${OPT} | grep -e --crud=)" != "" ]
+    then
+      CRUD="$(echo ${OPT} | sed 's/--crud=\(.*\)/\1/')"
+      illegal_arg=0
+      echo "found crud arg"
+    fi
+
+    if [ "$(echo ${OPT} | grep -e --data=)" != "" ]
+    then
+      DATA="$(echo ${OPT} | sed 's/--data=\(.*\)/\1/')"
+      illegal_arg=0
+      echo "found data arg"
+    fi
+
+    if [ "$(echo ${OPT} | grep -e --hook=)" != "" ]
+    then
+      HOOK="$(echo ${OPT} | sed 's/--hook=\(.*\)/\1/')"
+      illegal_arg=0
+    fi
+
     if [ ! $illegal_arg -eq 0 ]
     then
-      usage     #             # If we found an illegal argument, show usage and return 1.
+      echo "found an illegal arg"
+      pipe_crud_usage     #             # If we found an illegal argument, show usage and return 1.
       return 1
     fi
   done
-  if [ -z $PIPE ] || [ -z $DOC_ID ] || [ -z $CRUD ] || [ -z $DATA ]
+
+  if [ -z "${PIPE}" ] || [ -z "${DOC_ID}" ] || [ -z "${CRUD}" ] || [ -z "${DATA}" ]
   then
-    usage       #             # If we didn't receive all required arguments, show usage and return 1.
+    pipe_crud_usage       #             # If we didn't receive all required arguments, show usage and return 1.
     return 1
   fi
   case $CRUD in
@@ -46,11 +76,10 @@ pipe_crud()
               echo "ERROR: Must provide document data." # error out
               return 1
             else # yes data - (could be iterator)
-              mkfifo -m 0600 $PIPE  # Create PIPE if it doesn't exist.
-              ( \
-                printf '%s\n' "BOF=${DOC_ID}" $DATA "EOF=${DOC_ID}" \
-                'EOP' ' ' >> $PIPE & \
-              ) # put doc containing data in pipe
+              mkfifo $PIPE  # Create PIPE if it doesn't exist.
+
+              # put doc containing data in pipe:
+              ( printf '%s\n' "BOF=${DOC_ID}" $DATA "EOF=${DOC_ID}" 'EOP' ' ' >> $PIPE & )
             fi
           fi
         fi
@@ -60,7 +89,7 @@ pipe_crud()
           echo "ERROR: Must provide name of document." # error out
           return 1
         else # yes doc id
-          read_lines_into_sync
+          read_lines_into_pipe_crud_sync
           local duplicate_exists=1
           [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] && duplicate_exists=0
           if [ $duplicate_exists -eq 1 ] # yes doc found
@@ -93,7 +122,7 @@ pipe_crud()
         then
           if [ "${DATA}" == "--" ] # no data
           then
-            read_lines_into_sync
+            read_lines_into_pipe_crud_sync
             printf '%s\n' $SYNC # print entire pipe
 
             # TODO: conditionally restore based on HOOK
@@ -105,7 +134,7 @@ pipe_crud()
             SYNC= # empty sync when finished
           fi # yes data, do nothing
         else # yes doc id - (could be iterator)
-          read_lines_into_sync
+          read_lines_into_pipe_crud_sync
           if [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] # no doc found
           then
             ( \
@@ -173,7 +202,7 @@ pipe_crud()
           echo "ERROR: Must provide name of document." # error out
           return 1
         else # yes doc id - (could be iterator)
-          read_lines_into_sync
+          read_lines_into_pipe_crud_sync
           if [ -z $(echo -n \"${SYNC}\" | grep -e ${DOC_ID}) ] # no doc found
           then
 
@@ -246,7 +275,7 @@ pipe_crud()
             rm -f $PIPE # delete entire pipe
           fi # yes data, do nothing
         else # yes doc id - (could be iterator)
-          read_lines_into_sync
+          read_lines_into_pipe_crud_sync
           if [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] # no doc found
           then
             echo "ERROR: Document ID ${DOC_ID} not found." # error out
@@ -303,57 +332,57 @@ pipe_crud()
       ;;
     *)
       # Handle bad argument value here.
-      usage
+      pipe_crud_usage
       return 1
       ;;
   esac
+}
 
-  read_lines_into_sync() {
-    while IFS= read -r LINE
-    do
-      if [ -z $SYNC ]
+read_lines_into_pipe_crud_sync() {
+  while IFS= read -r LINE
+  do
+    if [ -z $SYNC ]
+    then
+      SYNC="${LINE}"
+    else
+      if [ "${LINE}" == "EOP" ]
       then
-        SYNC="${LINE}"
+        break
       else
-        if [ "${LINE}" == "EOP" ]
-        then
-          break
-        else
-          SYNC="${SYNC} ${LINE}"
-        fi
+        SYNC="${SYNC} ${LINE}"
       fi
-    done < $PIPE
-  }
+    fi
+  done < $PIPE
+}
 
-  usage() {
-    echo "Bad Argument(s)"
-    echo "Usage: $0 --pipe=<path> --doc-id=<id> --crud=<action> --data=\"<var=val,>\" [--hook=<option>]"
-    echo "" # Breathing space #################################################################################
-    echo "  --pipe=<path>          : Path and filename of pipe."
-    echo "  --doc-id=<id>          : Identifier of target document for CRUD action."
-    echo "  --crud=<action>        : Crud action to perform on target document, as follows:"
-    echo "" # Breathing space #################################################################################
-    echo "                           create : Creates a new document with name document_id."
-    echo "                           read   : Reads the document named document_id, as specified by --data."
-    echo "                           update : Updates the document named document_id, as specified by --data."
-    echo "                           delete : Deletes the document named document_id, as specified by --data."
-    echo "" # Breathing space #################################################################################
-    echo "  --data=\"<var=val,>\"  : Double-quoted, space delimited data with trailing commas, as follows:"
-    echo "" # Breathing space #################################################################################
-    echo "                           Create : variable=value, variable=value,"
-    echo "                           Read   : variable, variable, (1)"
-    echo "                           Update : variable=value, variable=value, (*)"
-    echo "                           Delete : variable, variable, (1)"
-    echo "" # Breathing space #################################################################################
-    echo "                                  * NOTE: When updating with a new variable, that variable will be"
-    echo "                                          appended to the contents of document named id."
-    echo "" # Breathing space #################################################################################
-    echo "                                  1 NOTE: To read or delete the entire document named id, use"
-    echo "                                          --data=\"--\"."
-    echo "" # Breathing space #################################################################################
-    echo "  --hook=<option>        : An optional behavior to perform along with CRUD action(s), as follows:"
-    echo "" # Breathing space #################################################################################
-    echo "                           This feature is not yet implemented."
-    echo "" # Trailing white space ############################################################################
-  }
-)
+pipe_crud_usage() {
+  echo "Bad Argument(s)"
+  echo "Usage: $0 --pipe=<path> --doc-id=<id> --crud=<action> --data=\"<var=val,>\" [--hook=<option>]"
+  echo "" # Breathing space #################################################################################
+  echo "  --pipe=<path>          : Path and filename of pipe."
+  echo "  --doc-id=<id>          : Identifier of target document for CRUD action."
+  echo "  --crud=<action>        : Crud action to perform on target document, as follows:"
+  echo "" # Breathing space #################################################################################
+  echo "                           create : Creates a new document with name document_id."
+  echo "                           read   : Reads the document named document_id, as specified by --data."
+  echo "                           update : Updates the document named document_id, as specified by --data."
+  echo "                           delete : Deletes the document named document_id, as specified by --data."
+  echo "" # Breathing space #################################################################################
+  echo "  --data=\"<var=val,>\"  : Double-quoted, space delimited data with trailing commas, as follows:"
+  echo "" # Breathing space #################################################################################
+  echo "                           Create : variable=value, variable=value,"
+  echo "                           Read   : variable, variable, (1)"
+  echo "                           Update : variable=value, variable=value, (*)"
+  echo "                           Delete : variable, variable, (1)"
+  echo "" # Breathing space #################################################################################
+  echo "                                  * NOTE: When updating with a new variable, that variable will be"
+  echo "                                          appended to the contents of document named id."
+  echo "" # Breathing space #################################################################################
+  echo "                                  1 NOTE: To read or delete the entire document named id, use"
+  echo "                                          --data=\"--\"."
+  echo "" # Breathing space #################################################################################
+  echo "  --hook=<option>        : An optional behavior to perform along with CRUD action(s), as follows:"
+  echo "" # Breathing space #################################################################################
+  echo "                           This feature is not yet implemented."
+  echo "" # Trailing white space ############################################################################
+}
