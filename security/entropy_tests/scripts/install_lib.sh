@@ -75,22 +75,18 @@ read_instruction() {
 
 update_instructions() {
   printf '%s\n' \
-  patch_etc_apk_repositories \
-  apk_update \
-  apk_add_busybox_static \
   apk_add_apk_tools_static \
-  apk_static_upgrade_simulate \
-  apk_static_upgrade \
-  apk_static_add_build_base \
+  apk_add_busybox_static \
   apk_static_add_chrpath \
   apk_static_add_gsl \
   apk_static_add_gsl_dev \
   apk_static_add_haveged \
   apk_static_add_libtool \
+  apk_static_add_make \
   apk_static_add_openrc \
   apk_static_add_rng_tools \
-  apk_static_add_rpm \
   apk_static_add_rpm_dev \
+  apk_static_add_build_base \
   create_tmp_test_make_dir \
   change_dir_to_tmp_test_make \
   download_ent_from_fourmilab \
@@ -101,6 +97,7 @@ update_instructions() {
   create_home_rpmbuild_dir \
   generate_home_rpmmacros_file \
   create_dieharder_src_dir \
+  change_ownership_of_dieharder_src_dir \
   export_dieharder_version_wget \
   dieharder_version_grep_version_str \
   dieharder_version_grep_version_num \
@@ -111,11 +108,8 @@ update_instructions() {
   run_autogen_script \
   patch_line_16_dieharder_spec \
   patch_line_129_dieharder_spec \
-  patch_line_16_dieharder_spec_in \
-  patch_line_129_dieharder_spec_in \
   insert_m_pi_constant_libdieharder_h \
   insert_uint_type_def_libdieharder_h \
-  insert_new_line_262_libdieharder_h \
   compile_dieharder_using_make_install \
   change_dir_to_tmp_test \
   generate_urandom_file_using_dd \
@@ -144,14 +138,6 @@ delete_instructions() {
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
-patch_etc_apk_repositories() {
-  sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
-  echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
-}
-apk_update() {
-  apk update 1>&4
-  echo -e "\033[7;33mApk Update\033[0m" 1>&5
-}
 apk_add_busybox_static() {
   apk add busybox-static 1>&4
   echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
@@ -160,52 +146,44 @@ apk_add_apk_tools_static() {
   apk add apk-tools-static 1>&4
   echo -e "\033[7;33mAdded APK Static Tools\033[0m" 1>&5
 }
-apk_static_upgrade_simulate() {
-  apk.static upgrade --no-self-upgrade --available --simulate 1>&4
-  echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
-}
-apk_static_upgrade() {
-  apk.static upgrade --no-self-upgrade --available 1>&4
-  echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
-}
 apk_static_add_build_base() {
-  apk.static add build-base 1>&4
+  apk.static -U add build-base 1>&4
   echo -e "\033[7;33mAdded Build Base\033[0m" 1>&5
 }
 apk_static_add_chrpath() {
-  apk.static add chrpath 1>&4
+  apk.static -U add chrpath 1>&4
   echo -e "\033[7;33mAdded Chrpath\033[0m" 1>&5
 }
 apk_static_add_gsl() {
-  apk.static add gsl 1>&4
+  apk.static -U add gsl 1>&4
   echo -e "\033[7;33mAdded Gsl\033[0m" 1>&5
 }
 apk_static_add_gsl_dev() {
-  apk.static add gsl-dev 1>&4
+  apk.static -U add gsl-dev 1>&4
   echo -e "\033[7;33mAdded Gsl Dev\033[0m" 1>&5
 }
 apk_static_add_haveged() {
-  apk.static add haveged 1>&4
+  apk.static -U add haveged 1>&4
   echo -e "\033[7;33mAdded Haveged\033[0m" 1>&5
 }
 apk_static_add_libtool() {
-  apk.static add libtool 1>&4
+  apk.static -U add libtool 1>&4
   echo -e "\033[7;33mAdded Libtool\033[0m" 1>&5
 }
+apk_static_add_make() {
+  apk.static -U add make 1>&4
+  echo -e "\033[7;33mAdded Make\033[0m" 1>&5
+}
 apk_static_add_openrc() {
-  apk.static add openrc 1>&4
+  apk.static -U add openrc 1>&4
   echo -e "\033[7;33mAdded OpenRC\033[0m" 1>&5
 }
 apk_static_add_rng_tools() {
-  apk.static add rng-tools 1>&4
+  apk.static -U add rng-tools 1>&4
   echo -e "\033[7;33mAdded RNG Tools\033[0m" 1>&5
 }
-apk_static_add_rpm() {
-  apk.static add rpm 1>&4
-  echo -e "\033[7;33mAdded RPM\033[0m" 1>&5
-}
 apk_static_add_rpm_dev() {
-  apk.static add rpm-dev 1>&4
+  apk.static -U add rpm-dev 1>&4
   echo -e "\033[7;33mAdded RPM Dev\033[0m" 1>&5
 }
 rc_update_add_haveged() {
@@ -241,26 +219,21 @@ delete_ent_zip_file() {
   echo -e "\033[7;33mDeleted ENT Zip Archive\033[0m" 1>&5
 }
 create_home_rpmbuild_dir() {
-  mkdir -pm 0700 $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
+  mkdir -pm 0700 ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
   echo -e "\033[7;33mCreated ${HOME}/rpmbuild Directory\033[0m" 1>&5
 }
-# chown_root_home_rpmbuild_dir() {
-#   chown root:root $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
-#   echo -e "\033[7;33mChanged Ownership of ${HOME}/rpmbuild to Root User\033[0m" 1>&5
-# }
 generate_home_rpmmacros_file() {
-  # echo '%_topdir %(echo $HOME)/rpmbuild'
-  echo "%_topdir ${HOME}/rpmbuild" >> $HOME/.rpmmacros # 1>&4
+  echo "%_topdir %(echo $HOME)/rpmbuild" >> ~/.rpmmacros # 1>&4
   echo -e "\033[7;33mGenerated ${HOME}/.rpmmacros File\033[0m" 1>&5
 }
 create_dieharder_src_dir() {
   mkdir -pm 0700 /dieharder_src 1>&4
   echo -e "\033[7;33mCreated /dieharder_src Directory\033[0m" 1>&5
 }
-# chown_root_dieharder_src_dir() {
-#   chown root:root /dieharder_src 1>&4
-#   echo -e "\033[7;33mChanged Ownership of /dieharder_src to Root User\033[0m" 1>&5
-# }
+change_ownership_of_dieharder_src_dir() {
+  chown root:root /dieharder_src 1>&4
+  echo -e "\033[7;33mChanged Ownership of /dieharder_src to Root User\033[0m" 1>&5
+}
 export_dieharder_version_wget() {
   export DIEHARDER_VERSION="$(wget -c http://webhome.phy.duke.edu/~rgb/General/dieharder.php -O -)" 1>&4
   echo -e "\033[7;33mExported DIEHARDER_VERSION Environment Variable\033[0m" 1>&5
@@ -301,29 +274,14 @@ patch_line_129_dieharder_spec() {
   sed -i '129s/.*/# /' ./dieharder.spec 1>&4
   echo -e "\033[7;33mPathed Line 129 of $(pwd)/dieharder.spec\033[0m" 1>&5
 }
-patch_line_16_dieharder_spec_in() {
-  sed -i '16s/.*/chrpath gsl-dev/' ./dieharder.spec.in 1>&4
-  echo -e "\033[7;33mPatched Line 16 of $(pwd)/dieharder.spec.in\033[0m" 1>&5
-}
-patch_line_129_dieharder_spec_in() {
-  sed -i '129s/.*/# /' ./dieharder.spec.in 1>&4
-  echo -e "\033[7;33mPathed Line 129 of $(pwd)/dieharder.spec.in\033[0m" 1>&5
-}
 insert_m_pi_constant_libdieharder_h() {
   sed -i '66i #define M_PI    3.14159265358979323846' ./include/dieharder/libdieharder.h 1>&4
   echo -e "\033[7;33mInserted Missing Constant M_PI into $(pwd)/include/dieharder/libdieharder.h\033[0m" 1>&5
 }
 insert_uint_type_def_libdieharder_h() {
-  sed -i '262i typedef unsigned int uint;' ./include/dieharder/libdieharder.h 1>&4
+  sed -i '262i   typedef unsigned int uint;' ./include/dieharder/libdieharder.h 1>&4
   echo -e "\033[7;33mInserted Missing uint Type Definition into $(pwd)/include/dieharder/libdieharder.h\033[0m" 1>&5
 }
-insert_new_line_262_libdieharder_h() {
-  sed -i '263i \ ' ./include/dieharder/libdieharder.h 1>&4
-  echo -e "\033[7;33mInserted New Line 262 into $(pwd)/include/dieharder/libdieharder.h\033[0m" 1>&5
-}
-# sed -ie '306s/RPM_TOPDIR = \$(HOME)\/Src\/rpm_tree/RPM_TOPDIR = \$(HOME)\/rpmbuild/' ./Makefile
-# sed -ie '306s/RPM_TOPDIR = \$(HOME)\/Src\/rpm_tree/RPM_TOPDIR = \$(HOME)\/rpmbuild/' ./Makefile.in
-# sed -ie '179s/RPM_TOPDIR=\$(HOME)\/Src\/rpm_tree/RPM_TOPDIR=\$(HOME)\/rpmbuild/' ./Makefile.am
 compile_dieharder_using_make_install() {
   echo -e "\033[7;33mCompiling DieHarder Test Suite. Please Wait...\033[0m" 1>&5
   make install 1>&4
@@ -382,3 +340,40 @@ run_all_dieharder_tests() {
   dieharder -a 1>&4
   echo -e "\033[7;33mSuessfully Ran Entire DieHarder Test Suite\033[0m" 1>&5
 }
+
+# NOTE:
+# These Commented functions are retained for completeness where they originally appeared.
+# Use of the commented functions causes catastrophic failure of DieHarder's `make install` process.
+#
+# patch_etc_apk_repositories() {
+#   sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
+#   echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
+# }
+# apk_update() {
+#   apk update 1>&4
+#   echo -e "\033[7;33mApk Update\033[0m" 1>&5
+# }
+# apk_static_upgrade_simulate() {
+#   apk.static -U upgrade --no-self-upgrade --available --simulate 1>&4
+#   echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
+# }
+# apk_static_upgrade() {
+#   apk.static -U upgrade --no-self-upgrade --available 1>&4
+#   echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
+# }
+# chown_root_home_rpmbuild_dir() {
+#   chown root:root $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} 1>&4
+#   echo -e "\033[7;33mChanged Ownership of ${HOME}/rpmbuild to Root User\033[0m" 1>&5
+# }
+# patch_line_16_dieharder_spec_in() {
+#   sed -i '16s/.*/chrpath gsl-dev/' ./dieharder.spec.in 1>&4
+#   echo -e "\033[7;33mPatched Line 16 of $(pwd)/dieharder.spec.in\033[0m" 1>&5
+# }
+# patch_line_129_dieharder_spec_in() {
+#   sed -i '129s/.*/# /' ./dieharder.spec.in 1>&4
+#   echo -e "\033[7;33mPathed Line 129 of $(pwd)/dieharder.spec.in\033[0m" 1>&5
+# }
+# insert_new_line_262_libdieharder_h() {
+#   sed -i '263i \ ' ./include/dieharder/libdieharder.h 1>&4
+#   echo -e "\033[7;33mInserted New Line 262 into $(pwd)/include/dieharder/libdieharder.h\033[0m" 1>&5
+# }

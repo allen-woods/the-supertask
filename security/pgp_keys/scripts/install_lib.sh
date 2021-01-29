@@ -75,12 +75,8 @@ read_instruction() {
 
 update_instructions() {
   printf '%s\n' \
-  patch_etc_apk_repositories \
-  apk_update \
   apk_add_busybox_static \
   apk_add_apk_tools_static \
-  apk_static_upgrade_simulate \
-  apk_static_upgrade \
   apk_static_add_build_base \
   apk_static_add_gnupg \
   apk_static_add_linux_headers \
@@ -282,6 +278,15 @@ create_openssl_version_alias() {
   alias OPENSSL_V111="$HOME/local/bin/openssl.sh" 1>&4
   echo -e "\033[7;33mCreated Alias for AES Wrap Enabled OpenSSL\033[0m" 1>&5
 }
+generate_pass_phrases_for_pgp_keys() {
+  pipe_crud \
+  --pipe=my_pgp_pipe \
+  --doc-id=pass_phrases \
+  --crud=create \
+  --data="phrase_1=something, \
+  phrase_2=something_else,"
+}
+
 # Generate phrases - write to pipe
 # Generate random payload - write to pipe
 # Generate random ephemeral - write to pipe
@@ -291,3 +296,25 @@ create_openssl_version_alias() {
 # Wrap payload in ephemeral - write to pipe
 # Wrap ephemeral in public key - write to pipe
 # Print ephemeral* and payload* to file (rsa_aes_wrapped) - perist on disk
+
+# NOTE:
+# These Commented functions are retained for completeness where they originally appeared.
+# Use of the commented functions causes catastrophic failure of DieHarder's `make install` process,
+# so I'm standardizing their non-use for consistency.
+#
+# patch_etc_apk_repositories() {
+#   sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
+#   echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
+# }
+# apk_update() {
+#   apk update 1>&4
+#   echo -e "\033[7;33mApk Update\033[0m" 1>&5
+# }
+# apk_static_upgrade_simulate() {
+#   apk.static upgrade --no-self-upgrade --available --simulate 1>&4
+#   echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
+# }
+# apk_static_upgrade() {
+#   apk.static upgrade --no-self-upgrade --available 1>&4
+#   echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
+# }

@@ -75,12 +75,8 @@ read_instruction() {
 
 update_instructions() {
   printf '%s\n' \
-  patch_etc_apk_repositories \
-  apk_update \
   apk_add_busybox_static \
   apk_add_apk_tools_static \
-  apk_static_upgrade_simulate \
-  apk_static_upgrade \
   apk_static_add_openssl \
   apk_static_add_outils_jot \
   generate_random_password_in_pipe \
@@ -164,14 +160,6 @@ pretty_print() {
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
-patch_etc_apk_repositories() {
-  sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
-  echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
-}
-apk_update() {
-  apk update 1>&4
-  echo -e "\033[7;33mApk Update\033[0m" 1>&5
-}
 apk_add_busybox_static() {
   apk add busybox-static 1>&4
   echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
@@ -179,14 +167,6 @@ apk_add_busybox_static() {
 apk_add_apk_tools_static() {
   apk add apk-tools-static 1>&4
   echo -e "\033[7;33mAdded APK Static Tools\033[0m" 1>&5
-}
-apk_static_upgrade_simulate() {
-  apk.static upgrade --no-self-upgrade --available --simulate 1>&4
-  echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
-}
-apk_static_upgrade() {
-  apk.static upgrade --no-self-upgrade --available 1>&4
-  echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
 }
 apk_static_add_openssl() {
   apk.static add openssl 1>&4
@@ -444,4 +424,26 @@ unset_environment_variables() {
 #   -CAfile \
 #   /tls/root/certs/cacert.pem \
 #   /tls/intermediate/certs/ca-chain-bundle.cert.pem
+# }
+
+# NOTE:
+# These Commented functions are retained for completeness where they originally appeared.
+# Use of the commented functions causes catastrophic failure of DieHarder's `make install` process,
+# so I'm standardizing their non-use for consistency.
+#
+# patch_etc_apk_repositories() {
+#   sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
+#   echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
+# }
+# apk_update() {
+#   apk update 1>&4
+#   echo -e "\033[7;33mApk Update\033[0m" 1>&5
+# }
+# apk_static_upgrade_simulate() {
+#   apk.static upgrade --no-self-upgrade --available --simulate 1>&4
+#   echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
+# }
+# apk_static_upgrade() {
+#   apk.static upgrade --no-self-upgrade --available 1>&4
+#   echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
 # }
