@@ -14,28 +14,24 @@ pipe_crud() {
     then
       PIPE="$(echo -n ${OPT} | sed 's/--pipe=\(.*\)/\1/')"
       illegal_arg=0
-      echo "found pipe arg"
     fi
 
     if [ "$(echo ${OPT} | grep -e --doc-id=)" != "" ]
     then
       DOC_ID="$(echo ${OPT} | sed 's/--doc-id=\(.*\)/\1/')"
       illegal_arg=0
-      echo "found doc arg"
     fi
 
     if [ "$(echo ${OPT} | grep -e --crud=)" != "" ]
     then
       CRUD="$(echo ${OPT} | sed 's/--crud=\(.*\)/\1/')"
       illegal_arg=0
-      echo "found crud arg"
     fi
 
     if [ "$(echo ${OPT} | grep -e --data=)" != "" ]
     then
       DATA="$(echo ${OPT} | sed 's/--data=\(.*\)/\1/')"
       illegal_arg=0
-      echo "found data arg"
     fi
 
     if [ "$(echo ${OPT} | grep -e --hook=)" != "" ]
@@ -46,7 +42,6 @@ pipe_crud() {
 
     if [ ! $illegal_arg -eq 0 ]
     then
-      echo "found an illegal arg"
       pipe_crud_usage     #             # If we found an illegal argument, show usage and return 1.
       return 1
     fi
@@ -76,7 +71,7 @@ pipe_crud() {
               echo "ERROR: Must provide document data." # error out
               return 1
             else # yes data - (could be iterator)
-              mkfifo $PIPE  # Create PIPE if it doesn't exist.
+              mkfifo $PIPE # Create PIPE if it doesn't exist.
 
               # put doc containing data in pipe:
               ( printf '%s\n' "BOF=${DOC_ID}" $DATA "EOF=${DOC_ID}" 'EOP' ' ' >> $PIPE & )
@@ -89,9 +84,9 @@ pipe_crud() {
           echo "ERROR: Must provide name of document." # error out
           return 1
         else # yes doc id
-          read_lines_into_pipe_crud_sync
+          read_lines_into_pipe_crud_sync $PIPE
           local duplicate_exists=1
-          [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] && duplicate_exists=0
+          [ -z "$(echo -n "${SYNC}" | grep -e $DOC_ID)" ] && duplicate_exists=0
           if [ $duplicate_exists -eq 1 ] # yes doc found
           then
             echo "ERROR: document name already exists." # error out
@@ -122,7 +117,7 @@ pipe_crud() {
         then
           if [ "${DATA}" == "--" ] # no data
           then
-            read_lines_into_pipe_crud_sync
+            read_lines_into_pipe_crud_sync $PIPE
             printf '%s\n' $SYNC # print entire pipe
 
             # TODO: conditionally restore based on HOOK
@@ -134,8 +129,8 @@ pipe_crud() {
             SYNC= # empty sync when finished
           fi # yes data, do nothing
         else # yes doc id - (could be iterator)
-          read_lines_into_pipe_crud_sync
-          if [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] # no doc found
+          read_lines_into_pipe_crud_sync $PIPE
+          if [ -z "$(echo -n "${SYNC}" | grep -e $DOC_ID)" ] # no doc found
           then
             ( \
               printf '%s\n' $SYNC \
@@ -168,10 +163,10 @@ pipe_crud() {
                   [ -z read_req_data ] && \
                   read_req_data="${read_req_data_match}," || \
                   read_req_data="${read_req_data} ${read_req_data_match},"
-                  [ read_req_data_missing -eq 1 ] && read_req_data_missing=0
+                  [ $read_req_data_missing -eq 1 ] && read_req_data_missing=0
                 fi
               done
-              if [ read_req_data_missing -eq 1 ] # no data found
+              if [ $read_req_data_missing -eq 1 ] # no data found
               then
 
                 # TODO: conditionally restore based on HOOK
@@ -202,7 +197,7 @@ pipe_crud() {
           echo "ERROR: Must provide name of document." # error out
           return 1
         else # yes doc id - (could be iterator)
-          read_lines_into_pipe_crud_sync
+          read_lines_into_pipe_crud_sync $PIPE
           if [ -z $(echo -n \"${SYNC}\" | grep -e ${DOC_ID}) ] # no doc found
           then
 
@@ -275,7 +270,7 @@ pipe_crud() {
             rm -f $PIPE # delete entire pipe
           fi # yes data, do nothing
         else # yes doc id - (could be iterator)
-          read_lines_into_pipe_crud_sync
+          read_lines_into_pipe_crud_sync $PIPE
           if [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] # no doc found
           then
             echo "ERROR: Document ID ${DOC_ID} not found." # error out
@@ -341,7 +336,7 @@ pipe_crud() {
 read_lines_into_pipe_crud_sync() {
   while IFS= read -r LINE
   do
-    if [ -z $SYNC ]
+    if [ -z "${SYNC}" ]
     then
       SYNC="${LINE}"
     else
@@ -352,7 +347,7 @@ read_lines_into_pipe_crud_sync() {
         SYNC="${SYNC} ${LINE}"
       fi
     fi
-  done < $PIPE
+  done < "${1}"
 }
 
 pipe_crud_usage() {
