@@ -1,106 +1,120 @@
 #!/bin/sh
 
 pipe_crud() {
-  local PIPE=   #             # The name of the pipe.
-  local DOC_ID= #             # The descriptor of the current document.
-  local CRUD=   #             # The action to perform on the current document.
-  local DATA=   #             # The variables container in the current document.
-  local HOOK=   #             # Optional behavior to perform after CRUD action(s).
-  local SYNC=   #             # A variable used as a data store between CRUD actions.
-  for OPT in "$@"             # Parse our arguments.
+  local PIPE=   #               # The name of the pipe.
+  local DOC_ID= #               # The descriptor of the current document.
+  local CRUD=   #               # The action to perform on the current document.
+  local DATA=   #               # The variables container in the current document.
+  local HOOK=   #               # Optional behavior to perform after CRUD action(s).
+  local SYNC=   #               # A variable used as a data store between CRUD actions.
+
+  for OPT in "$@"               # Parse our arguments.
   do
-    local illegal_arg=1       # Presume there is an illegal argument.
-    if [ "$(echo -n ${OPT} | grep -e --pipe=)" != "" ]
+    local illegal_arg=1         # Presume there is an illegal argument.
+
+    if [ "$(echo ${OPT} | grep -e --pipe=)" != "" ]      # If grep matches the pattern --pipe=
     then
-      PIPE="$(echo -n ${OPT} | sed 's/--pipe=\(.*\)/\1/')"
-      illegal_arg=0
+      PIPE="$(echo ${OPT} | sed 's/--pipe=\(.*\)/\1/')"  # Parse the pipe name past the equal sign and assign it to PIPE
+      illegal_arg=0             #                           # This argument is legal
     fi
 
-    if [ "$(echo ${OPT} | grep -e --doc-id=)" != "" ]
+    if [ "$(echo ${OPT} | grep -e --doc-id=)" != "" ]       # If grep matches the pattern --doc-id=
     then
-      DOC_ID="$(echo ${OPT} | sed 's/--doc-id=\(.*\)/\1/')"
-      illegal_arg=0
+      DOC_ID="$(echo ${OPT} | sed 's/--doc-id=\(.*\)/\1/')" # Parse the document id past the equal sign and assign it to DO_ID
+      illegal_arg=0             #                           # This argument is legal
     fi
 
-    if [ "$(echo ${OPT} | grep -e --crud=)" != "" ]
+    if [ "$(echo ${OPT} | grep -e --crud=)" != "" ]         # If grep matches the pattern --crud=
     then
-      CRUD="$(echo ${OPT} | sed 's/--crud=\(.*\)/\1/')"
-      illegal_arg=0
+      CRUD="$(echo ${OPT} | sed 's/--crud=\(.*\)/\1/')"     # Parse the crud action past the equal sign and assign it to RUD
+      illegal_arg=0             #                           # This argument is legal
     fi
 
-    if [ "$(echo ${OPT} | grep -e --data=)" != "" ]
+    if [ "$(echo ${OPT} | grep -e --data=)" != "" ]         # If grep matches the pattern --data=
     then
-      DATA="$(echo ${OPT} | sed 's/--data=\(.*\)/\1/')"
-      illegal_arg=0
+      DATA="$(echo ${OPT} | sed 's/--data=\(.*\)/\1/')"     # Parse the variable=value pair(s) past the equal sign and assign them to DATA
+      illegal_arg=0             #                           # This argument is legal
     fi
 
-    if [ "$(echo ${OPT} | grep -e --hook=)" != "" ]
+    if [ "$(echo ${OPT} | grep -e --hook=)" != "" ]         # If grep matches the pattern --hook=
     then
-      HOOK="$(echo ${OPT} | sed 's/--hook=\(.*\)/\1/')"
-      illegal_arg=0
+      HOOK="$(echo ${OPT} | sed 's/--hook=\(.*\)/\1/')"     # Parse the hook keyword past the equal sign and assign it to HOOK
+      illegal_arg=0             #                           # This argument is legal
     fi
 
-    if [ ! $illegal_arg -eq 0 ]
+    if [ ! $illegal_arg -eq 0 ] # If the argument is not any of the legal options
     then
-      pipe_crud_usage     #             # If we found an illegal argument, show usage and return 1.
-      return 1
+      pipe_crud_usage           # Show utility usage
+      return 1                  # Go no further, user error
     fi
   done
 
-  if [ -z "${PIPE}" ] || [ -z "${DOC_ID}" ] || [ -z "${CRUD}" ] || [ -z "${DATA}" ]
+  if [ -z "${PIPE}" ] || [ -z "${DOC_ID}" ] || [ -z "${CRUD}" ] || [ -z "${DATA}" ] # If any of the required arguments are blank
   then
-    pipe_crud_usage       #             # If we didn't receive all required arguments, show usage and return 1.
-    return 1
+    pipe_crud_usage             # Show utility usage
+    return 1                    # Go no further, user error
   fi
   case $CRUD in
     create) ################################################################# CRUD Action: Create
-      if [ ! -p $PIPE ] # no pipe
+      if [ ! -p $PIPE ]               # no pipe
       then
-        if [ "${PIPE}" == "--" ] # no pipe name
+        if [ "${PIPE}" == "--" ]      # no pipe name
         then
           echo "ERROR: Must provide name of pipe." # error out
           return 1
-        else # yes pipe name
-          if [ "${DOC_ID}" == "--" ] # no doc id
+        else    # yes pipe name
+          if [ "${DOC_ID}" == "--" ]  # no doc id
           then
-            echo "ERROR: Must provide name of document." # error out
+            echo "ERROR: Must provide name of document."  # error out
             return 1
-          else # yes doc id - (could be iterator)
-            if [ "${DATA}" == "--" ] # no data
+          else  # yes doc id - (could be iterator)
+            if [ "${DATA}" == "--" ]  # no data
             then
-              echo "ERROR: Must provide document data." # error out
+              echo "ERROR: Must provide document data."   # error out
               return 1
             else # yes data - (could be iterator)
-              mkfifo $PIPE # Create PIPE if it doesn't exist.
+              mkfifo $PIPE            # Create PIPE if it doesn't exist.
 
-              # put doc containing data in pipe:
-              ( printf '%s\n' "BOF=${DOC_ID}" $DATA "EOF=${DOC_ID}" 'EOP' ' ' >> $PIPE & )
+              ( \
+                printf '%s\n' "BOF=${DOC_ID}" \
+                $DATA \
+                "EOF=${DOC_ID}" \
+                'EOP' ' ' >> $PIPE & \
+              ) # put doc containing data in pipe
             fi
           fi
         fi
-      else # yes pipe
-        if [ "${DOC_ID}" == "--" ] # no doc id
+      else      # yes pipe
+        if [ "${DOC_ID}" == "--" ]        # no doc id
         then
-          echo "ERROR: Must provide name of document." # error out
-          return 1
-        else # yes doc id
+          echo "ERROR: Must provide name of document."  # error out
+          return 1  # Go no further, user error
+        else        # yes doc id
           read_lines_into_pipe_crud_sync $PIPE
           local duplicate_exists=1
-          [ -z "$(echo -n "${SYNC}" | grep -e $DOC_ID)" ] && duplicate_exists=0
-          if [ $duplicate_exists -eq 1 ] # yes doc found
+
+          if [ -z "$(echo "${SYNC}" | grep -e $DOC_ID)" ]
+          then 
+            duplicate_exists=0
+          fi
+
+          if [ $duplicate_exists -eq 1 ]  # yes doc found
           then
             echo "ERROR: document name already exists." # error out
             return 1
-          else # no doc found
-            if [ "${DATA}" == "--" ] # no data
+          else      # no doc found
+            if [ "${DATA}" == "--" ]      # no data
             then
               echo "ERROR: Must provide document data." # error out
               return 1
-            else # yes data
+            else    # yes data
               ( \
-                printf '%s\n' $SYNC "BOF=${DOC_ID}" $DATA "EOF=${DOC_ID}" \
+                printf '%s\n' $SYNC \
+                "BOF=${DOC_ID}" \
+                $DATA \
+                "EOF=${DOC_ID}" \
                 'EOP' ' ' >> $PIPE & \
-              ) # append doc containing data to pipe
+              )     # append doc containing data to pipe
               SYNC= # Empty SYNC once action completed.
             fi
           fi
@@ -110,37 +124,37 @@ pipe_crud() {
     read) ################################################################### CRUD Action: Read
       if [ ! -p $PIPE ] # no pipe
       then
-        echo "ERROR: Pipe ${PIPE} does not exist." # error out
-        return 1
-      else # yes pipe
-        if [ "${DOC_ID}" == "--" ] # no doc id
+        echo "ERROR: Pipe \"${PIPE}\" does not exist."  # error out
+        return 1  # Go no further, file system error
+      else        # yes pipe
+        if [ "${DOC_ID}" == "--" ]  # no doc id
         then
-          if [ "${DATA}" == "--" ] # no data
+          if [ "${DATA}" == "--" ]  # no data
           then
-            read_lines_into_pipe_crud_sync $PIPE
-            printf '%s\n' $SYNC # print entire pipe
+            read_lines_into_pipe_crud_sync $PIPE        # capture a copy of pipe's contents
+            printf '%s\n' $SYNC     # print entire pipe
 
             # TODO: conditionally restore based on HOOK
 
             ( \
               printf '%s\n' $SYNC \
               'EOP' ' ' >> $PIPE & \
-            ) # restore contents of pipe
+            )     # restore contents of pipe
             SYNC= # empty sync when finished
-          fi # yes data, do nothing
-        else # yes doc id - (could be iterator)
-          read_lines_into_pipe_crud_sync $PIPE
-          if [ -z "$(echo -n "${SYNC}" | grep -e $DOC_ID)" ] # no doc found
+          fi      # yes data, do nothing
+        else      # yes doc id - (could be iterator)
+          read_lines_into_pipe_crud_sync $PIPE          # capture a copy of pipe's contents
+          if [ -z "$(echo ${SYNC} | grep -e ${DOC_ID})" ] # no doc found
           then
             ( \
               printf '%s\n' $SYNC \
               'EOP' ' ' >> $PIPE & \
             ) # restore contents of pipe before return 1
             SYNC= # empty sync when finished
-            echo "ERROR: Document ID ${DOC_ID} not found." # error out
+            echo "ERROR: Document ID \"${DOC_ID}\" not found." # error out
             return 1
           else # yes doc found
-            local read_doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\)\(.*\)\(EOF=${DOC_ID}\)/\1 \2 \3/")"
+            local read_doc_contents="$(echo ${SYNC} | sed 's/\(BOF='"${DOC_ID}"'\) \(.*\) \(EOF='"${DOC_ID}"'\)/\1 \2 \3/')"
             if [ "${DATA}" == "--" ] # no data
             then
               printf '%s\n' $read_doc_contents # print entire doc
@@ -154,66 +168,39 @@ pipe_crud() {
               SYNC= # empty sync when finished
             else # yes data - (could be iterator)
               local read_req_data=
-              local read_req_data_missing=1
-              for read_var_name in $DATA # look for data
+              for read_var_name in $DATA # look for data by name
               do
-                local read_req_data_match=$(echo -n "${read_doc_contents}" | sed "s/\(${read_var_name}\)=\(.*\),/\1=\2/")
-                if [ ! -z read_req_data_match ]
+                local clean_var_name="$(echo ${read_var_name} | sed 's/[[:punct:]]//g')"
+                local read_req_data_match="$( \
+                  echo ${read_doc_contents} | \
+                  sed 's/.*\('"${clean_var_name}"'\)=\(.*\),.*/\2/' | \
+                  cut -d ' ' -f1 | \
+                  sed 's/,$//g' \
+                )"
+
+                if [ ! -z "${read_req_data_match}" ] && \
+                [ ! -z "$(echo ${read_doc_contents} | grep -o ${read_req_data_match})" ]
                 then
-                  [ -z read_req_data ] && \
-                  read_req_data="${read_req_data_match}," || \
-                  read_req_data="${read_req_data} ${read_req_data_match},"
-                  [ $read_req_data_missing -eq 1 ] && read_req_data_missing=0
+                  if [ -z "${read_req_data}" ]
+                  then
+                    read_req_data="${read_req_data_match}"
+                  else
+                    read_req_data="${read_req_data} ${read_req_data_match}"
+                  fi
+                else
+
+                  # TODO: conditionally restore based on HOOK
+
+                  ( \
+                    printf '%s\n' $SYNC \
+                    'EOP' ' ' >> $PIPE & \
+                  ) # restore contents of pipe before return 1
+                  SYNC= # empty sync when finished
+                  echo "ERROR: Data \"${clean_var_name}\" does not exist."  # error out
+                  return 1
                 fi
               done
-              if [ $read_req_data_missing -eq 1 ] # no data found
-              then
-
-                # TODO: conditionally restore based on HOOK
-
-                ( \
-                  printf '%s\n' $SYNC \
-                  'EOP' ' ' >> $PIPE & \
-                ) # restore contents of pipe before return 1
-                SYNC= # empty sync when finished
-                echo "ERROR: Requested data ${DATA} missing." # error out
-                return 1
-              else # yes data found
-                printf '%s\n' $read_req_data # print only data
-              fi
-            fi
-          fi
-        fi
-      fi
-      ;;
-    update) ################################################################# CRUD Action: Update
-      if [ ! -p $PIPE ] # no pipe
-      then
-        echo "ERROR: Pipe ${PIPE} doesn't exist." # error out
-        return 1
-      else # yes pipe
-        if [ "${DOC_ID}" == "--" ] # no doc id
-        then
-          echo "ERROR: Must provide name of document." # error out
-          return 1
-        else # yes doc id - (could be iterator)
-          read_lines_into_pipe_crud_sync $PIPE
-          if [ -z $(echo -n \"${SYNC}\" | grep -e ${DOC_ID}) ] # no doc found
-          then
-
-            # TODO: conditionally restore based on HOOK
-
-            ( \
-              printf '%s\n' $SYNC \
-              'EOP' ' ' >> $PIPE & \
-            ) # restore contents of pipe before return 1
-            SYNC= # empty sync when finished
-            echo "ERROR: Document ${DOC_ID} does not exist or was deleted." # error out
-            return 1
-          else # yes doc found
-            local update_doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 \2 \3/")"
-            if [ "${DATA}" == "--" ] # no data
-            then
+              echo $read_req_data # print only data
 
               # TODO: conditionally restore based on HOOK
 
@@ -222,28 +209,74 @@ pipe_crud() {
                 'EOP' ' ' >> $PIPE & \
               ) # restore contents of pipe before return 1
               SYNC= # empty sync when finished
+            fi
+          fi
+        fi
+      fi
+      ;;
+    update) ################################################################# CRUD Action: Update
+      if [ ! -p $PIPE ] # no pipe
+      then
+        echo "ERROR: Pipe \"${PIPE}\" does not exist." # error out
+        return 1
+      else # yes pipe
+        if [ "${DOC_ID}" == "--" ] # no doc id
+        then
+          echo "ERROR: Must provide name of document." # error out
+          return 1
+        else # yes doc id - (could be iterator)
+          read_lines_into_pipe_crud_sync $PIPE
+          if [ -z "$(echo ${SYNC} | grep -o ${DOC_ID})" ] # no doc found
+          then
+            ( \
+              printf '%s\n' $SYNC \
+              'EOP' ' ' >> $PIPE & \
+            ) # restore contents of pipe before return 1
+            SYNC= # empty sync when finished
+            echo "ERROR: Document \"${DOC_ID}\" does not exist or was deleted." # error out
+            return 1
+          else # yes doc found
+            if [ "${DATA}" == "--" ] # no data
+            then
+              ( \
+                printf '%s\n' $SYNC \
+                'EOP' ' ' >> $PIPE & \
+              ) # restore contents of pipe before return 1
+              SYNC= # empty sync when finished
               echo "ERROR: Must provide document data." # error out
               return 1
             else # yes data - (could be iterator)
-              local update_req_data=
-              # local update_req_data_missing=1
+              local update_req_data="$(echo ${SYNC} | sed 's/\(BOF='"${DOC_ID}"'\) \(.*\) \(EOF='"${DOC_ID}"'\)/\2/')"
+              echo "update_req_data: ${update_req_data}"
               for update_var_val_pair in $DATA # look for data
               do
-                local update_var_name=$(echo -n $update_var_val_pair | sed 's/\(.*\)=\(.*\),/\1/')
-                local update_val_data="$(echo -n $update_var_val_pair | sed 's/\(.*\)=\(.*\),/\2/')"
-                local update_req_data_match=$(echo -n "${update_doc_contents}" | sed "s/\(${update_var_name}\)=\(.*\),/\1=${update_val_data}/")
-                if [ -z update_req_data_match ] # no data found
+                local update_var_name="$(echo ${update_var_val_pair} | sed 's/\(.*\)=\(.*\),/\1/')"
+                local update_val_data="$(echo ${update_var_val_pair} | sed 's/\(.*\)=\(.*\),/\2/')"
+                local update_req_data_match="$( \
+                  echo ${update_req_data} | \
+                  grep -o ${update_var_name}
+                )"
+
+                if [ ! -z "${update_req_data_match}" ]
                 then
-                  [ -z update_req_data ] && \
-                  update_req_data="${update_var_name}=${update_val_data}," || \
-                  update_req_data="${update_req_data} ${update_var_name}=${update_val_data}," # append new data to doc
-                else # yes data found
-                  [ -z update_req_data ] && \
-                  update_req_data="${update_req_data_match}," || \
-                  update_req_data="${update_req_data} ${update_req_data_match}," # update only data
+                  local old_data=
+                  for old_item in $update_req_data
+                  do
+                    if [ ! -z "$(echo ${old_item} | grep -o ${update_var_name})" ]
+                    then
+                      old_data="$(echo ${old_item} | cut -d '=' -f2 | sed 's/,$//g')"
+                      break
+                    fi
+                  done
+                  update_req_data="$( \
+                    echo ${update_req_data} | \
+                    sed 's/'"${old_data}"'/'"${update_val_data}"'/' \
+                  )"
+                else
+                  update_req_data="${update_req_data} ${update_var_val_pair}"
                 fi
               done
-              SYNC="$(echo -n ${SYNC} | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 ${update_req_data} \3/")"
+              SYNC="$(echo ${SYNC} | sed 's/\(BOF='"${DOC_ID}"'\) \(.*\) \(EOF='"${DOC_ID}"'\)/\1 '"${update_req_data}"' \3/')"
 
               # TODO: conditionally restore based on HOOK
 
@@ -261,7 +294,7 @@ pipe_crud() {
       if [ ! -p $PIPE ] # no pipe
       then
         echo "ERROR: Pipe ${PIPE} does not exist or was already deleted." # error out
-        return 1
+        return 1 # Go no further, file system error
       else # yes pipe
         if [ "${DOC_ID}" == "--" ] # no doc id
         then
@@ -271,57 +304,98 @@ pipe_crud() {
           fi # yes data, do nothing
         else # yes doc id - (could be iterator)
           read_lines_into_pipe_crud_sync $PIPE
-          if [ -z $(echo -n "${SYNC}" | grep -e $DOC_ID) ] # no doc found
+
+          if [ -z "$(echo ${SYNC} | grep -e ${DOC_ID})" ] # no doc found
           then
-            echo "ERROR: Document ID ${DOC_ID} not found." # error out
-            return 1
-          else # yes doc found
-            local doc_contents="$(echo -n "$SYNC" | sed "s/\(BOF=${DOC_ID}\) \(.*\) \(EOF=${DOC_ID}\)/\1 \2 \3/")"
-            if [ "${DATA}" == "--" ] # no data
+            ( \
+              printf '%s\n' $SYNC \
+              'EOP' ' ' >> $PIPE & \
+            )
+            SYNC=
+            echo "ERROR: Document ID ${DOC_ID} does not exist or was deleted." # error out
+            return 1 # Go no further, user error
+          fi
+
+          local doc_bof_found=0
+          local doc_eof_found=0
+          local doc_item_found=0
+          local doc_items_exist=0
+          local REMAINING=
+
+          for delete_sync in $SYNC
+          do
+            if [ ! -z "$(echo ${delete_sync} | grep -e BOF=${DOC_ID})" ] && [ $doc_bof_found -eq 0 ]
             then
-              SYNC="$(echo -n ${SYNC} | sed "s/${doc_contents}//")" # delete entire doc
+              doc_bof_found=1
+            elif [ ! -z "$(echo ${delete_sync} | grep -e EOF=${DOC_ID})" ] && [ $doc_eof_found -eq 0 ]
+            then
+              doc_eof_found=1
+            elif [ $doc_bof_found -eq 1 ] && [ $doc_eof_found -eq 1 ]
+            then
+              doc_bof_found=0
+              doc_eof_found=0
+            fi
 
-              # TODO: conditionally restore based on HOOK
-
-              ( \
-                printf '%s\n' $SYNC \
-                'EOP' ' ' >> $PIPE & \
-              ) # restore remaining contents of doc
-              SYNC= # empty sync when finished
-            else # yes data - (could be iterator)
-              local delete_req_data=
-              local delete_req_data_missing=1
-              for delete_var_name in $DATA # look for data
-              do
-                local delete_req_data_match=$(echo -n "${doc_contents}" | sed "s/\(${delete_var_name}\)=\(.*\),/\1=\2/")
-                if [ ! -z delete_req_data_match ]
-                then
-                  [ -z delete_req_data ] && \
-                  delete_req_data="${delete_req_data_match}," || \
-                  delete_req_data="${delete_req_data} ${delete_req_data_match},"
-                  [ delete_req_data_missing -eq 1 ] && delete_req_data_missing=0
-                fi
-              done
-              if [ delete_req_data_missing -eq 1 ] # no data found
+            if [ ! $doc_bof_found -eq 1 ]
+            then
+              if [ "${DATA}" == "--" ]
               then
-                echo "ERROR: Requested data ${DATA} missing or already deleted." # error out
-                return 1
-              else # yes data found
-                for delete_var_name in $DATA # delete only data
+                if [ -z "${REMAINING}" ]
+                then
+                  REMAINING="${delete_sync}"
+                else
+                  REMAINING="${REMAINING} ${delete_sync}"
+                fi
+              fi
+            elif [ $doc_bof_found -eq 1 ]
+            then
+              if [ ! "${DATA}" == "--" ]
+              then
+                doc_item_found=0
+                for delete_item in $DATA
                 do
-                  SYNC="$(echo -n ${SYNC} | sed "s/BOF=${DOC_ID} \(.*\)${delete_var_name}=\(.*\),\(.*\) EOF=${DOC_ID}/BOF=${DOC_ID} \1 \3 EOF=${DOC_ID}/")"
+                  if [ ! -z "$(echo ${delete_sync} | grep -e ${delete_item})" ] && [ $doc_item_found -eq 0 ]
+                  then
+                    doc_item_found=1
+                    if [ $doc_items_exist -eq 0 ]
+                    then
+                      doc_items_exist=1
+                    fi
+                    break
+                  fi
+
+                  # if [ ! $doc_items_exist -eq 1 ] && [ $doc_eof_found -eq 1 ]
+                  # then
+                  #   ( \
+                  #     printf '%s\n' $SYNC \
+                  #     'EOP' ' ' >> $PIPE & \
+                  #   )
+                  #   SYNC=
+                  #   echo "ERROR: Document item ${delete_item} does not exist or was deleted." # error out
+                  #   return 1 # Go no further, user error
+                  # fi
                 done
 
-                # TODO: conditionally restore based on HOOK
-
-                ( \
-                  printf '%s\n' $SYNC \
-                  'EOP' ' ' >> $PIPE & \
-                ) # restore remaining contents of doc
-                SYNC= # empty sync when finished
+                if [ ! $doc_item_found -eq 1 ]
+                then
+                  if [ -z "${REMAINING}" ]
+                  then
+                    REMAINING="${delete_sync}"
+                  else
+                    REMAINING="${REMAINING} ${delete_sync}"
+                  fi
+                fi
               fi
             fi
-          fi
+          done
+
+          SYNC="${REMAINING}"
+
+          ( \
+            printf '%s\n' $SYNC \
+            'EOP' ' ' >> $PIPE & \
+          )
+          SYNC=
         fi
       fi
       ;;
