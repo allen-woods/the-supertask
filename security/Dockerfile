@@ -59,7 +59,7 @@ WORKDIR /
 #COPY --from=entropy_tests /usr/bin/dieharder/ /usr/bin/dieharder/
 #COPY --from=pgp_keys /pgp/ /pgp/
 COPY --chown=root:root ./config /vault/config/
-COPY --chown=root:root ["./shared/scripts/pipe_crud.sh",            "/etc/profile.d/"]
+#COPY --chown=root:root ["./shared/scripts/pipe_crud.sh",            "/etc/profile.d/"]
 # COPY --chown=root:root ["./pgp_keys/scripts/pgp_init_vault.sh",           "/etc/profile.d/"]
 # COPY --chown=root:root ["./pgp_keys/scripts/pgp_pass_keys_into_vault.sh", "/etc/profile.d/"]
 

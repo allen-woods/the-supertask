@@ -455,3 +455,109 @@ pipe_crud_usage() {
   echo "                           This feature is not yet implemented."
   echo "" # Trailing white space ############################################################################
 }
+
+# * * * refactor * * * 
+#
+# pipe_crud -c -P|--pipe=name_of_pipe -D|--doc=id_of_doc -I|--items={"var1":"val1", "var2":"val2", "var3":"val3"}
+#           -r
+#           -u
+#           -d
+#
+# pipe_crud -c -P=test_pipe -D=test_doc_01 -I={"var":"val"} --overwrite
+# pipe_crud -r -P=test_pipe
+# pipe_crud -r -P=test_pipe -D=test_doc_01
+# pipe_crud -r -P=test_pipe -D=test_doc_01 -I={"var"}
+# pipe_crud -u -P=test_pipe -D=test_doc_01 -I={"var":"new_val"}
+# pipe_crud -u -P=test_pipe -D=test_doc_01 -I={"var":"new_val"} --replace_doc
+# pipe_crud -d -P=test_pipe
+# pipe_crud -d -P=test_pipe -D=test_doc_01
+# pipe_crud -d -P=test_pipe -D=test_doc_01 -I={"var"}
+
+pipe_crud() {
+  local PIPE=
+  local DOC=
+  local ITEMS=
+  local CRUD=
+  local ADV_OPT=
+
+  for arg in "${@}"; do
+    local pre=$(echo $arg | sed "s/\([-]\{1,2\}\).*/\1/g")
+    local cmd=
+    local str=
+    [ ! -z "$(echo ${arg} | grep -o '=')" ] && cmd="$(echo ${arg} | cut -d '=' -f1)" || cmd="${arg}"
+    [ ! -z "$(echo ${arg} | grep -o '=')" ] && str="$(echo ${arg} | cut -d '=' -f2)"
+    case $cmd in
+      -P|--pipe)    # Name of pipe
+        PIPE="${str}"
+        ;;
+      -D|--doc)     # ID of document
+        DOC="${str}"
+        ;;
+      -I|--items)   # \"field\":\"value\" pair items in document
+        ITEMS="$(echo -e ${str} | sed -e "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
+        ;;
+      --overwrite-pipe) # Advanced Option: overwrite contents of existing pipe
+        ADV_OPT=overwrite_pipe
+        ;;
+      --replace-doc)    # Advanced Option: replace contents of existing document
+        ADV_OPT=replace_doc
+        ;;
+      --delete-after)   # Advanced Option: delete document or item after reading
+        ADV_OPT=delete_after
+        ;;
+      --secure)         # Advanced Option: use file descriptor for more security
+        ADV_OPT=secure
+        ;;
+      -c|--create)      # create mode
+        CRUD=create
+        break
+        ;;
+      -r|--read)        # read mode
+        CRUD=read
+        break
+        ;;
+      -u|--update)      # update mode
+        CRUD=update
+        break
+        ;;
+      -d|--delete)      # delete mode
+        CRUD=delete
+        break
+        ;;
+      *)                # Illegal argument
+        display_pipe_crud_usage
+        return 1
+        ;;
+    esac
+  done # end parse arguments
+
+  if [ -z "${CRUD}" ]; then
+    display_pipe_crud_usage
+    return 1 # Go no further, user error (must provide crud action to perform)
+  else
+    if [ -z "${PIPE}" ]; then
+      display_pipe_crud_usage
+      return 1 # go no further, user error (must provide name of pipe)
+    else
+      if [ "${CRUD}" == "create" ]; then
+        if [ ! -p $PIPE ]; then
+          # create pipe if it doesn't exist
+          mkfifo $PIPE
+          if [ "${ADV_OPT}" == "secure" ]; then
+            # assign a file descriptor
+            # unlink the pipe
+          fi
+        else
+          if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
+            # Advanced option: overwrite contents of existing pipe
+          else
+            # Go no further, pipe already exists
+          fi
+        fi
+      elif [ "${CRUD}" == "read" ]; then
+      elif [ "${CRUD}" == "update" ]; then
+      elif [ "${CRUD}" == "delete" ]; then
+      fi
+    fi
+  fi
+}
