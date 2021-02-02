@@ -479,84 +479,213 @@ pipe_crud() {
   local ITEMS=
   local CRUD=
   local ADV_OPT=
+  local SYNC=
 
-  for arg in "${@}"; do
+  for arg in "${@}"; do # ..........................................START: Parse arguments. ###########################
     local pre=$(echo $arg | sed "s/\([-]\{1,2\}\).*/\1/g")
     local cmd=
     local str=
     [ ! -z "$(echo ${arg} | grep -o '=')" ] && cmd="$(echo ${arg} | cut -d '=' -f1)" || cmd="${arg}"
     [ ! -z "$(echo ${arg} | grep -o '=')" ] && str="$(echo ${arg} | cut -d '=' -f2)"
     case $cmd in
-      -P|--pipe)    # Name of pipe
+      -P|--pipe)
         PIPE="${str}"
         ;;
-      -D|--doc)     # ID of document
+      -D|--doc)
         DOC="${str}"
         ;;
-      -I|--items)   # \"field\":\"value\" pair items in document
+      -I|--items)
         ITEMS="$(echo -e ${str} | sed -e "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
         ;;
-      --overwrite-pipe) # Advanced Option: overwrite contents of existing pipe
+      --overwrite-pipe)
         ADV_OPT=overwrite_pipe
         ;;
-      --replace-doc)    # Advanced Option: replace contents of existing document
-        ADV_OPT=replace_doc
+      --replace-all)
+        ADV_OPT=replace_all
         ;;
-      --delete-after)   # Advanced Option: delete document or item after reading
+      --delete-after)
         ADV_OPT=delete_after
         ;;
-      --secure)         # Advanced Option: use file descriptor for more security
+      --secure)
         ADV_OPT=secure
         ;;
-      -c|--create)      # create mode
+      -c|--create)
         CRUD=create
         break
         ;;
-      -r|--read)        # read mode
+      -r|--read)
         CRUD=read
         break
         ;;
-      -u|--update)      # update mode
+      -u|--update)
         CRUD=update
         break
         ;;
-      -d|--delete)      # delete mode
+      -d|--delete)
         CRUD=delete
         break
         ;;
-      *)                # Illegal argument
+      *)
         display_pipe_crud_usage
         return 1
         ;;
     esac
-  done # end parse arguments
+  done # ...........................................................END: Parse arguments. #############################
 
   if [ -z "${CRUD}" ]; then
     display_pipe_crud_usage
-    return 1 # Go no further, user error (must provide crud action to perform)
+    return 1
   else
     if [ -z "${PIPE}" ]; then
       display_pipe_crud_usage
-      return 1 # go no further, user error (must provide name of pipe)
+      return 1
     else
-      if [ "${CRUD}" == "create" ]; then
+      if [ "${CRUD}" == "create" ]; then # .........................CREATE ############################################
         if [ ! -p $PIPE ]; then
-          # create pipe if it doesn't exist
+
           mkfifo $PIPE
-          if [ "${ADV_OPT}" == "secure" ]; then
-            # assign a file descriptor
-            # unlink the pipe
+
+          if [ -z "${DOC}" ]; then
+            SYNC=
+          else
+            if [ -z "${ITEMS}" ]; then
+              SYNC="BOF=${DOC} EOF=${DOC}"
+            else
+              SYNC="BOF=${DOC} $ITEMS EOF=${DOC}"
+            fi
           fi
         else
-          if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
-            # Advanced option: overwrite contents of existing pipe
+          if [ "${ADV_OPT}" != "overwrite_pipe" ]; then
+            if [ -z "${DOC}" ]; then
+              echo "ERROR: Pipe \"${PIPE}\" Already Exists."
+              return 1
+            else
+              while IFS= read -r CREATE_DATA; do
+                if [ "${CREATE_DATA}" == "EOP" ]; then
+                  break
+                else
+                  if [ -z "${SYNC}" ]; then
+                    SYNC="${CREATE_DATA}"
+                  else
+                    SYNC="${SYNC} ${CREATE_DATA}"
+                  fi
+                fi
+              done < $PIPE
+              if [ -z "$(echo ${SYNC} | grep -o ${DOC})" ]; then
+                if [ -z "${ITEMS}" ]; then
+                  SYNC="${SYNC} BOF=${DOC} EOF=${DOC}"
+                else
+                  SYNC="${SYNC} BOF=${DOC} ${ITEMS} EOF=${DOC}"
+                fi
+              else
+                echo "ERROR: Document \"${DOC}\" Already Exists."
+                return 1
+              fi
+            fi
           else
-            # Go no further, pipe already exists
+            if [ -z "${DOC}" ]; then
+              while IFS= read -r CREATE_DATA; do
+                if [ "${CREATE_DATA}" == "EOP" ]; then
+                  break
+                else
+                  echo "${CREATE_DATA}" >/dev/null
+                fi
+              done
+              SYNC=
+            else
+              if [ -z "${ITEMS}" ]; then
+                SYNC="BOF=${DOC} EOF=${DOC}"
+              else
+                SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+              fi
+            fi
+          fi
+          printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE &
+          SYNC=
+        fi
+      elif [ "${CRUD}" == "read" ]; then # .........................READ ##############################################
+        if [ ! -p $PIPE ]; then
+          echo "ERROR: Pipe ${PIPE} Does Not Exist or Was Deleted."
+          return 1
+        else
+          local bof_doc_found=0
+          local eof_doc_found=0
+          while IFS= read -r READ_DATA; do
+            if [ "${READ_DATA}" == "EOP" ]; then
+              break
+            else
+              if [ -z "${DOC}" ]; then
+
+                echo -e "${READ_DATA}"
+
+                if [ -z "${SYNC}" ]; then
+                  [ "${ADV_OPT}" != "delete_after" ] && SYNC="${READ_DATA}"
+                else
+                  [ "${ADV_OPT}" != "delete_after" ] && SYNC="${SYNC} ${READ_DATA}"
+                fi
+              else
+                if [ ! -z "$(echo -e ${READ_DATA} | grep -o BOF=${DOC})" ]; then
+                  [ $bof_doc_found -eq 0 ] && bof_doc_found=1
+                elif [ ! -z "$(echo -e ${READ_DATA} | grep -o EOF=${DOC})" ]; then
+                  [ $eof_doc_found -eq 0 ] && eof_doc_found=1
+                elif [ $bof_doc_found -eq 1 ] && [ $eof_doc_found -eq 1 ]; then
+                  bof_doc_found=0
+                  eof_doc_found=0
+                fi
+                if [ bof_doc_found -gt 0 ]; then
+                  if [ -z "${ITEMS}" ]; then
+
+                    echo -e "${READ_DATA}"
+
+                    if [ -z "${SYNC}" ]; then
+                      [ "${ADV_OPT}" != "delete_after" ] && SYNC="${READ_DATA}"
+                    else
+                      [ "${ADV_OPT}" != "delete_after" ] && SYNC="${SYNC} ${READ_DATA}"
+                    fi
+                  else
+                    local doc_item_found=0
+                    for READ_ITEM in "${ITEMS}"; do
+                      if [ ! -z "$(echo -e ${READ_DATA} | grep -o ${READ_ITEM})" ]; then
+                        [ $doc_item_found -eq 0 ] && doc_item_found=1
+                        break
+                      fi
+                    done
+                    if [ $doc_item_found -gt 0 ]; then
+
+                      echo -e "${READ_DATA}"
+
+                      if [ -z "${SYNC}" ]; then
+                        [ "${ADV_OPT}" != "delete_after" ] && SYNC="${READ_DATA}"
+                      else
+                        [ "${ADV_OPT}" != "delete_after" ] && SYNC="${SYNC} ${READ_DATA}"
+                      fi
+                    fi
+                  fi
+                fi
+              fi
+            fi
+          done < $PIPE
+          if [ -z "${SYNC}" ]; then
+            [ "${ADV_OPT}" == "delete_after" ] && rm -f $PIPE
+          else
+            printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE &
+            SYNC=
           fi
         fi
-      elif [ "${CRUD}" == "read" ]; then
-      elif [ "${CRUD}" == "update" ]; then
-      elif [ "${CRUD}" == "delete" ]; then
+      elif [ "${CRUD}" == "update" ]; then # .......................UPDATE ############################################
+        if [ ! -p $PIPE ]; then
+          echo "ERROR: Pipe ${PIPE} Does Not Exist or Was Deleted."
+          return 1
+        else
+          if [ -z "${DOC}" ]; then
+            if [ "${ADV_OPT}" == "update_all" ]; then
+              SYNC= # 
+            fi
+          else
+          printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE
+          SYNC=
+        fi
+      elif [ "${CRUD}" == "delete" ]; then # .......................DELETE ############################################
       fi
     fi
   fi
