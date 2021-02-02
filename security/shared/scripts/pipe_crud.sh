@@ -532,18 +532,76 @@ pipe_crud() {
     esac
   done # ...........................................................END: Parse arguments. #############################
 
-  if [ -z "${CRUD}" ]; then
+  if [ -z "${CRUD}" ]; then # ......................................User must provide a crud action.
     display_pipe_crud_usage
     return 1
   else
-    if [ -z "${PIPE}" ]; then
+    if [ -z "${PIPE}" ]; then # ....................................User must provide a pipe name.
       display_pipe_crud_usage
       return 1
     else
+      local MAP_FILE_DIR=/tmp
+      local MAP_FILE=
+
+      # This block of code determines if a map file already exists.
+      # Based on its findings, it either generates the missing map file
+      # or confirms the random filename where the map file is located.
+
+      # No further action beyond generating or locating is permitted
+      # at this point.
+
+      if [ -z "$(ls -A ${MAP_FILE_DIR})" ]; then
+        MAP_FILE=$(tr -cd a-f0-9 < /dev/urandom | fold -w32 | head -n1)
+        printf '%s\n' "$(echo 'PIPE_CRUD MAP FILE' | base64)" >> /tmp/$MAP_FILE
+      else
+        for FILE in "${MAP_FILE_DIR}/*"; do
+          if [ "$(sed '1q;d' ${FILE} | base64 -d)" == "PIPE_CRUD MAP FILE" ]; then
+            MAP_FILE=$FILE
+            break
+          fi
+        done
+      fi
+
+      local PIPE_64="$(echo ${PIPE} | base64)"
+      local PIPE_MAP_STRING="${PIPE_64}"
+      local WRITE_TO=" > ${PIPE} &"
+      local READ_FROM=" < ${PIPE}"
+      
       if [ "${CRUD}" == "create" ]; then # .........................CREATE ############################################
-        if [ ! -p $PIPE ]; then
+        if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+          if [ "${ADV_OPT}" == "secure" ]; then
+            local _TMP=$( \
+              tr -cd a-f0-9 < /dev/urandom | \
+              fold -w32 | \
+              head -n1 \
+            ) # ....................................................Random 16 byte hexadecimal temporary filename.
+
+            local PIPE_FD=
+            local TEST_FD=3
+            local LAST_FD=100
+            while [ $TEST_FD -le $LAST_FD ]; do
+              if [ ! -e /proc/$$/fd/$TEST_FD ]; then
+                PIPE_FD=${TEST_FD} # ...............................Next available file descriptor.
+                break
+              fi
+              TEST_FD=$(($TEST_FD + 1))
+            done
+
+            mkfifo $_TMP # .........................................Create temporary, randomly named FIFO.
+            exec $PIPE_FD<> $_TMP # ................................Bind the I/O of the FIFO to PIPE_FD.
+            unlink $_TMP # .........................................Delete temporary, randomly named FIFO.
+            PIPE_MAP_STRING="${PIPE_MAP_STRING} ${PIPE_FD}" # ......Append a new line to our map file that
+                                                                  # directs us to use PIPE_FD when looking
+                                                                  # for PIPE.
+
 
           mkfifo $PIPE
+
+          local PIPE_64=$(echo $PIPE | base64)
+
+          if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+            printf '%s\n' $PIPE_64 >> $MAP_FILE_DIR/$MAP_FILE
+          fi
 
           if [ -z "${DOC}" ]; then
             SYNC=
