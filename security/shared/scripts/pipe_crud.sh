@@ -550,13 +550,17 @@ pipe_crud() {
       # No further action beyond generating or locating is permitted
       # at this point.
 
-      if [ -z "$(ls -A ${MAP_FILE_DIR})" ]; then
-        MAP_FILE=$(tr -cd a-f0-9 < /dev/urandom | fold -w32 | head -n1)
-        printf '%s\n' "$(echo 'PIPE_CRUD MAP FILE' | base64)" >> /tmp/$MAP_FILE
+      if [ -z "$(ls -A ${MAP_FILE_DIR})" ]; then # .................No map file exists yet.
+        MAP_FILE=$( \
+          tr -cd a-f0-9 < /dev/urandom | \
+          fold -w32 | \
+          head -n1 \
+        ) # ........................................................The map file is always randomly named.
+        printf '%s\n' "$(echo 'PIPE_CRUD MAP FILE' | base64)" >> ${MAP_FILE_DIR}/${MAP_FILE}
       else
-        for FILE in "${MAP_FILE_DIR}/*"; do
+        for FILE in ${MAP_FILE_DIR}/*; do
           if [ "$(sed '1q;d' ${FILE} | base64 -d)" == "PIPE_CRUD MAP FILE" ]; then
-            MAP_FILE=$FILE
+            MAP_FILE=${FILE}
             break
           fi
         done
@@ -564,21 +568,26 @@ pipe_crud() {
 
       local PIPE_64="$(echo ${PIPE} | base64)"
       local PIPE_MAP_STRING="${PIPE_64}"
-      local WRITE_TO=" > ${PIPE} &"
-      local READ_FROM=" < ${PIPE}"
+      local READ_FROM=
+      local WRITE_TO=
+      local SYNC=
       
       if [ "${CRUD}" == "create" ]; then # .........................CREATE ############################################
         if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+          # ........................................................FIFO has not been created yet.
+          # NOTE: we only check for the advanced option "secure"
+          #       once during the create crud action, as shown below.
           if [ "${ADV_OPT}" == "secure" ]; then
             local _TMP=$( \
               tr -cd a-f0-9 < /dev/urandom | \
               fold -w32 | \
               head -n1 \
-            ) # ....................................................Random 16 byte hexadecimal temporary filename.
+            ) # ....................................................Random 16 byte hexadecimal temporary filename of FIFO.
 
             local PIPE_FD=
-            local TEST_FD=3
+            local TEST_FD=6
             local LAST_FD=100
+
             while [ $TEST_FD -le $LAST_FD ]; do
               if [ ! -e /proc/$$/fd/$TEST_FD ]; then
                 PIPE_FD=${TEST_FD} # ...............................Next available file descriptor.
@@ -587,21 +596,48 @@ pipe_crud() {
               TEST_FD=$(($TEST_FD + 1))
             done
 
+            if [ -z "${PIPE_FD}" ]; then # .........................Handle edge case that no FD was found.
+              echo "ERROR: File descriptor unavailable. Increase value of LAST_FD."
+              return 1
+            fi
+
             mkfifo $_TMP # .........................................Create temporary, randomly named FIFO.
             exec $PIPE_FD<> $_TMP # ................................Bind the I/O of the FIFO to PIPE_FD.
             unlink $_TMP # .........................................Delete temporary, randomly named FIFO.
             PIPE_MAP_STRING="${PIPE_MAP_STRING} ${PIPE_FD}" # ......Append a new line to our map file that
-                                                                  # directs us to use PIPE_FD when looking
-                                                                  # for PIPE.
-
-
-          mkfifo $PIPE
-
-          local PIPE_64=$(echo $PIPE | base64)
-
-          if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
-            printf '%s\n' $PIPE_64 >> $MAP_FILE_DIR/$MAP_FILE
+                                                            #       directs us to use PIPE_FD when looking
+                                                            #       for PIPE.
+            READ_FROM='<&'"${PIPE_FD}"
+            WRITE_TO='>&'"${PIPE_FD}"
+          else
+            mkfifo $PIPE # .........................................Create regular, named FIFO.
+            READ_FROM='< '"${PIPE}"
+            WRITE_TO='>> '"${PIPE}"
           fi
+
+          printf '%s\n' "${PIPE_MAP_STRING}" >> ${MAP_FILE_DIR}/${MAP_FILE} # Populate map file regardless.
+
+          # NOTE: We use population within the map file to confirm
+          #       existence of the pipe, whether it's in "named
+          #       pipe" or "file descriptor" format.
+        else # .....................................................FIFO has already been created.
+          local PIPE_ADDRESS=
+
+          while IFS= read -r LINE; do
+            if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
+              PIPE_ADDRESS=$(echo ${LINE} | sed "s/${PIPE_64} \(.*\)/\1/g")
+              break
+            fi
+          done < ${MAP_FILE_DIR}/${MAP_FILE}
+
+          if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
+            READ_FROM='<&'"${PIPE_ADDRESS}"
+            WRITE_TO='>&'"${PIPE_ADDRESS}"
+          else
+            READ_FROM='< '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+            WRITE_TO='>> '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+          fi
+        fi
 
           if [ -z "${DOC}" ]; then
             SYNC=
