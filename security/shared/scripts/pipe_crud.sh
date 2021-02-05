@@ -557,10 +557,10 @@ pipe_crud() {
           head -n1 \
         ) # ........................................................The map file is always randomly named.
         printf '%s\n' "$(echo 'PIPE_CRUD MAP FILE' | base64)" >> ${MAP_FILE_DIR}/${MAP_FILE}
-      else
+      else # .......................................................File(s) present, the map file might already exist.
         for FILE in ${MAP_FILE_DIR}/*; do
           if [ "$(sed '1q;d' ${FILE} | base64 -d)" == "PIPE_CRUD MAP FILE" ]; then
-            MAP_FILE=${FILE}
+            MAP_FILE=${FILE} # .....................................Map file identified.
             break
           fi
         done
@@ -568,11 +568,16 @@ pipe_crud() {
 
       local PIPE_64="$(echo ${PIPE} | base64)"
       local PIPE_MAP_STRING="${PIPE_64}"
-      local READ_FROM=
-      local WRITE_TO=
+      local READ_FROM= # ...........................................Value is conditionally set later based
+                                                                  # on presence of file descriptor in map
+                                                                  # file.
+      local WRITE_TO= # ............................................Value is conditionally set later based
+                                                                  # on presence of file descriptor in map
+                                                                  # file.
       local SYNC=
-      
+      #################################################################################################################
       if [ "${CRUD}" == "create" ]; then # .........................CREATE ############################################
+      #################################################################################################################
         if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
           # ........................................................FIFO has not been created yet.
           # NOTE: we only check for the advanced option "secure"
@@ -615,7 +620,19 @@ pipe_crud() {
             WRITE_TO='>> '"${PIPE}"
           fi
 
-          printf '%s\n' "${PIPE_MAP_STRING}" >> ${MAP_FILE_DIR}/${MAP_FILE} # Populate map file regardless.
+          if [ ! -z "${DOC}" ]; then # .............................User is creating a document.
+            if [ ! -z "${ITEMS}" ]; then # .........................Document contains items.
+              SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+            else # .................................................Document contains no items.
+              SYNC="BOF=${DOC} EOF=${DOC}"
+            fi
+          else
+            SYNC= # ................................................User is only creating a pipe.
+          fi
+          
+          eval "printf '%s\n' ${SYNC} 'EOP' ' ' ${WRITE_TO}" # ..............Write sync data to the pipe.
+
+          printf '%s\n' "${PIPE_MAP_STRING}" >> ${MAP_FILE_DIR}/${MAP_FILE} # Populate map file regardless of data type.
 
           # NOTE: We use population within the map file to confirm
           #       existence of the pipe, whether it's in "named
@@ -623,163 +640,516 @@ pipe_crud() {
         else # .....................................................FIFO has already been created.
           local PIPE_ADDRESS=
 
-          while IFS= read -r LINE; do
+          while IFS= read -r LINE; do # ............................Locate mention of PIPE_64 on unknown line number.
             if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
-              PIPE_ADDRESS=$(echo ${LINE} | sed "s/${PIPE_64} \(.*\)/\1/g")
+              PIPE_ADDRESS=$(echo $LINE | sed "s/${PIPE_64} \(.*\)/\1/g")
               break
             fi
           done < ${MAP_FILE_DIR}/${MAP_FILE}
 
           if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
+            # ......................................................File descriptors disappear completely in above line.
             READ_FROM='<&'"${PIPE_ADDRESS}"
             WRITE_TO='>&'"${PIPE_ADDRESS}"
           else
+            # ......................................................Failure to find file descriptor returns PIPE_64 value.
             READ_FROM='< '"$(echo ${PIPE_ADDRESS} | base64 -d)"
             WRITE_TO='>> '"$(echo ${PIPE_ADDRESS} | base64 -d)"
           fi
-        fi
 
-          if [ -z "${DOC}" ]; then
-            SYNC=
-          else
-            if [ -z "${ITEMS}" ]; then
-              SYNC="BOF=${DOC} EOF=${DOC}"
-            else
-              SYNC="BOF=${DOC} $ITEMS EOF=${DOC}"
-            fi
-          fi
-        else
-          if [ "${ADV_OPT}" != "overwrite_pipe" ]; then
-            if [ -z "${DOC}" ]; then
-              echo "ERROR: Pipe \"${PIPE}\" Already Exists."
+          if [ -z "${DOC}" ]; then # ...............................When the user is not creating a document,
+            if [ "${ADV_OPT}" != "overwrite_pipe" ]; then # ........And they are not overwriting the pipe,
+              echo "ERROR: Pipe Already Exists." # .................Error out.
               return 1
             else
-              while IFS= read -r CREATE_DATA; do
-                if [ "${CREATE_DATA}" == "EOP" ]; then
-                  break
-                else
-                  if [ -z "${SYNC}" ]; then
-                    SYNC="${CREATE_DATA}"
-                  else
-                    SYNC="${SYNC} ${CREATE_DATA}"
-                  fi
-                fi
-              done < $PIPE
-              if [ -z "$(echo ${SYNC} | grep -o ${DOC})" ]; then
-                if [ -z "${ITEMS}" ]; then
-                  SYNC="${SYNC} BOF=${DOC} EOF=${DOC}"
-                else
-                  SYNC="${SYNC} BOF=${DOC} ${ITEMS} EOF=${DOC}"
-                fi
-              else
-                echo "ERROR: Document \"${DOC}\" Already Exists."
-                return 1
-              fi
+              SYNC= # ..............................................But if they overwriting the pipe, send in empty data.
             fi
-          else
-            if [ -z "${DOC}" ]; then
-              while IFS= read -r CREATE_DATA; do
-                if [ "${CREATE_DATA}" == "EOP" ]; then
-                  break
-                else
-                  echo "${CREATE_DATA}" >/dev/null
-                fi
-              done
-              SYNC=
-            else
-              if [ -z "${ITEMS}" ]; then
-                SYNC="BOF=${DOC} EOF=${DOC}"
+          else # ...................................................In the event the user is creating a document,
+                                                                  # qrab the contents of the pipe first so we can check
+                                                                  # for duplicates.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+
+            eval '
+            while IFS= read -r CREATE_DOC_DATA; do
+              if [ '"${CREATE_DOC_DATA}"' == "EOP" ]; then
+                break
               else
+                if [ -z '"${SYNC}"' ]; then
+                  SYNC='"${CREATE_DOC_DATA}"'
+                else
+                  SYNC='"${SYNC} ${CREATE_DOC_DATA}"'
+                fi
+              fi
+            done '"${READ_FROM}"
+
+            if [ "${ADV_OPT}" == "overwrite_pipe" ]; then # ........When overwrite of pipe is desired,
+              if [ ! -z "${ITEMS}" ]; then # .......................Do not prepend old value of SYNC at the front.
                 SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+              else
+                SYNC="BOF=${DOC} EOF=${DOC}"
+              fi
+            else
+              if [ ! -z "$(echo ${SYNC} | grep -o ${DOC})"]; then # If we find a dupliate of the document,
+                echo "ERROR: Document \"${DOC}\" Already Exists." # Error out.
+                return 1
+              else # ...............................................Otherwise prepend old value of SYNC before data.
+                if [ ! -z "${ITEMS}" ]; then
+                  SYNC="${SYNC} BOF=${DOC} ${ITEMS} EOF=${DOC}"
+                else
+                  SYNC="${SYNC} BOF=${DOC} EOF=${DOC}"
+                fi
               fi
             fi
+
+            eval "printf '%s\n' ${SYNC} 'EOP' ' ' ${WRITE_TO}" # ..........In any case, print the data back into the pipe.
+            SYNC= # Reset value of SYNC.
           fi
-          printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE &
-          SYNC=
         fi
+      #################################################################################################################
       elif [ "${CRUD}" == "read" ]; then # .........................READ ##############################################
-        if [ ! -p $PIPE ]; then
-          echo "ERROR: Pipe ${PIPE} Does Not Exist or Was Deleted."
+      #################################################################################################################
+        if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+          # ........................................................FIFO doesn't exist for unknown reason.
+          echo "ERROR: The Pipe Does Not Exist or Was Deleted."
           return 1
-        else
-          local bof_doc_found=0
-          local eof_doc_found=0
-          while IFS= read -r READ_DATA; do
-            if [ "${READ_DATA}" == "EOP" ]; then
+        else # .....................................................FIFO exists.
+          local PIPE_ADDRESS=
+          
+          while IFS= read -r LINE; do # ............................Locate mention of PIPE_64 on unknown line number.
+            if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
+              PIPE_ADDRESS=$(echo $LINE | sed "s/${PIPE_64} \(.*\)/1/g")
               break
-            else
-              if [ -z "${DOC}" ]; then
+            fi
+          done < ${MAP_FILE_DIR}/${MAP_FILE}
 
-                echo -e "${READ_DATA}"
+          if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
+            # ......................................................File descriptor.
+            READ_FROM='<&'"${PIPE_ADDRESS}"
+            WRITE_TO='>&'"${PIPE_ADDRESS}"
+          else
+            # ......................................................Named pipe.
+            READ_FROM='< '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+            WRITE_TO='>> '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+          fi
 
-                if [ -z "${SYNC}" ]; then
-                  [ "${ADV_OPT}" != "delete_after" ] && SYNC="${READ_DATA}"
-                else
-                  [ "${ADV_OPT}" != "delete_after" ] && SYNC="${SYNC} ${READ_DATA}"
-                fi
+          local read_bof_doc_found=0
+          local read_eof_doc_found=0
+          local read_item_found=0
+          local read_item_val=
+          local read_output=
+
+          if [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then # ........We are reading the entire document, no individual items.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS= read -r READ_DOC_DATA; do
+              if [ '"${READ_DOC_DATA}"' == "EOP" ]; then
+                break
               else
-                if [ ! -z "$(echo -e ${READ_DATA} | grep -o BOF=${DOC})" ]; then
-                  [ $bof_doc_found -eq 0 ] && bof_doc_found=1
-                elif [ ! -z "$(echo -e ${READ_DATA} | grep -o EOF=${DOC})" ]; then
-                  [ $eof_doc_found -eq 0 ] && eof_doc_found=1
-                elif [ $bof_doc_found -eq 1 ] && [ $eof_doc_found -eq 1 ]; then
-                  bof_doc_found=0
-                  eof_doc_found=0
+                if [ ! -z '"$(echo ${READ_DOC_DATA} | grep -o BOF=${DOC})"' ]; then
+                  read_bof_doc_found=1
+                elif [ ! -z '"$(echo ${READ_DOC_DATA} | grep -o EOF=${DOC})"' ]; then
+                  read_eof_doc_found=1
+                elif [ '"$read_bof_doc_found"' -eq 1 ] && [ '"$read_eof_doc_found"' -eq 1 ]; then
+                  read_bof_doc_found=0
+                  read_eof_doc_found=0
                 fi
-                if [ bof_doc_found -gt 0 ]; then
-                  if [ -z "${ITEMS}" ]; then
-
-                    echo -e "${READ_DATA}"
-
-                    if [ -z "${SYNC}" ]; then
-                      [ "${ADV_OPT}" != "delete_after" ] && SYNC="${READ_DATA}"
-                    else
-                      [ "${ADV_OPT}" != "delete_after" ] && SYNC="${SYNC} ${READ_DATA}"
-                    fi
+                if [ '"$read_bof_doc_found"' -gt 0 ]; then
+                  read_item_val='"$(echo ${READ_DOC_DATA} | sed -e "s/.*\\\"\(.*\)\\\":\\\"\(.*\)\\\".*/\2/g")"'
+                  if [ -z '"${read_output}"' ]; then
+                    read_output='"${read_item_val}"'
                   else
-                    local doc_item_found=0
-                    for READ_ITEM in "${ITEMS}"; do
-                      if [ ! -z "$(echo -e ${READ_DATA} | grep -o ${READ_ITEM})" ]; then
-                        [ $doc_item_found -eq 0 ] && doc_item_found=1
-                        break
-                      fi
-                    done
-                    if [ $doc_item_found -gt 0 ]; then
-
-                      echo -e "${READ_DATA}"
-
-                      if [ -z "${SYNC}" ]; then
-                        [ "${ADV_OPT}" != "delete_after" ] && SYNC="${READ_DATA}"
-                      else
-                        [ "${ADV_OPT}" != "delete_after" ] && SYNC="${SYNC} ${READ_DATA}"
-                      fi
+                    read_output='"${read_output} ${read_item_val}"'
+                  fi
+                  if [ '"${ADV_OPT}"' != "delete_after" ]; then
+                    if [ -z '"${SYNC}"' ]; then
+                      SYNC='"${READ_DOC_DATA}"'
+                    else
+                      SYNC='"${SYNC} ${READ_DOC_DATA}"'
                     fi
+                  fi
+                else
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${READ_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${READ_DOC_DATA}"'
                   fi
                 fi
               fi
-            fi
-          done < $PIPE
-          if [ -z "${SYNC}" ]; then
-            [ "${ADV_OPT}" == "delete_after" ] && rm -f $PIPE
-          else
-            printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE &
-            SYNC=
+            done '"${READ_FROM}"
+            echo "${read_output}" # ................................Send data to stdout in an easily parsed format.
+          elif [ -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then # ......We are reading common items across documents, not any one document.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS= read -r READ_DOC_DATA; do
+              if [ '"${READ_DOC_DATA}"' == "EOP" ]; then
+                break
+              else
+                read_item_found=0
+                for READ_ITEM in '"${ITEMS}"'; do
+                  if [ ! -z '"$(echo ${READ_DOC_DATA} | grep -o ${READ_ITEM})"' ]; then
+                    read_item_found=1
+                    break
+                  fi
+                done
+                if [ '"$read_item_found"' -gt 0 ]; then
+                  read_item_val='"$(echo ${READ_DOC_DATA} | sed -e "s/.*\\\"\(.*\)\\\":\\\"\(.*\)\\\".*/\2/g")"'
+                  if [ -z '"${read_output}"' ]; then
+                    read_output='"${read_item_val}"'
+                  else
+                    read_output='"${read_output} ${read_item_val}"'
+                  fi
+                  if [ '"${ADV_OPT}"' != "delete_after" ]; then
+                    if [ -z '"${SYNC}"' ]; then
+                      SYNC='"${READ_DOC_DATA}"'
+                    else
+                      SYNC='"${SYNC} ${READ_DOC_DATA}"'
+                    fi
+                  fi
+                else
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${READ_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${READ_DOC_DATA}"'
+                  fi
+                fi
+              fi
+            done '"${READ_FROM}"
+            echo "${read_output}"
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then # ....We are reading specific items from a specific document.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS= read -r READ_DOC_DATA; do
+              if [ '"${READ_DOC_DATA}"' == "EOP" ]; then
+                break
+              else
+                if [ ! -z '"$(echo ${READ_DOC_DATA} | grep -o BOF=${DOC})"' ]; then
+                  read_bof_doc_found=1
+                elif [ ! -z '"$(echo ${READ_DOC_DATA} | grep -o EOF=${DOC})"' ]; then
+                  read_eof_doc_found=1
+                elif [ '"$read_bof_doc_found"' -eq 1 ] && [ '"$read_eof_doc_found"' -eq 1 ]; then
+                  read_bof_doc_found=0
+                  read_eof_doc_found=0
+                fi
+                if [ '"$read_bof_doc_found"' -eq 1 ]; then
+                  read_item_found=0
+                  for READ_ITEM in '"${ITEMS}"'; do
+                    if [ ! -z '"$(echo ${READ_DOC_DATA} | grep -o ${READ_ITEM})"' ]; then
+                      read_item_found=1
+                      break
+                    fi
+                  done
+                fi
+                if [ '"$read_bof_doc_found"' -eq 1 ] && [ '"$read_item_found"' -eq 1 ]; then
+                  read_item_val='"$(echo ${READ_DOC_DATA} | sed -e "s/.*\\\"\(.*\)\\\":\\\"\(.*\)\\\".*/\2/g")"'
+                  if [ -z '"${read_output}"' ]; then
+                    read_output='"${read_item_val}"'
+                  else
+                    read_output='"${read_output} ${read_item_val}"'
+                  fi
+                  if [ '"${ADV_OPT}"' != "delete_after" ]; then
+                    if [ -z '"${SYNC}"' ]; then
+                      SYNC='"${READ_DOC_DATA}"'
+                    else
+                      SYNC='"${SYNC} ${READ_DOC_DATA}"'
+                    fi
+                  fi
+                else
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${READ_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${READ_DOC_DATA}"'
+                  fi
+                fi
+              fi
+            done '"${READ_FROM}"
+            echo "${read_output}"
           fi
+
+          eval "printf '%s\n' ${SYNC} 'EOP' ' ' ${WRITE_TO}"
         fi
+      #################################################################################################################
       elif [ "${CRUD}" == "update" ]; then # .......................UPDATE ############################################
-        if [ ! -p $PIPE ]; then
-          echo "ERROR: Pipe ${PIPE} Does Not Exist or Was Deleted."
+      #################################################################################################################
+        if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+          #.........................................................FIFO doesn't exist for unknown reason.
+          echo "ERROR: The Pipe Does Not Exist or Was Deleted."
           return 1
-        else
-          if [ -z "${DOC}" ]; then
-            if [ "${ADV_OPT}" == "update_all" ]; then
-              SYNC= # 
+        else # .....................................................FIFO exists.
+          local PIPE_ADDRESS=
+
+          while IFS read -r LINE; do # .............................Locate mention of PIPE_64 on unknown line number.
+            if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
+              PIPE_ADDRESS=$(echo $LINE | sed "s/${PIPE_64} \(.*\)/1/g")
+              break
+            fi
+          done < ${MAP_FILE_DIR}/${MAP_FILE}
+
+          if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
+            # ......................................................File descriptor.
+            READ_FROM='<&'"${PIPE_ADDRESS}"
+            WRITE_TO='>&'"${PIPE_ADDRESS}"
+
+            if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+              if [ "${ADV_OPT}" == "replace_all" ]; then # .........Replace all empties everything when scoped to the pipe.
+                eval '
+                while IFS read -r WIPE_DATA; do
+                  if [ '"${WIPE_DATA}"' == "EOP" ]; then
+                    break
+                  else
+                    echo '"${WIPE_DATA}"' >/dev/null
+                  fi
+                done '"${READ_FROM}"
+
+                eval "printf '%s\n' 'EOP' ' ' ${WRITE_TO}" # .......Prevent blocking of subsequent reads or writes.
+              fi
+              return 0 # ...........................................Go no further, pipe was emptied.
             fi
           else
-          printf '%s\n' $SYNC 'EOP' ' ' >> $PIPE
-          SYNC=
+            # ......................................................Named pipe.
+            READ_FROM='< '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+            WRITE_TO='>> '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+
+            if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+              if [ "${ADV_OPT}" == "replace_all" ]; then # .........Replace all empties everything when scoped to the pipe.
+                eval '
+                while IFS read -r WIPE_DATA; do
+                  if [ '"${WIPE_DATA}"' == "EOP" ]; then
+                    break
+                  else
+                    echo '"${WIPE_DATA}"' >/dev/null
+                  fi
+                done '"${READ_FROM}"
+
+                eval "printf '%s\n' 'EOP' ' ' ${WRITE_TO}" # .......Prevent blocking of subsequent reads or writes.
+              fi
+              return 0 # ...........................................Go no further, pipe was emptied.
+            fi
+          fi
+
+          local update_bof_doc_found=0
+          local update_eof_doc_found=0
+          local update_item_found=0
+          local update_item_val=
+
+          if [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS read -r UPDATE_DOC_DATA; do
+              if [ '"${UPDATE_DOC_DATA}"' == "EOP" ]; then
+                break
+              else
+                if [ ! -z '"$(echo ${UPDATE_DOC_DATA} | grep -o BOF=${DOC})"' ]; then
+                  update_bof_doc_found=1
+                elif [ ! -z '"$(echo ${UPDATE_DOC_DATA} | grep -o EOF=${DOC})"' ]; then
+                  update_eof_doc_found=1
+                elif [ '"$update_bof_doc_found"' -eq 1 ] && [ '"$update_eof_doc_found"' -eq 1 ]; then
+                  update_bof_doc_found=0
+                  update_eof_doc_found=0
+                fi
+                if [ '"$update_bof_doc_found"' -gt 0 ]; then
+                fi
+              fi
+            done '"${READ_FROM}"
+          elif [ -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            done '"${READ_FROM}"
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            done '"${READ_FROM}"
+          fi
+
+          eval "printf '%s\n' ${SYNC} 'EOP' ' ' ${WRITE_TO}"
         fi
+      #################################################################################################################
       elif [ "${CRUD}" == "delete" ]; then # .......................DELETE ############################################
+      #################################################################################################################
+        if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+          # ........................................................FIFO doesn't exist for unknown reason.
+          echo "ERROR: The Pipe Does Not Exist or Was Deleted."
+          return 1
+        else # .....................................................FIFO exists.
+          local PIPE_ADDRESS=
+          local MAP_LINE_NUM=1
+
+          while IFS= read -r LINE; do # ............................Locate mention of PIPE_64 on unknown line number.
+            if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
+              PIPE_ADDRESS=$(echo $LINE | sed "s/${PIPE_64} \(.*\)/\1/g")
+              break
+            fi
+            MAP_LINE_NUM=$((MAP_LINE_NUM + 1)) # ...................Increment line number to allow for deletion in map file.
+          done < ${MAP_FILE_DIR}/${MAP_FILE}
+
+          if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
+            # ......................................................File descriptor.
+            READ_FROM='<&'"${PIPE_ADDRESS}"
+            WRITE_TO='>&'"${PIPE_ADDRESS}"
+
+            if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then # ........Delete file descriptor and its mention in map file.
+              eval "${WRITE_TO}-"
+              sed -i "${MAP_LINE_NUM}d" ${MAP_FILE_DIR}/${MAP_FILE}
+              return 0 # ...........................................Go no further, entire pipe deleted.
+            fi
+          else
+            # ......................................................Named pipe.
+            READ_FROM='< '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+            WRITE_TO='>> '"$(echo ${PIPE_ADDRESS} | base64 -d)"
+
+            if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then # ........Delete named pipe and its mention in map file.
+              rm -f $PIPE_ADDRESS
+              sed -i "${MAP_LINE_NUM}d" ${MAP_FILE_DIR}/${MAP_FILE}
+              return 0 # ...........................................Go no further, entire pipe deleted.
+            fi
+          fi
+
+          local del_bof_doc_found=0
+          local del_eof_doc_found=0
+          local del_item_found=0
+
+          if [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then # ........We are deleting an entire document, no items.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS= read -r DELETE_DOC_DATA; do
+              if [ '"${DELETE_DOC_DATA}"' == "EOP" ]; then
+                break
+              else
+                if [ ! -z '"$(echo ${DELETE_DOC_DATA} | grep -o BOF=${DOC})"' ]; then
+                  del_bof_doc_found=1
+                elif [ ! -z '"$(echo ${DELETE_DOC_DATA} | grep -o EOF=${DOC})"' ]; then
+                  del_eof_doc_found=1
+                elif [ '"$del_bof_doc_found"' -eq 1 ] && [ '"$del_eof_doc_found"' -eq 1 ]; then
+                  del_bof_doc_found=0
+                  del_eof_doc_found=0
+                fi
+                if [ '"$del_bof_doc_found"' -eq 0 ]; then
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${DELETE_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${DELETE_DOC_DATA}"'
+                  fi
+                fi
+              fi
+            done '"${READ_FROM}"
+          elif [ -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then # ......We are deleting common items across documents, not any one document.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS= read -r DELETE_DOC_DATA; do
+              if [ '"${DELETE_DOC_DATA}"' == "EOP" ]; then
+                break
+              else
+                del_item_found=0
+                for DELETE_ITEM in '"${ITEMS}"'; do
+                  if [ ! -z '"$(echo ${DELETE_DOC_DATA} | grep -o ${DELETE_ITEM})"' ]; then
+                    del_item_found=1
+                    break
+                  fi
+                done
+                if [ '"$del_item_found"' -eq 0 ]; then
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${DELETE_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${DELETE_DOC_DATA}"'
+                  fi
+                fi
+              fi
+            done '"${READ_FROM}"
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then # ....We are deleting specific items within a specific document.
+            # CAUTION:  Use of `eval` is dangerous and considered
+                      # bad practice. `eval` is used here solely to
+                      # prevent code duplication by way of the
+                      # `READ_FROM` and `WRITE_TO` variables.
+                      #
+                      # This utility is only used briefly during
+                      # a single intermediate build stage.
+            eval '
+            while IFS= read -r DELETE_DOC_DATA; do
+              if [ '"${DELETE_DOC_DATA}"' == "EOP" ]; then
+                break
+              else
+                if [ ! -z '"$(echo ${DELETE_DOC_DATA} | grep -o BOF=${DOC})"' ]; then
+                  del_bof_doc_found=1
+                elif [ ! -z '"$(echo ${DELETE_DOC_DATA} | grep -o EOF=${DOC})"' ]; then
+                  del_eof_doc_found=1
+                elif [ '"$del_bof_doc_found"' -eq 1 ] && [ '"$del_eof_doc_found"' -eq 1 ]; then
+                  del_bof_doc_found=0
+                  del_eof_doc_found=0
+                fi
+                if [ '"$del_bof_doc_found"' -eq 1 ]; then
+                  del_item_found=0
+                  for DELETE_ITEM in '"${ITEMS}"'; do
+                    if [ ! -z '"$(echo ${DELETE_DOC_DATA} | grep -o ${DELETE_ITEM})"' ]; then
+                      del_item_found=1
+                      break
+                    fi
+                  done
+                fi
+                if [ '"$del_bof_doc_found"' -eq 0 ] || [ '"$del_item_found"' -eq 0 ]; then
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${DELETE_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${DELETE_DOC_DATA}"'
+                  fi
+                fi
+              fi
+            done '"${READ_FROM}"
+          fi
+          eval "printf '%s\n' ${SYNC} 'EOP' ' ' ${WRITE_TO}"
+        fi
       fi
     fi
   fi
