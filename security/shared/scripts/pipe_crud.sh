@@ -728,13 +728,53 @@ pipe_crud() {
         #################################################################################################################
         elif [ "${CRUD}" == "read" ]; then # .......................READ ################################################
         #################################################################################################################
-          # Mutate SYNC data.
-          # ADV_OPT value for this action is "delete_after"
+          local READ_OUTPUT=
+          if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            printf '%s\n' $SYNC
+            if [ "${ADV_OPT}" == "delete_after" ]; then
+              SYNC=
+            fi
+          elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
+              echo "ERROR: Document \"${DOC}\" does not exist or was deleted."
+              return 1
+            else
+              printf '%s\n' $(echo $SYNC | grep -o BOF=${DOC}.*EOF=${DOC})
+              if [ "${ADV_OPT}" == "delete_after" ]; then
+                SYNC=$(echo $SYNC | sed 's/BOF='"${DOC}"'.*EOF='"${DOC}"'//g')
+              fi
+            fi
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            for READ_ITEM in $ITEMS; do
+              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${READ_ITEM}.*EOF=${DOC} | grep -o ${READ_ITEM})" ]; then
+                echo "ERROR: Item \"${READ_ITEM}\" does not exist or was deleted."
+                return 1
+              else
+                local READ_MATCH=$( \
+                  echo ${SYNC} | \
+                  sed 's/.*BOF='"${DOC}"'.*\\\"\('"${READ_ITEM}"'\)\\\":\\\"\(.*\)\\\".*EOF='"${DOC}"'.*/\2/g' \
+                )
+                if [ -z "${READ_OUTPUT}" ]; then
+                  READ_OUTPUT="${READ_MATCH}"
+                else
+                  READ_OUTPUT="${READ_OUTPUT} ${READ_MATCH}"
+                fi
+                if [ "${ADV_OPT}" == "delete_after" ]
+                  SYNC="$( \
+                    echo ${SYNC} | \
+                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${READ_ITEM}"'"\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
+                  )"
+                fi
+              fi
+            done
+            echo $READ_OUTPUT
+          fi
         #################################################################################################################
         elif [ "${CRUD}" == "update" ]; then # .....................UPDATE ##############################################
         #################################################################################################################
           # Mutate SYNC data.
           # ADV_OPT value for this action is "replace_all"
+
         #################################################################################################################
         elif [ "${CRUD}" == "delete" ]; then # .....................DELETE ##############################################
         #################################################################################################################
