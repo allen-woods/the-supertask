@@ -654,12 +654,14 @@ pipe_crud() {
       else # .......................................................FIFO has already been created.
       #
         local PIPE_ADDRESS= # ......................................Resolves to named pipe or file descriptor where crud pipe is located.
+        local PIPE_LINE_NUM=1 # ....................................Track the line number where PIPE_64 appears to delete it in the "delete" crud action body.
         # ..........................................................Locate mention of PIPE_64 on unknown line number.
         while IFS= read -r LINE; do
           if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
             PIPE_ADDRESS=$(echo $LINE | sed "s/${PIPE_64} \(.*\)/\1/g")
             break
           fi
+          PIPE_LINE_NUM=$(($PIPE_LINE_NUM + 1))
         done < "${MAP_FILE_DIR}/${MAP_FILE}"
         # ..........................................................If erasing digits completely erases PIPE_ADDRESS, the pipe is in a file descriptor.
         if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
@@ -772,14 +774,108 @@ pipe_crud() {
         #################################################################################################################
         elif [ "${CRUD}" == "update" ]; then # .....................UPDATE ##############################################
         #################################################################################################################
-          # Mutate SYNC data.
-          # ADV_OPT value for this action is "replace_all"
-
+          if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ "${ADV_OPT}" == "replace_all" ]; then
+              SYNC=
+            else
+              echo "ERROR: Nothing to update."
+              display_pipe_crud_usage
+              return 1
+            fi
+          elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
+              echo "ERROR: Document \"${DOC}\" does not exist or was deleted."
+              return 1
+            else
+              if [ "${ADV_OPT}" == "replace_all" ]; then
+                SYNC="$(echo ${SYNC} | sed 's/\(.*BOF='"${DOC}"'\)\(.*\)\(EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g')"
+              else
+                echo "ERROR: Nothing to update."
+                display_pipe_crud_usage
+                return 1
+              fi
+            fi
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            local UPDATE_NEW_ITEMS=
+            for UPDATE_ITEM in $ITEMS; do
+              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${UPDATE_ITEM}.*EOF=${DOC} | grep -o ${UPDATE_ITEM})" ]; then
+                echo "ERROR: Item \"${UPDATE_ITEM}\" does not exist or was deleted."
+                return 1
+              else
+                local UPDATE_MATCH="$( \
+                  echo ${SYNC} | \
+                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${UPDATE_ITEM}"'\\\":\\\".*\\\"\).*EOF='"${DOC}"'.*/\1/g' \
+                )"
+                if [ "${ADV_OPT}" == "replace_all" ]; then
+                  if [ -z "${UPDATE_NEW_ITEMS}" ]; then
+                    UPDATE_NEW_ITEMS="${UPDATE_MATCH}"
+                  else
+                    UPDATE_NEW_ITEMS="${UPDATE_NEW_ITEMS} ${UPDATE_MATCH}"
+                  fi
+                else
+                  SYNC="$( \
+                    echo ${SYNC} | \
+                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${UPDATE_ITEM}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 '"${UPDATE_ITEM}"' \3/g; s/  / /g' \
+                  )"
+                fi
+              fi
+            done
+            if [ "${ADV_OPT}" == "replace_all" ] && [ ! -z "${UPDATE_NEW_ITEMS}" ]; then
+              SYNC="$( \
+                echo ${SYNC} | \
+                sed 's/\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)/\1 '"${UPDATE_NEW_ITEMS}"' \2/g; s/  / /g'
+              )"
+            fi
+          fi
         #################################################################################################################
         elif [ "${CRUD}" == "delete" ]; then # .....................DELETE ##############################################
         #################################################################################################################
-          # Mutate SYNC data.
-          # ADV_OPT value for this action is "except_for"
+          if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ $IS_FD -eq 1 ]; then
+              >&"${PIPE_ADDRESS}-"
+            else
+              rm -f "$(echo ${PIPE_ADDRESS} | base64 -d)"
+            fi
+          elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
+              echo "Error: Document \"${DOC}\" does not exist or was deleted."
+              return 1
+            else
+              if [ "${ADV_OPT}" == "except_for" ]; then
+                SYNC="$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})"
+              else
+                SYNC="$(echo ${SYNC} | sed 's/BOF='"${DOC}"'.*EOF='"${DOC}"'//g')"
+              fi
+            fi
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            local DELETE_NEW_ITEMS=
+            for DELETE_ITEM in $ITEMS; do
+              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${DELETE_ITEM}.*EOF=${DOC} | grep -o ${DELETE_ITEM})" ]; then
+                echo "ERROR: Item \"${DELETE_ITEM}\" does not exist or was deleted."
+                return 1
+              else
+                local DELETE_MATCH="$( \
+                  echo ${SYNC} | \
+                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${DELETE_ITEM}"'\\\":\\\".*\\\"\).*EOF='"${DOC}"'.*/\1/g' \
+                )"
+                if [ "${ADV_OPT}" == "except_for" ]; then
+                  if [ -z "${DELETE_NEW_ITEMS}" ]; then
+                    DELETE_NEW_ITEMS="${DELETE_MATCH}"
+                  else
+                    DELETE_NEW_ITEMS="${DELETE_NEW_ITEMS} ${DELETE_MATCH}"
+                  fi
+                else
+                  SYNC="$(echo ${SYNC} | sed 's/'"${DELETE_MATCH}"'/ /g; s/  / /g')"
+                fi
+              fi
+            done
+            if [ "${ADV_OPT}" == "except_for" ] && [ ! -z "${DELETE_NEW_ITEMS}" ]; then
+              SYNC="$( \
+                echo ${SYNC} | \
+                sed 's/\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)/\1 '"${DELETE_NEW_ITEMS}"' \2/g; s/  / /g'
+              )"
+            fi
+          fi
         else
           echo "ERROR: Unknown action \"${CRUD}\"."
           return 1
