@@ -582,7 +582,6 @@ pipe_crud() {
       local SYNC=
       # ........................................................... FIFO has not been created yet.
       if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
-
         #################################################################################################################
         if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 1 #####################################
         #################################################################################################################
@@ -697,8 +696,35 @@ pipe_crud() {
         #################################################################################################################
         if [ "${CRUD}" == "create" ]; then # .......................CREATE - part 2 #####################################
         #################################################################################################################
-          # Mutate SYNC data.
-          # ADV_OPT value for this action is "overwrite_pipe"
+          if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
+              SYNC=
+            else
+              echo "ERROR: Pipe already exists."
+              return 1
+            fi
+          elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
+            if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
+              SYNC="BOF=${DOC} EOF=${DOC}"
+            else
+              if [ -z "${SYNC}" ]; then
+                SYNC="BOF=${DOC} EOF=${DOC}"
+              else
+                SYNC="${SYNC} BOF=${DOC} EOF=${DOC}"
+              fi
+            fi
+          elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
+              SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+            else
+              if [ -z "${SYNC}" ]; then
+                SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+              else
+                SYNC="${SYNC} BOF=${DOC} ${ITEMS} EOF=${DOC}"
+              fi
+            fi
+          fi
+        fi
         #################################################################################################################
         elif [ "${CRUD}" == "read" ]; then # .......................READ ################################################
         #################################################################################################################
@@ -718,7 +744,7 @@ pipe_crud() {
           echo "ERROR: Unknown action \"${CRUD}\"."
           return 1
         fi
-      # ............................................................Put resulting data into pipe once, after data mutation.
+      # ............................................................Put resulting SYNC data into pipe once, after data mutation.
       if [ $IS_FD -eq 1 ]; then
         printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}"
       else
