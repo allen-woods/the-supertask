@@ -926,7 +926,7 @@ pipe_crud() {
 
                 eval "printf '%s\n' 'EOP' ' ' ${WRITE_TO}" # .......Prevent blocking of subsequent reads or writes.
               fi
-              return 0 # ...........................................Go no further, pipe was emptied.
+              return 0 # ...........................................Go no further, pipe was emptied or nothing to update.
             fi
           else
             # ......................................................Named pipe.
@@ -946,12 +946,15 @@ pipe_crud() {
 
                 eval "printf '%s\n' 'EOP' ' ' ${WRITE_TO}" # .......Prevent blocking of subsequent reads or writes.
               fi
-              return 0 # ...........................................Go no further, pipe was emptied.
+              return 0 # ...........................................Go no further, pipe was emptied or nothing to update.
             fi
           fi
 
+          local UPDATE_LINE_NUM=1
           local update_bof_doc_found=0
+          local update_bof_line_num=
           local update_eof_doc_found=0
+          local update eof_line_num=
           local update_item_found=0
           local update_item_val=
 
@@ -970,15 +973,41 @@ pipe_crud() {
               else
                 if [ ! -z '"$(echo ${UPDATE_DOC_DATA} | grep -o BOF=${DOC})"' ]; then
                   update_bof_doc_found=1
+                  update_bof_line_num='"${UPDATE_LINE_NUM}"'
                 elif [ ! -z '"$(echo ${UPDATE_DOC_DATA} | grep -o EOF=${DOC})"' ]; then
                   update_eof_doc_found=1
+                  update_eof_line_num='"${UPDATE_LINE_NUM}"'
                 elif [ '"$update_bof_doc_found"' -eq 1 ] && [ '"$update_eof_doc_found"' -eq 1 ]; then
                   update_bof_doc_found=0
+                  update_bof_line_num=
                   update_eof_doc_found=0
+                  update_eof_line_num=
                 fi
-                if [ '"$update_bof_doc_found"' -gt 0 ]; then
+                if [ '"${ADV_OPT}"' == "replace_all" ]; then
+                  # if we are on BOF or EOF line, allow it to go to sync.
+                  # Otherwise, allow everything else to go to sync.
+                  if [ '"$update_bof_line_num"' == '"$UPDATE_LINE_NUM"' ] || [ '"$update_eof_line_num"' == '"$UPDATE_LINE_NUM"' ]; then
+                    if [ -z '"${SYNC}"' ]; then
+                      SYNC='"${UPDATE_DOC_DATA}"'
+                    else
+                      SYNC='"${SYNC} ${UPDATE_DOC_DATA}"'
+                    fi
+                  elif [ '"$update_bof_doc_found"' -eq 0 ] && [ '"$update_eof_doc_found"' -eq 0 ]; then
+                    if [ -z '"${SYNC}"' ]; then
+                      SYNC='"${UPDATE_DOC_DATA}"'
+                    else
+                      SYNC='"${SYNC} ${UPDATE_DOC_DATA}"'
+                    fi
+                  fi
+                else
+                  if [ -z '"${SYNC}"' ]; then
+                    SYNC='"${UPDATE_DOC_DATA}"'
+                  else
+                    SYNC='"${SYNC} ${UPDATE_DOC_DATA}"'
+                  fi
                 fi
               fi
+              UPDATE_LINE_NUM='"$((${UPDATE_LINE_NUM} + 1))"'
             done '"${READ_FROM}"
           elif [ -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
             # CAUTION:  Use of `eval` is dangerous and considered
