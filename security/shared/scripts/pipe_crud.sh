@@ -161,6 +161,7 @@ pipe_crud() {
           fi
         done
       fi
+      local PIPE_ADDRESS= # ....................................... Resolves to named pipe or file descriptor where crud pipe is located.
       local PIPE_64="$(echo ${PIPE} | base64)"
       local PIPE_MAP_STRING="${PIPE_64}"
       local IS_FD=0
@@ -184,34 +185,34 @@ pipe_crud() {
               head -n1 \
             ) # ................................................... Random 16 byte hexadecimal temporary filename of FIFO.
             # ..................................................... Delare variables used to locate available file descriptors.
-            local PIPE_FD=
             local TEST_FD=6
             local LAST_FD=100
             # ..................................................... Iterate over file descriptors.
             while [ $TEST_FD -le $LAST_FD ]; do
               if [ ! -e /proc/$$/fd/$TEST_FD ]; then
-                PIPE_FD=${TEST_FD} # .............................. Next available file descriptor.
+                PIPE_ADDRESS=${TEST_FD} # .............................. Next available file descriptor.
                 break
               fi
               TEST_FD=$(($TEST_FD + 1))
             done
             # ..................................................... Handle edge case that no FD was found.
-            if [ -z "${PIPE_FD}" ]; then
+            if [ -z "${PIPE_ADDRESS}" ]; then
               echo "ERROR: File descriptor unavailable. Increase value of LAST_FD."
               return 1
             fi
             # ..................................................... Build the secure pipe as follows:
             mkfifo $_TMP
-            eval "exec ${PIPE_FD}<> ${_TMP}"
+            eval "exec ${PIPE_ADDRESS}<> ${_TMP}"
             unlink $_TMP
-            PIPE_MAP_STRING="${PIPE_MAP_STRING} ${PIPE_FD}" # ..... Append a new line to our map file that
-                                                                  # directs us to use PIPE_FD when looking
-                                                                  # for PIPE.
+            PIPE_MAP_STRING="${PIPE_MAP_STRING} ${PIPE_ADDRESS}"  # Append a new line to our map file that
+                                                                  # directs us to use PIPE_ADDRESS when
+                                                                  # looking for PIPE.
             if [ $IS_FD -eq 0 ]; then # ........................... Let the rest of the sccript know this
               IS_FD=1                                             # is a secure pipe.
             fi
           else
-            mkfifo $PIPE # ........................................ Create regular, named FIFO.
+            PIPE_ADDRESS=$PIPE
+            mkfifo $PIPE_ADDRESS # ................................ Create regular, named FIFO.
           fi
           # ....................................................... User is creating a document.
           if [ ! -z "${DOC}" ]; then
@@ -226,9 +227,9 @@ pipe_crud() {
           fi
           # ....................................................... Place initial data into the pipe to prevent blocking of subsequent reads and writes.
           if [ $IS_FD -eq 1 ]; then
-            printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_FD}" &
+            printf '%s\n' $SYNC 'EOP' ' ' >&${PIPE_ADDRESS} &
           else
-            printf '%s\n' $SYNC 'EOP' ' ' >> "${PIPE}"
+            printf '%s\n' $SYNC 'EOP' ' ' >> ${PIPE_ADDRESS}
           fi
           ##########################################################
           # NOTE:                                                  #
@@ -238,12 +239,11 @@ pipe_crud() {
           #                                                        #
           ##########################################################
           # ........................................................Populate map file to confirm the pipe was created.
-          printf '%s\n' "${PIPE_MAP_STRING}" >> "${MAP_FILE_DIR}/${MAP_FILE}"
+          printf '%s\n' "${PIPE_MAP_STRING}" >> "${MAP_FILE}"
         fi
       #
       else # .......................................................FIFO has already been created.
       #
-        local PIPE_ADDRESS= # ......................................Resolves to named pipe or file descriptor where crud pipe is located.
         local PIPE_LINE_NUM=1 # ....................................Track the line number where PIPE_64 appears to delete it in the "delete" crud action body.
         # ..........................................................Locate mention of PIPE_64 on unknown line number.
         while IFS= read -r LINE; do
@@ -252,7 +252,7 @@ pipe_crud() {
             break
           fi
           PIPE_LINE_NUM=$(($PIPE_LINE_NUM + 1))
-        done < "${MAP_FILE_DIR}/${MAP_FILE}"
+        done < "${MAP_FILE}"
         # ..........................................................If erasing digits completely erases PIPE_ADDRESS, the pipe is in a file descriptor.
         if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
           if [ $IS_FD -eq 0 ]; then
@@ -450,7 +450,7 @@ pipe_crud() {
             else
               rm -f "$(echo ${PIPE_ADDRESS} | base64 -d)"
             fi
-            sed -i "${PIPE_LINE_NUM}d" "${MAP_FILE_DIR}/${MAP_FILE}"
+            sed -i "${PIPE_LINE_NUM}d" "${MAP_FILE}"
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
               echo "Error: Document \"${DOC}\" does not exist or was deleted."
@@ -495,7 +495,7 @@ pipe_crud() {
           return 1
         fi
       fi
-      # ............................................................Put resulting SYNC data into pipe once, after data mutation.
+      # ........................................................... Put resulting SYNC data into pipe once, after data mutation.
       if [ $IS_FD -eq 1 ]; then
         printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}"
       else
