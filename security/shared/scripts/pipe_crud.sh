@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# TODO: rewrite usage to reflect changes in refactor.
-
 display_pipe_crud_usage() {
   echo "Bad Argument(s)"
   echo "" # Breathing space ###########################################################################################
@@ -10,7 +8,7 @@ display_pipe_crud_usage() {
   echo "" # Breathing space ###########################################################################################
   echo "          Examples:     pipe_crud -c -P=new_empty_pipe"
   echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
-  echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\"var1\":\"val1\", \"var2\":\"val2\"}"
+  echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
   echo "                        pipe_crud -c -P=sec_pipe -D=sec_doc -I={ ... } --secure"
   echo "" # Breathing space ###########################################################################################
   echo "          Options:      -c|--create       invoke the create CRUD action.  (Required)"
@@ -25,7 +23,7 @@ display_pipe_crud_usage() {
   echo "" # Breathing space ###########################################################################################
   echo "          Examples:     pipe_crud -r -P=pipe_name"
   echo "                        pipe_crud -r -P=pipe_name -D=doc_id"
-  echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\"var1\", \"var2\"}"
+  echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
   echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={ ... } --delete-after"
   echo "" # Breathing space ###########################################################################################
   echo "          Options:      -r|--read         invoke the read CRUD action.    (Required)"
@@ -39,7 +37,7 @@ display_pipe_crud_usage() {
   echo "" # Breathing space ###########################################################################################
   echo "          Examples:     pipe_crud -u -P=pipe_name"
   echo "                        pipe_crud -u -P=pipe_name -D=doc_id"
-  echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\"var1\":\"val1\", \"var2\":\"val2\"}"
+  echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
   echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={ ... } --replace-all"
   echo "" # Breathing space ###########################################################################################
   echo "          Options:      -u|--update       invoke the update CRUD action.  (Required)"
@@ -53,7 +51,7 @@ display_pipe_crud_usage() {
   echo "" # Breathing space ###########################################################################################
   echo "          Examples:     pipe_crud -d -P=pipe_name"
   echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
-  echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\"var1\", \"var2\"}"
+  echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
   echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={ ... } --except-for"
   echo "" # Breathing space ###########################################################################################
   echo "          Options:      -d|--delete       invoke the delete CRUD action.  (Required)"
@@ -72,57 +70,54 @@ pipe_crud() {
   local ADV_OPT=
   local SYNC=
   # ............................................................... Parse arguments. ##################################
-  for arg in "${@}"; do
+  for arg in "$@"; do
     local pre=$(echo $arg | sed "s/\([-]\{1,2\}\).*/\1/g")
     local cmd=
     local str=
     [ ! -z "$(echo ${arg} | grep -o '=')" ] && cmd="$(echo ${arg} | cut -d '=' -f1)" || cmd="${arg}"
     [ ! -z "$(echo ${arg} | grep -o '=')" ] && str="$(echo ${arg} | cut -d '=' -f2)"
+    # ............................................................. Conditionally respond to arguments on a first come, first served basis.
     case $cmd in
       -P|--pipe)
-        PIPE="${str}"
+        [ -z "${PIPE}" ] && PIPE="${str}"
         ;;
       -D|--doc)
-        DOC="${str}"
+        [ -z "${DOC}" ] && DOC="${str}"
         ;;
       -I|--items)
-        ITEMS="$(echo -e ${str} | sed -e "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
+        [ -z "${ITEMS}" ] && ITEMS="$(echo -e ${str} | sed -e "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
         ;;
       # ........................................................... Only available when creating new pipe.
       --secure)
-        ADV_OPT=secure
+        [ -z "${ADV_OPT}" ] && ADV_OPT=secure
         ;;
       # ........................................................... Only available when creating new records in existing pipe.
       --overwrite-pipe)
-        ADV_OPT=overwrite_pipe
+        [ -z "${ADV_OPT}" ] && ADV_OPT=overwrite_pipe
         ;;
       # ........................................................... Only available when reading from existing, populated pipe.
       --delete-after)
-        ADV_OPT=delete_after
+        [ -z "${ADV_OPT}" ] && ADV_OPT=delete_after
         ;;
       # ........................................................... Only available when updating existing, populated pipe.
       --replace-all)
-        ADV_OPT=replace_all
+        [ -z "${ADV_OPT}" ] && ADV_OPT=replace_all
         ;;
       # ........................................................... Only available when deleting from existing, populated pipe.
       --except-for)
-        ADV_OPT=except_for
+        [ -z "${ADV_OPT}" ] && ADV_OPT=except_for
         ;;
       -c|--create)
-        CRUD=create
-        break
+        [ -z "${CRUD}" ] && CRUD=create
         ;;
       -r|--read)
-        CRUD=read
-        break
+        [ -z "${CRUD}" ] && CRUD=read
         ;;
       -u|--update)
-        CRUD=update
-        break
+        [ -z "${CRUD}" ] && CRUD=update
         ;;
       -d|--delete)
-        CRUD=delete
-        break
+        [ -z "${CRUD}" ] && CRUD=delete
         ;;
       *)
         display_pipe_crud_usage
@@ -166,7 +161,6 @@ pipe_crud() {
           fi
         done
       fi
-
       local PIPE_64="$(echo ${PIPE} | base64)"
       local PIPE_MAP_STRING="${PIPE_64}"
       local IS_FD=0
@@ -344,7 +338,6 @@ pipe_crud() {
               fi
             fi
           fi
-        fi
         #################################################################################################################
         elif [ "${CRUD}" == "read" ]; then # .......................READ ################################################
         #################################################################################################################
@@ -379,7 +372,7 @@ pipe_crud() {
                 else
                   READ_OUTPUT="${READ_OUTPUT} ${READ_MATCH}"
                 fi
-                if [ "${ADV_OPT}" == "delete_after" ]
+                if [ "${ADV_OPT}" == "delete_after" ]; then
                   SYNC="$( \
                     echo ${SYNC} | \
                     sed 's/\(.*BOF='"${DOC}"'.*\)\('"${READ_ITEM}"'":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
@@ -501,6 +494,7 @@ pipe_crud() {
           echo "ERROR: Unknown action \"${CRUD}\"."
           return 1
         fi
+      fi
       # ............................................................Put resulting SYNC data into pipe once, after data mutation.
       if [ $IS_FD -eq 1 ]; then
         printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}"
