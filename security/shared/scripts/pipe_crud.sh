@@ -151,15 +151,22 @@ pipe_crud() {
         )
         # ......................................................... Place encoded identifying information into the map file.
         printf '%s\n' "$(echo 'PIPE_CRUD MAP FILE' | base64)" >> "${MAP_FILE_DIR}/${MAP_FILE}"
-      # ........................................................... File(s) are present in MAP_FILE_DIR, the map file might already exist.
-      else
-        for FILE in ${MAP_FILE_DIR}/*; do
-          if [ "$(sed '1q;d' ${FILE} | base64 -d)" == "PIPE_CRUD MAP FILE" ]; then
-            # ..................................................... Map file identified.
-            MAP_FILE=${FILE}
-            break
-          fi
-        done
+      fi
+      # ........................................................... File(s) are now present in MAP_FILE_DIR, the map file might already exist or was just created.
+      # ........................................................... Reset MAP_FILE contents.
+      MAP_FILE=
+      # ........................................................... Search for map file in directory.
+      for FILE in ${MAP_FILE_DIR}/*; do
+        if [ "$(sed '1q;d' ${FILE} | base64 -d)" == "PIPE_CRUD MAP FILE" ]; then
+          # ....................................................... Map file identified.
+          MAP_FILE=${FILE}
+          break
+        fi
+      done
+      # ........................................................... Handle error if map file is missing.
+      if [ -z "${MAP_FILE}" ]; then
+        echo "ERROR: Unable to locate map file."
+        return 1
       fi
       local PIPE_ADDRESS= # ....................................... Resolves to named pipe or file descriptor where crud pipe is located.
       local PIPE_64="$(echo ${PIPE} | base64)"
@@ -167,7 +174,7 @@ pipe_crud() {
       local IS_FD=0
       local SYNC=
       # ........................................................... FIFO has not been created yet.
-      if [ -z "$(cat ${MAP_FILE_DIR}/${MAP_FILE} | grep -o ${PIPE_64})" ]; then
+      if [ -z "$(cat ${MAP_FILE} | grep -o ${PIPE_64})" ]; then
         #################################################################################################################
         if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 1 #####################################
         #################################################################################################################
@@ -190,7 +197,7 @@ pipe_crud() {
             # ..................................................... Iterate over file descriptors.
             while [ $TEST_FD -le $LAST_FD ]; do
               if [ ! -e /proc/$$/fd/$TEST_FD ]; then
-                PIPE_ADDRESS=${TEST_FD} # .............................. Next available file descriptor.
+                PIPE_ADDRESS=${TEST_FD} # ......................... Next available file descriptor.
                 break
               fi
               TEST_FD=$(($TEST_FD + 1))
@@ -238,14 +245,14 @@ pipe_crud() {
           #       pipe" or "file descriptor" format.               #
           #                                                        #
           ##########################################################
-          # ........................................................Populate map file to confirm the pipe was created.
+          # ....................................................... Populate map file to confirm the pipe was created.
           printf '%s\n' "${PIPE_MAP_STRING}" >> "${MAP_FILE}"
         fi
       #
-      else # .......................................................FIFO has already been created.
+      else # ...................................................... FIFO has already been created.
       #
-        local PIPE_LINE_NUM=1 # ....................................Track the line number where PIPE_64 appears to delete it in the "delete" crud action body.
-        # ..........................................................Locate mention of PIPE_64 on unknown line number.
+        local PIPE_LINE_NUM=1 # ................................... Track the line number where PIPE_64 appears to delete it in the "delete" crud action body.
+        # ......................................................... Locate mention of PIPE_64 on unknown line number.
         while IFS= read -r LINE; do
           if [ ! -z "$(echo ${LINE} | grep -o ${PIPE_64})" ]; then
             PIPE_ADDRESS=$(echo $LINE | sed "s/${PIPE_64} \(.*\)/\1/g")
@@ -253,13 +260,13 @@ pipe_crud() {
           fi
           PIPE_LINE_NUM=$(($PIPE_LINE_NUM + 1))
         done < "${MAP_FILE}"
-        # ..........................................................If erasing digits completely erases PIPE_ADDRESS, the pipe is in a file descriptor.
+        # ......................................................... If erasing digits completely erases PIPE_ADDRESS, the pipe is in a file descriptor.
         if [ -z "$(echo ${PIPE_ADDRESS} | sed 's/[0-9]\{0,\}//g')" ]; then
           if [ $IS_FD -eq 0 ]; then
             IS_FD=1
           fi
         fi
-        # ..........................................................Pull all DATA out of the pipe once, before any data mutation.
+        # ......................................................... Pull all DATA out of the pipe once, before any data mutation.
         if [ $IS_FD -eq 1 ]; then
           while IFS= read -r DATA; do
             if [ "${DATA}" == "EOP" ]; then
@@ -359,13 +366,14 @@ pipe_crud() {
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
             for READ_ITEM in $ITEMS; do
-              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${READ_ITEM}.*EOF=${DOC} | grep -o ${READ_ITEM})" ]; then
-                echo "ERROR: Item \"${READ_ITEM}\" does not exist or was deleted."
+              local CLEAN_ITEM=$(echo $READ_ITEM | sed 's/\\\"\(.*\)\\\"/\1/g')
+              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${CLEAN_ITEM}.*EOF=${DOC} | grep -o ${CLEAN_ITEM})" ]; then
+                echo "ERROR: Item \"${CLEAN_ITEM}\" does not exist or was deleted."
                 return 1
               else
                 local READ_MATCH=$( \
                   echo ${SYNC} | \
-                  sed 's/.*BOF='"${DOC}"'.*\('"${READ_ITEM}"'\):\\\"\(.*\)\\\".*EOF='"${DOC}"'.*/\2/g' \
+                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${CLEAN_ITEM}"'\\\"\):\\\"\(.*\)\\\".*EOF='"${DOC}"'.*/\2/g' \
                 )
                 if [ -z "${READ_OUTPUT}" ]; then
                   READ_OUTPUT="${READ_MATCH}"
@@ -375,7 +383,7 @@ pipe_crud() {
                 if [ "${ADV_OPT}" == "delete_after" ]; then
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/\(.*BOF='"${DOC}"'.*\)\('"${READ_ITEM}"'":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
+                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${CLEAN_ITEM}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
                   )"
                 fi
               fi
@@ -497,7 +505,7 @@ pipe_crud() {
       fi
       # ........................................................... Put resulting SYNC data into pipe once, after data mutation.
       if [ $IS_FD -eq 1 ]; then
-        printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}"
+        printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}" &
       else
         printf '%s\n' $SYNC 'EOP' ' ' >> "$(echo ${PIPE_ADDRESS} | base64 -d)"
       fi
