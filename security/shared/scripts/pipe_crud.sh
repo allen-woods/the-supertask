@@ -202,7 +202,7 @@ pipe_crud() {
             fi
             # ..................................................... Build the secure pipe as follows:
             mkfifo $_TMP
-            exec $PIPE_FD<> $_TMP
+            eval "exec ${PIPE_FD}<> ${_TMP}"
             unlink $_TMP
             PIPE_MAP_STRING="${PIPE_MAP_STRING} ${PIPE_FD}" # ..... Append a new line to our map file that
                                                                   # directs us to use PIPE_FD when looking
@@ -446,7 +446,7 @@ pipe_crud() {
           local KEEP_ITEMS=
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ $IS_FD -eq 1 ]; then
-              >&"${PIPE_ADDRESS}-"
+              eval "${PIPE_ADDRESS}>&-"
             else
               rm -f "$(echo ${PIPE_ADDRESS} | base64 -d)"
             fi
