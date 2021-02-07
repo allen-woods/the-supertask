@@ -1,7 +1,7 @@
 #!/bin/sh
 
 display_pipe_crud_usage() {
-  echo "Bad Argument(s)"
+  echo "$0 Usage:"
   echo "" # Breathing space ###########################################################################################
   echo "  Create"
   echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
@@ -10,6 +10,8 @@ display_pipe_crud_usage() {
   echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
   echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
   echo "                        pipe_crud -c -P=sec_pipe -D=sec_doc -I={ ... } --secure"
+  echo "" # Breathing space ###########################################################################################
+  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
   echo "" # Breathing space ###########################################################################################
   echo "          Options:      -c|--create       invoke the create CRUD action.  (Required)"
   echo "                        -P|--pipe=        the name of the created pipe.   (Required)"
@@ -26,6 +28,8 @@ display_pipe_crud_usage() {
   echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
   echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={ ... } --delete-after"
   echo "" # Breathing space ###########################################################################################
+  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
+  echo "" # Breathing space ###########################################################################################
   echo "          Options:      -r|--read         invoke the read CRUD action.    (Required)"
   echo "                        -P|--pipe=        the name of the pipe to read.   (Required)"
   echo "                        -D|--doc=         the ID of the document to read from."
@@ -40,6 +44,8 @@ display_pipe_crud_usage() {
   echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
   echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={ ... } --replace-all"
   echo "" # Breathing space ###########################################################################################
+  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
+  echo "" # Breathing space ###########################################################################################
   echo "          Options:      -u|--update       invoke the update CRUD action.  (Required)"
   echo "                        -P|--pipe=        the name of the pipe to update. (Required)"
   echo "                        -D|--doc=         the ID of the document to update."
@@ -53,6 +59,8 @@ display_pipe_crud_usage() {
   echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
   echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
   echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={ ... } --except-for"
+  echo "" # Breathing space ###########################################################################################
+  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
   echo "" # Breathing space ###########################################################################################
   echo "          Options:      -d|--delete       invoke the delete CRUD action.  (Required)"
   echo "                        -P|--pipe=        the name of the pipe to delete. (Required)"
