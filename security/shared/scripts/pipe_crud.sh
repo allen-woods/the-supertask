@@ -4,52 +4,65 @@
 
 display_pipe_crud_usage() {
   echo "Bad Argument(s)"
-  echo "Usage: $0 --pipe=<path> --doc-id=<id> --crud=<action> --data=\"<var=val,>\" [--hook=<option>]"
-  echo "" # Breathing space #################################################################################
-  echo "  --pipe=<path>          : Path and filename of pipe."
-  echo "  --doc-id=<id>          : Identifier of target document for CRUD action."
-  echo "  --crud=<action>        : Crud action to perform on target document, as follows:"
-  echo "" # Breathing space #################################################################################
-  echo "                           create : Creates a new document with name document_id."
-  echo "                           read   : Reads the document named document_id, as specified by --data."
-  echo "                           update : Updates the document named document_id, as specified by --data."
-  echo "                           delete : Deletes the document named document_id, as specified by --data."
-  echo "" # Breathing space #################################################################################
-  echo "  --data=\"<var=val,>\"  : Double-quoted, space delimited data with trailing commas, as follows:"
-  echo "" # Breathing space #################################################################################
-  echo "                           Create : variable=value, variable=value,"
-  echo "                           Read   : variable, variable, (1)"
-  echo "                           Update : variable=value, variable=value, (*)"
-  echo "                           Delete : variable, variable, (1)"
-  echo "" # Breathing space #################################################################################
-  echo "                                  * NOTE: When updating with a new variable, that variable will be"
-  echo "                                          appended to the contents of document named id."
-  echo "" # Breathing space #################################################################################
-  echo "                                  1 NOTE: To read or delete the entire document named id, use"
-  echo "                                          --data=\"--\"."
-  echo "" # Breathing space #################################################################################
-  echo "  --hook=<option>        : An optional behavior to perform along with CRUD action(s), as follows:"
-  echo "" # Breathing space #################################################################################
-  echo "                           This feature is not yet implemented."
-  echo "" # Trailing white space ############################################################################
+  echo "" # Breathing space ###########################################################################################
+  echo "  Create"
+  echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
+  echo "" # Breathing space ###########################################################################################
+  echo "          Examples:     pipe_crud -c -P=new_empty_pipe"
+  echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
+  echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\"var1\":\"val1\", \"var2\":\"val2\"}"
+  echo "                        pipe_crud -c -P=sec_pipe -D=sec_doc -I={ ... } --secure"
+  echo "" # Breathing space ###########################################################################################
+  echo "          Options:      -c|--create       invoke the create CRUD action.  (Required)"
+  echo "                        -P|--pipe=        the name of the created pipe.   (Required)"
+  echo "                        -D|--doc=         the ID of the created document."
+  echo "                        -I|--items=       the items that populate the created document."
+  echo "                        --secure          create a secure, air-gapped CRUD pipe."
+  echo "                        --overwrite-pipe  overwrite existing data with empty data."
+  echo "" # Breathing space ###########################################################################################
+  echo "  Read"
+  echo "          Description:  read from a named / secure CRUD pipe."
+  echo "" # Breathing space ###########################################################################################
+  echo "          Examples:     pipe_crud -r -P=pipe_name"
+  echo "                        pipe_crud -r -P=pipe_name -D=doc_id"
+  echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\"var1\", \"var2\"}"
+  echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={ ... } --delete-after"
+  echo "" # Breathing space ###########################################################################################
+  echo "          Options:      -r|--read         invoke the read CRUD action.    (Required)"
+  echo "                        -P|--pipe=        the name of the pipe to read.   (Required)"
+  echo "                        -D|--doc=         the ID of the document to read from."
+  echo "                        -I|--items=       the items whose values are to be returned."
+  echo "                        --delete-after    delete data after they are read."
+  echo "" # Breathing space ###########################################################################################
+  echo "  Update"
+  echo "          Description:  update existing data within or add new data to a named / secure CRUD pipe."
+  echo "" # Breathing space ###########################################################################################
+  echo "          Examples:     pipe_crud -u -P=pipe_name"
+  echo "                        pipe_crud -u -P=pipe_name -D=doc_id"
+  echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\"var1\":\"val1\", \"var2\":\"val2\"}"
+  echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={ ... } --replace-all"
+  echo "" # Breathing space ###########################################################################################
+  echo "          Options:      -u|--update       invoke the update CRUD action.  (Required)"
+  echo "                        -P|--pipe=        the name of the pipe to update. (Required)"
+  echo "                        -D|--doc=         the ID of the document to update."
+  echo "                        -I|--items=       the items whose values are to be updated."
+  echo "                        --replace-all     replace contents of update target with update data."
+  echo "" # Breathing space ###########################################################################################
+  echo "  Delete"
+  echo "          Description:  delete a named / secure RUD pipe or data contained inside of it."
+  echo "" # Breathing space ###########################################################################################
+  echo "          Examples:     pipe_crud -d -P=pipe_name"
+  echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
+  echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\"var1\", \"var2\"}"
+  echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={ ... } --except-for"
+  echo "" # Breathing space ###########################################################################################
+  echo "          Options:      -d|--delete       invoke the delete CRUD action.  (Required)"
+  echo "                        -P|--pipe=        the name of the pipe to delete. (Required)"
+  echo "                        -D|--doc=         the ID of the document to delete."
+  echo "                        -I|--items=       the items that the user intends to delete."
+  echo "                        --except-for      delete all items except for those specified."
+  echo "" # Breathing space ###########################################################################################
 }
-
-# * * * refactor * * * 
-#
-# pipe_crud -c -P|--pipe=name_of_pipe -D|--doc=id_of_doc -I|--items={"var1":"val1", "var2":"val2", "var3":"val3"}
-#           -r
-#           -u
-#           -d
-#
-# pipe_crud -c -P=test_pipe -D=test_doc_01 -I={"var":"val"} --overwrite
-# pipe_crud -r -P=test_pipe
-# pipe_crud -r -P=test_pipe -D=test_doc_01
-# pipe_crud -r -P=test_pipe -D=test_doc_01 -I={"var"}
-# pipe_crud -u -P=test_pipe -D=test_doc_01 -I={"var":"new_val"}
-# pipe_crud -u -P=test_pipe -D=test_doc_01 -I={"var":"new_val"} --replace_doc
-# pipe_crud -d -P=test_pipe
-# pipe_crud -d -P=test_pipe -D=test_doc_01
-# pipe_crud -d -P=test_pipe -D=test_doc_01 -I={"var"}
 
 pipe_crud() {
   local PIPE=
@@ -163,8 +176,13 @@ pipe_crud() {
         #################################################################################################################
         if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 1 #####################################
         #################################################################################################################
-          # NOTE: we only check for the advanced option "secure"
-          #       once during the create crud action, as shown below.
+          ##########################################################
+          # NOTE:                                                  #
+          #       We only check for the advanced option "secure"   #
+          #       once during the create crud action, as shown     #
+          #       below.                                           #
+          #                                                        #
+          ##########################################################
           if [ "${ADV_OPT}" == "secure" ]; then
             local _TMP=$( \
               tr -cd a-f0-9 < /dev/urandom | \
