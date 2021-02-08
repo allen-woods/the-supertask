@@ -1,7 +1,7 @@
 #!/bin/sh
 
 display_pipe_crud_usage() {
-  echo "$0 Usage:"
+  echo "pipe_crud usage:"
   echo "" # Breathing space ###########################################################################################
   echo "  Create"
   echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
@@ -79,11 +79,10 @@ pipe_crud() {
   local SYNC=
   # ............................................................... Parse arguments. ##################################
   for arg in "$@"; do
-    local pre=$(echo $arg | sed "s/\([-]\{1,2\}\).*/\1/g")
     local cmd=
     local str=
-    [ ! -z "$(echo ${arg} | grep -o '=')" ] && cmd="$(echo ${arg} | cut -d '=' -f1)" || cmd="${arg}"
-    [ ! -z "$(echo ${arg} | grep -o '=')" ] && str="$(echo ${arg} | cut -d '=' -f2)"
+    [ ! -z "$(echo ${arg} | grep -o '=')" ] && cmd="$(echo ${arg} | sed 's/\(^[-]\{1,2\}[^\=]\{1,\}\)[\=]\{0,1\}\(.*\)/\1/')" || cmd="${arg}"
+    [ ! -z "$(echo ${arg} | grep -o '=')" ] && str="$(echo ${arg} | sed 's/\(^[-]\{1,2\}[^\=]\{1,\}\)[\=]\{0,1\}\(.*\)/\2/')"
     # ............................................................. Conditionally respond to arguments on a first come, first served basis.
     case $cmd in
       -P|--pipe)
@@ -93,7 +92,7 @@ pipe_crud() {
         [ -z "${DOC}" ] && DOC="${str}"
         ;;
       -I|--items)
-        [ -z "${ITEMS}" ] && ITEMS="$(echo -e ${str} | sed -e "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
+        [ -z "${ITEMS}" ] && ITEMS="$(echo ${str} | sed "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
         ;;
       # ........................................................... Only available when creating new pipe.
       --secure)
@@ -227,11 +226,27 @@ pipe_crud() {
             fi
           else
             PIPE_ADDRESS=$PIPE
-            mkfifo $PIPE_ADDRESS # ................................ Create regular, named FIFO.
+            mkfifo "${PIPE_ADDRESS}" # ............................ Create regular, named FIFO.
           fi
           # ....................................................... User is creating a document.
           if [ ! -z "${DOC}" ]; then
             if [ ! -z "${ITEMS}" ]; then # ........................ Document contains items.
+              local CREATE_ITEM_NAMES=
+              for CREATE_ITEM in $ITEMS; do
+                local PARSED_ITEM_NAME=$( \
+                  echo ${CREATE_ITEM} | \
+                  sed 's/\(\\\"\)\(.*\)\(\\\"\)\(:\\\".*\\\"\).*/\2/g' \
+                )
+                if [ ! -z "$(echo ${CREATE_ITEM_NAMES} | grep -o ${PARSED_ITEM_NAME})" ]; then
+                  echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
+                else
+                  if [ -z "${CREATE_ITEM_NAMES}" ]; then
+                    CREATE_ITEM_NAMES="${PARSED_ITEM_NAME}"
+                  else
+                    CREATE_ITEM_NAMES="${CREATE_ITEM_NAMES} ${PARSED_ITEM_NAME}"
+                  fi
+                fi
+              done
               SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
             else # ................................................ Document contains no items.
               SYNC="BOF=${DOC} EOF=${DOC}"
@@ -242,9 +257,9 @@ pipe_crud() {
           fi
           # ....................................................... Place initial data into the pipe to prevent blocking of subsequent reads and writes.
           if [ $IS_FD -eq 1 ]; then
-            printf '%s\n' $SYNC 'EOP' ' ' >&${PIPE_ADDRESS} &
+            ( printf '%s\n' $SYNC 'EOP' ' ' >&${PIPE_ADDRESS} & )
           else
-            printf '%s\n' $SYNC 'EOP' ' ' >> ${PIPE_ADDRESS}
+            ( printf '%s\n' $SYNC 'EOP' ' ' >> ${PIPE_ADDRESS} & )
           fi
           ##########################################################
           # NOTE:                                                  #
@@ -273,6 +288,9 @@ pipe_crud() {
           if [ $IS_FD -eq 0 ]; then
             IS_FD=1
           fi
+        else
+          # ....................................................... Decode the named pipe address ahead of time.
+          PIPE_ADDRESS="$(echo ${PIPE_ADDRESS} | base64 -d)" 2>/dev/null
         fi
         # ......................................................... Pull all DATA out of the pipe once, before any data mutation.
         if [ $IS_FD -eq 1 ]; then
@@ -298,10 +316,10 @@ pipe_crud() {
                 SYNC="${SYNC} ${DATA}"
               fi
             fi
-          done < "$(echo ${PIPE_ADDRESS} | base64 -d)"
+          done < "${PIPE_ADDRESS}"
         fi
         #################################################################################################################
-        if [ "${CRUD}" == "create" ]; then # .......................CREATE - part 2 #####################################
+        if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 2 #####################################
         #################################################################################################################
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
@@ -336,7 +354,7 @@ pipe_crud() {
                   sed 's/\(\\\"\)\(.*\)\(\\\"\)\(:\\\".*\\\"\).*/\2/g' \
                 )
                 if [ ! -z "$(echo ${CREATE_ITEM_NAMES} | grep -o ${PARSED_ITEM_NAME})" ]; then
-                  echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique."
+                  echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
                   return 1
                 else
                   if [ -z "${CREATE_ITEM_NAMES}" ]; then
@@ -354,7 +372,7 @@ pipe_crud() {
             fi
           fi
         #################################################################################################################
-        elif [ "${CRUD}" == "read" ]; then # .......................READ ################################################
+        elif [ "${CRUD}" == "read" ]; then # ...................... READ ################################################
         #################################################################################################################
           local READ_OUTPUT=
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
@@ -374,14 +392,17 @@ pipe_crud() {
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
             for READ_ITEM in $ITEMS; do
-              local CLEAN_ITEM=$(echo $READ_ITEM | sed 's/\\\"\(.*\)\\\"/\1/g')
-              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${CLEAN_ITEM}.*EOF=${DOC} | grep -o ${CLEAN_ITEM})" ]; then
-                echo "ERROR: Item \"${CLEAN_ITEM}\" does not exist or was deleted."
+              local PARSED_ITEM_NAME=$( \
+                echo ${READ_ITEM} | \
+                sed 's/\(\\\"\)\(.*\)\(\\\"\).*/\2/g' \
+              )
+              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${PARSED_ITEM_NAME}.*EOF=${DOC} | grep -o ${PARSED_ITEM_NAME})" ]; then
+                echo "ERROR: Item \"${PARSED_ITEM_NAME}\" does not exist or was deleted."
                 return 1
               else
                 local READ_MATCH=$( \
                   echo ${SYNC} | \
-                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${CLEAN_ITEM}"'\\\"\):\\\"\(.*\)\\\".*EOF='"${DOC}"'.*/\2/g' \
+                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${PARSED_ITEM_NAME}"'\\\"\):\\\"\(.*\)\\\".*EOF='"${DOC}"'.*/\2/g' \
                 )
                 if [ -z "${READ_OUTPUT}" ]; then
                   READ_OUTPUT="${READ_MATCH}"
@@ -391,7 +412,7 @@ pipe_crud() {
                 if [ "${ADV_OPT}" == "delete_after" ]; then
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${CLEAN_ITEM}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
+                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
                   )"
                 fi
               fi
@@ -399,7 +420,7 @@ pipe_crud() {
             echo $READ_OUTPUT
           fi
         #################################################################################################################
-        elif [ "${CRUD}" == "update" ]; then # .....................UPDATE ##############################################
+        elif [ "${CRUD}" == "update" ]; then # .................... UPDATE ##############################################
         #################################################################################################################
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ "${ADV_OPT}" == "replace_all" ]; then
@@ -433,7 +454,7 @@ pipe_crud() {
                 SYNC="$( \
                   echo ${SYNC} | \
                   sed 's/\(.*BOF='"${DOC}"'\)\(.*\)\(EOF='"${DOC}"'.*\)/\1 \2 '"${UPDATE_ITEM}"' \3/g; s/  / /g'
-                )"
+                )" # .............................................. We add items to the target document if no match is found.
               else
                 if [ "${ADV_OPT}" == "replace_all" ]; then
                   if [ -z "${UPDATE_NEW_ITEMS}" ]; then
@@ -445,7 +466,7 @@ pipe_crud() {
                   SYNC="$( \
                     echo ${SYNC} | \
                     sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 '"${UPDATE_ITEM}"' \3/g; s/  / /g' \
-                  )"
+                  )" # ............................................ We update the values of items we find matches for.
                 fi
               fi
             done
@@ -457,16 +478,15 @@ pipe_crud() {
             fi
           fi
         #################################################################################################################
-        elif [ "${CRUD}" == "delete" ]; then # .....................DELETE ##############################################
+        elif [ "${CRUD}" == "delete" ]; then # .................... DELETE ##############################################
         #################################################################################################################
-          local KEEP_ITEMS=
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ $IS_FD -eq 1 ]; then
               eval "${PIPE_ADDRESS}>&-"
             else
-              rm -f "$(echo ${PIPE_ADDRESS} | base64 -d)"
+              rm -f "${PIPE_ADDRESS}"
             fi
-            sed -i "${PIPE_LINE_NUM}d" "${MAP_FILE}"
+            sed -i "${PIPE_LINE_NUM}d" "${MAP_FILE}" # .......... Remove line containing address of deleted pipe from map file.
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
               echo "Error: Document \"${DOC}\" does not exist or was deleted."
@@ -475,18 +495,23 @@ pipe_crud() {
               if [ "${ADV_OPT}" == "except_for" ]; then
                 SYNC="$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})"
               else
-                SYNC="$(echo ${SYNC} | sed 's/BOF='"${DOC}"'.*EOF='"${DOC}"'/ /g; s/  / /g')"
+                SYNC="$(echo ${SYNC} | sed 's/\(.*\)\(BOF='"${DOC}"'.*EOF='"${DOC}"'\)\(.*\)/\1 \3/g; s/  / /g')"
               fi
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            local KEEP_ITEMS=
             for DELETE_ITEM in $ITEMS; do
-              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${DELETE_ITEM}.*EOF=${DOC} | grep -o ${DELETE_ITEM})" ]; then
-                echo "ERROR: Item \"${DELETE_ITEM}\" does not exist or was deleted."
+              local PARSED_ITEM_NAME=$( \
+                echo ${DELETE_ITEM} | \
+                sed 's/\(\\\"\)\(.*\)\(\\\"\)\(:\\\"\).*/\2/g' \
+              )
+              if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${PARSED_ITEM_NAME}.*EOF=${DOC} | grep -o ${PARSED_ITEM_NAME})" ]; then
+                echo "ERROR: Item \"${PARSED_ITEM_NAME}\" does not exist or was deleted."
                 return 1
               else
                 local DELETE_MATCH=$( \
                   echo ${SYNC} | \
-                  sed 's/.*BOF='"${DOC}"'.*\('"${DELETE_ITEM}"':\\\".*\\\"\).*EOF='"${DOC}"'.*/\1/g' \
+                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\).*EOF='"${DOC}"'.*/\1/g' \
                 )
                 if [ "${ADV_OPT}" == "except_for" ]; then
                   if [ -z "${KEEP_ITEMS}" ]; then
@@ -506,16 +531,13 @@ pipe_crud() {
               )"
             fi
           fi
-        else
-          echo "ERROR: Unknown action \"${CRUD}\"."
-          return 1
         fi
       fi
       # ........................................................... Put resulting SYNC data into pipe once, after data mutation.
       if [ $IS_FD -eq 1 ]; then
-        printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}" &
+        ( printf '%s\n' $SYNC 'EOP' ' ' >&"${PIPE_ADDRESS}" & )
       else
-        printf '%s\n' $SYNC 'EOP' ' ' >> "$(echo ${PIPE_ADDRESS} | base64 -d)"
+        ( printf '%s\n' $SYNC 'EOP' ' ' >> "${PIPE_ADDRESS}" & )
       fi
     fi
   fi
