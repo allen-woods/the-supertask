@@ -3,71 +3,72 @@
 display_pipe_crud_usage() {
   echo "pipe_crud usage:"
   echo "" # Breathing space ###########################################################################################
-  echo "  Create"
-  echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Examples:     pipe_crud -c -P=new_empty_pipe"
-  echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
-  echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
-  echo "                        pipe_crud -c -P=sec_pipe -D=sec_doc -I={ ... } --secure"
-  echo "" # Breathing space ###########################################################################################
-  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Options:      -c|--create       invoke the create CRUD action.  (Required)"
-  echo "                        -P|--pipe=        the name of the created pipe.   (Required)"
-  echo "                        -D|--doc=         the ID of the created document."
-  echo "                        -I|--items=       the items that populate the created document."
-  echo "                        --secure          create a secure, air-gapped CRUD pipe."
-  echo "                        --overwrite-pipe  overwrite existing data with empty data."
-  echo "" # Breathing space ###########################################################################################
-  echo "  Read"
-  echo "          Description:  read from a named / secure CRUD pipe."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Examples:     pipe_crud -r -P=pipe_name"
-  echo "                        pipe_crud -r -P=pipe_name -D=doc_id"
-  echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
-  echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={ ... } --delete-after"
-  echo "" # Breathing space ###########################################################################################
-  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Options:      -r|--read         invoke the read CRUD action.    (Required)"
-  echo "                        -P|--pipe=        the name of the pipe to read.   (Required)"
-  echo "                        -D|--doc=         the ID of the document to read from."
-  echo "                        -I|--items=       the items whose values are to be returned."
-  echo "                        --delete-after    delete data after they are read."
-  echo "" # Breathing space ###########################################################################################
-  echo "  Update"
-  echo "          Description:  update existing data within or add new data to a named / secure CRUD pipe."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Examples:     pipe_crud -u -P=pipe_name"
-  echo "                        pipe_crud -u -P=pipe_name -D=doc_id"
-  echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
-  echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={ ... } --replace-all"
-  echo "" # Breathing space ###########################################################################################
-  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Options:      -u|--update       invoke the update CRUD action.  (Required)"
-  echo "                        -P|--pipe=        the name of the pipe to update. (Required)"
-  echo "                        -D|--doc=         the ID of the document to update."
-  echo "                        -I|--items=       the items whose values are to be updated."
-  echo "                        --replace-all     replace contents of update target with update data."
-  echo "" # Breathing space ###########################################################################################
-  echo "  Delete"
-  echo "          Description:  delete a named / secure RUD pipe or data contained inside of it."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Examples:     pipe_crud -d -P=pipe_name"
-  echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
-  echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
-  echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={ ... } --except-for"
-  echo "" # Breathing space ###########################################################################################
-  echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-  echo "" # Breathing space ###########################################################################################
-  echo "          Options:      -d|--delete       invoke the delete CRUD action.  (Required)"
-  echo "                        -P|--pipe=        the name of the pipe to delete. (Required)"
-  echo "                        -D|--doc=         the ID of the document to delete."
-  echo "                        -I|--items=       the items that the user intends to delete."
-  echo "                        --except-for      delete all items except for those specified."
-  echo "" # Breathing space ###########################################################################################
+  if [ "${1}" == "c" ] || [ -z "${1}" ]; then
+    echo "  Create"
+    echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
+    echo "          Examples:     pipe_crud -c -P=new_empty_pipe"
+    echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
+    echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
+    echo "                        pipe_crud -c -P=sec_pipe -D=sec_doc -I={ ... } --secure"
+    echo "" # Breathing space ###########################################################################################
+    echo "                        NOTE: Escaped quotes (\\\") are required as shown."
+    echo "" # Breathing space ###########################################################################################
+    echo "          Options:      -c|--create       invoke the create CRUD action.  (Required)"
+    echo "                        -P|--pipe=        the name of the created pipe.   (Required)"
+    echo "                        -D|--doc=         the ID of the created document."
+    echo "                        -I|--items=       the items that populate the created document."
+    echo "                        --secure          create a secure, air-gapped CRUD pipe."
+    echo "                        --overwrite-pipe  overwrite existing data with empty data."
+    echo "" # Breathing space ###########################################################################################
+  elif [ "${1}" == "r" ] || [ -z "${1}" ]; then
+    echo "  Read"
+    echo "          Description:  read from a named / secure CRUD pipe."
+    echo "          Examples:     pipe_crud -r -P=pipe_name"
+    echo "                        pipe_crud -r -P=pipe_name -D=doc_id"
+    echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
+    echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={ ... } --delete-after"
+    echo "" # Breathing space ###########################################################################################
+    echo "                        NOTE: Escaped quotes (\\\") are required as shown."
+    echo "" # Breathing space ###########################################################################################
+    echo "          Options:      -r|--read         invoke the read CRUD action.    (Required)"
+    echo "                        -P|--pipe=        the name of the pipe to read.   (Required)"
+    echo "                        -D|--doc=         the ID of the document to read from."
+    echo "                        -I|--items=       the items whose values are to be returned."
+    echo "                        --delete-after    delete data after they are read."
+    echo "" # Breathing space ###########################################################################################
+  elif [ "${1}" == "u" ] || [ -z "${1}" ]; then
+    echo "  Update"
+    echo "          Description:  update existing data within or add new data to a named / secure CRUD pipe."
+    echo "          Examples:     pipe_crud -u -P=pipe_name"
+    echo "                        pipe_crud -u -P=pipe_name -D=doc_id"
+    echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
+    echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={ ... } --replace-all"
+    echo "" # Breathing space ###########################################################################################
+    echo "                        NOTE: Escaped quotes (\\\") are required as shown."
+    echo "" # Breathing space ###########################################################################################
+    echo "          Options:      -u|--update       invoke the update CRUD action.  (Required)"
+    echo "                        -P|--pipe=        the name of the pipe to update. (Required)"
+    echo "                        -D|--doc=         the ID of the document to update."
+    echo "                        -I|--items=       the items whose values are to be updated."
+    echo "                        --replace-all     replace contents of update target with update data."
+    echo "" # Breathing space ###########################################################################################
+  elif [ "${1}" == "d" ] || [ -z "${1}" ]; then
+    echo "  Delete"
+    echo "          Description:  delete a named / secure RUD pipe or data contained inside of it."
+    echo "          Examples:     pipe_crud -d -P=pipe_name"
+    echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
+    echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
+    echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={ ... } --except-for"
+    echo "" # Breathing space ###########################################################################################
+    echo "                        NOTE: Escaped quotes (\\\") are required as shown."
+    echo "" # Breathing space ###########################################################################################
+    echo "          Options:      -d|--delete       invoke the delete CRUD action.  (Required)"
+    echo "                        -P|--pipe=        the name of the pipe to delete. (Required)"
+    echo "                        -D|--doc=         the ID of the document to delete."
+    echo "                        -I|--items=       the items that the user intends to delete."
+    echo "                        --except-for      delete all items except for those specified."
+    echo "" # Breathing space ###########################################################################################
+  fi
 }
 
 pipe_crud() {
@@ -241,8 +242,8 @@ pipe_crud() {
                   echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
                   if [ $PROBLEM_FOUND -eq 0 ]; then
                     PROBLEM_FOUND=1
+                    break
                   fi
-                  break
                 else
                   if [ -z "${CREATE_ITEM_NAMES}" ]; then
                     CREATE_ITEM_NAMES="${PARSED_ITEM_NAME}"
@@ -347,8 +348,8 @@ pipe_crud() {
                   echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
                   if [ $PROBLEM_FOUND -eq 0 ]; then
                     PROBLEM_FOUND=1
+                    break
                   fi
-                  break;
                 else
                   if [ -z "${CREATE_ITEM_NAMES}" ]; then
                     CREATE_ITEM_NAMES="${PARSED_ITEM_NAME}"
@@ -425,7 +426,7 @@ pipe_crud() {
               SYNC=
             else
               echo "ERROR: Nothing to update."
-              display_pipe_crud_usage
+              display_pipe_crud_usage u
             fi
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
@@ -435,7 +436,7 @@ pipe_crud() {
                 SYNC="$(echo ${SYNC} | sed 's/\(.*BOF='"${DOC}"'\)\(.*\)\(EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g')"
               else
                 echo "ERROR: Nothing to update."
-                display_pipe_crud_usage
+                display_pipe_crud_usage u
               fi
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
