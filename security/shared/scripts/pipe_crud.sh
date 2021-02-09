@@ -100,7 +100,7 @@ pipe_crud() {
         [ -z "${DOC}" ] && DOC="${str}"
         ;;
       -I|--items)
-        [ -z "${ITEMS}" ] && ITEMS="$(echo ${str} | sed "s/[{}]//g; s/[\"\`\$\\]/\\\&/g")"
+        [ -z "${ITEMS}" ] && ITEMS="$(echo ${str} | sed "s/[{}]//g; s/[\/\&\"\`\$\\]/\\\&/g")"
         ;;
       # ........................................................... Only available when creating new pipe.
       --secure)
@@ -476,9 +476,13 @@ pipe_crud() {
                     UPDATE_NEW_ITEMS="${UPDATE_NEW_ITEMS} ${UPDATE_ITEM}"
                   fi
                 else
+                  local PARSED_ITEM_VAL=$( \
+                    echo ${UPDATE_ITEM} | \
+                    sed 's/\(\\\".*\\\":\\\"\)\(.*\)\(\\\"\).*/\2/g' \
+                  )
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 '"${UPDATE_ITEM}"' \3/g; s/  / /g' \
+                    sed 's/\(.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\)\(.*\)\(\\\".*EOF='"${DOC}"'.*\)/\1'"${PARSED_ITEM_VAL}"'\3/g' \
                   )" # ............................................ We update the values of items we find matches for.
                 fi
               fi
@@ -516,7 +520,7 @@ pipe_crud() {
             for DELETE_ITEM in $ITEMS; do
               local PARSED_ITEM_NAME=$( \
                 echo ${DELETE_ITEM} | \
-                sed 's/\(\\\"\)\(.*\)\(\\\"\)\(:\\\"\).*/\2/g' \
+                sed 's/\(\\\"\)\(.*\)\(\\\"\).*/\2/g' \
               )
               if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${PARSED_ITEM_NAME}.*EOF=${DOC} | grep -o ${PARSED_ITEM_NAME})" ]; then
                 echo "ERROR: Item \"${PARSED_ITEM_NAME}\" does not exist or was deleted."
@@ -525,10 +529,10 @@ pipe_crud() {
                   break
                 fi
               else
-                local DELETE_MATCH=$( \
+                local DELETE_MATCH="$( \
                   echo ${SYNC} | \
                   sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\).*EOF='"${DOC}"'.*/\1/g' \
-                )
+                )"
                 if [ "${ADV_OPT}" == "except_for" ]; then
                   if [ -z "${KEEP_ITEMS}" ]; then
                     KEEP_ITEMS="${DELETE_MATCH}"
@@ -536,7 +540,7 @@ pipe_crud() {
                     KEEP_ITEMS="${KEEP_ITEMS} ${DELETE_MATCH}"
                   fi
                 else
-                  SYNC="$(echo ${SYNC} | sed 's/\(.*BOF='"${DOC}"'.*\)\('"${DELETE_MATCH}"'\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g')"
+                  SYNC="$(echo ${SYNC} | sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g')"
                 fi
               fi
             done
