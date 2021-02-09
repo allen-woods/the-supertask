@@ -179,7 +179,6 @@ pipe_crud() {
       local PIPE_64="$(echo ${PIPE} | base64)"
       local PIPE_MAP_STRING="${PIPE_64}"
       local IS_FD=0
-      local SYNC=
       # ........................................................... FIFO has not been created yet.
       if [ -z "$(cat ${MAP_FILE} | grep -o ${PIPE_64})" ]; then
         #################################################################################################################
@@ -232,6 +231,7 @@ pipe_crud() {
           if [ ! -z "${DOC}" ]; then
             if [ ! -z "${ITEMS}" ]; then # ........................ Document contains items.
               local CREATE_ITEM_NAMES=
+              local PROBLEM_FOUND=0
               for CREATE_ITEM in $ITEMS; do
                 local PARSED_ITEM_NAME=$( \
                   echo ${CREATE_ITEM} | \
@@ -239,6 +239,10 @@ pipe_crud() {
                 )
                 if [ ! -z "$(echo ${CREATE_ITEM_NAMES} | grep -o ${PARSED_ITEM_NAME})" ]; then
                   echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
+                  if [ $PROBLEM_FOUND -eq 0 ]; then
+                    PROBLEM_FOUND=1
+                  fi
+                  break
                 else
                   if [ -z "${CREATE_ITEM_NAMES}" ]; then
                     CREATE_ITEM_NAMES="${PARSED_ITEM_NAME}"
@@ -247,19 +251,13 @@ pipe_crud() {
                   fi
                 fi
               done
-              SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+              [ $PROBLEM_FOUND -eq 0 ] && SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
             else # ................................................ Document contains no items.
               SYNC="BOF=${DOC} EOF=${DOC}"
             fi
           # ....................................................... User is only creating a pipe.
           else
             SYNC=
-          fi
-          # ....................................................... Place initial data into the pipe to prevent blocking of subsequent reads and writes.
-          if [ $IS_FD -eq 1 ]; then
-            ( printf '%s\n' $SYNC 'EOP' ' ' >&${PIPE_ADDRESS} & )
-          else
-            ( printf '%s\n' $SYNC 'EOP' ' ' >> ${PIPE_ADDRESS} & )
           fi
           ##########################################################
           # NOTE:                                                  #
@@ -293,30 +291,23 @@ pipe_crud() {
           PIPE_ADDRESS="$(echo ${PIPE_ADDRESS} | base64 -d)" 2>/dev/null
         fi
         # ......................................................... Pull all DATA out of the pipe once, before any data mutation.
+        local _STR= # ............................................. Single use string for parsing existing contents of the pipe.
         if [ $IS_FD -eq 1 ]; then
-          while IFS= read -r DATA; do
-            if [ "${DATA}" == "EOP" ]; then
-              break
-            else
-              if [ -z "${SYNC}" ]; then
-                SYNC="${DATA}"
-              else
-                SYNC="${SYNC} ${DATA}"
-              fi
-            fi
-          done <&"${PIPE_ADDRESS}"
+          _STR="$(cat <&${PIPE_ADDRESS})" # ....................... All data is removed first, careful not to block (ampersand).
+          _STR=$(echo ${_STR} | sed 's/\(.*\)\([\ ]\{0,1\}EOP.*\)/\1/g') # Strip off the "End of Pipe" notice and trailing space.
+          if [ -z "${SYNC}" ]; then
+            SYNC="${_STR}"
+          else
+            SYNC="${SYNC} ${_STR}"
+          fi
         else
-          while IFS= read -r DATA; do
-            if [ "${DATA}" == "EOP" ]; then
-              break
-            else
-              if [ -z "${SYNC}" ]; then
-                SYNC="${DATA}"
-              else
-                SYNC="${SYNC} ${DATA}"
-              fi
-            fi
-          done < "${PIPE_ADDRESS}"
+          _STR="$(cat < ${PIPE_ADDRESS})"
+          _STR=$(echo ${_STR} | sed 's/\(.*\)\([\ ]\{0,1\}EOP.*\)/\1/g')
+          if [ -z "${SYNC}" ]; then
+            SYNC="${_STR}"
+          else
+            SYNC="${SYNC} ${_STR}"
+          fi
         fi
         #################################################################################################################
         if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 2 #####################################
@@ -326,7 +317,6 @@ pipe_crud() {
               SYNC=
             else
               echo "ERROR: Pipe already exists."
-              return 1
             fi
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
@@ -334,7 +324,6 @@ pipe_crud() {
             else
               if [ ! -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
                 echo "ERROR: Document \"${DOC}\" already exists."
-                return 1
               else
                 if [ -z "${SYNC}" ]; then
                   SYNC="BOF=${DOC} EOF=${DOC}"
@@ -348,6 +337,7 @@ pipe_crud() {
               SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
             else
               local CREATE_ITEM_NAMES=
+              local PROBLEM_FOUND=0
               for CREATE_ITEM in $ITEMS; do
                 local PARSED_ITEM_NAME=$( \
                   echo ${CREATE_ITEM} | \
@@ -355,7 +345,10 @@ pipe_crud() {
                 )
                 if [ ! -z "$(echo ${CREATE_ITEM_NAMES} | grep -o ${PARSED_ITEM_NAME})" ]; then
                   echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
-                  return 1
+                  if [ $PROBLEM_FOUND -eq 0 ]; then
+                    PROBLEM_FOUND=1
+                  fi
+                  break;
                 else
                   if [ -z "${CREATE_ITEM_NAMES}" ]; then
                     CREATE_ITEM_NAMES="${PARSED_ITEM_NAME}"
@@ -364,26 +357,26 @@ pipe_crud() {
                   fi
                 fi
               done
-              if [ -z "${SYNC}" ]; then
-                SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
-              else
-                SYNC="${SYNC} BOF=${DOC} ${ITEMS} EOF=${DOC}"
+              if [ $PROBLEM_FOUND -eq 0 ]; then
+                if [ -z "${SYNC}" ]; then
+                  SYNC="BOF=${DOC} ${ITEMS} EOF=${DOC}"
+                else
+                  SYNC="${SYNC} BOF=${DOC} ${ITEMS} EOF=${DOC}"
+                fi
               fi
             fi
           fi
         #################################################################################################################
         elif [ "${CRUD}" == "read" ]; then # ...................... READ ################################################
         #################################################################################################################
-          local READ_OUTPUT=
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
-            printf '%s\n' $SYNC
+            printf '%s\n' ${SYNC}
             if [ "${ADV_OPT}" == "delete_after" ]; then
               SYNC=
             fi
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
               echo "ERROR: Document \"${DOC}\" does not exist or was deleted."
-              return 1
             else
               printf '%s\n' $(echo $SYNC | grep -o BOF=${DOC}.*EOF=${DOC})
               if [ "${ADV_OPT}" == "delete_after" ]; then
@@ -391,6 +384,8 @@ pipe_crud() {
               fi
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
+            local READ_OUTPUT=
+            local PROBLEM_FOUND=0
             for READ_ITEM in $ITEMS; do
               local PARSED_ITEM_NAME=$( \
                 echo ${READ_ITEM} | \
@@ -398,7 +393,10 @@ pipe_crud() {
               )
               if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${PARSED_ITEM_NAME}.*EOF=${DOC} | grep -o ${PARSED_ITEM_NAME})" ]; then
                 echo "ERROR: Item \"${PARSED_ITEM_NAME}\" does not exist or was deleted."
-                return 1
+                if [ $PROBLEM_FOUND -eq 0 ]; then
+                  PROBLEM_FOUND=1
+                  break
+                fi
               else
                 local READ_MATCH=$( \
                   echo ${SYNC} | \
@@ -417,7 +415,7 @@ pipe_crud() {
                 fi
               fi
             done
-            echo $READ_OUTPUT
+            [ $PROBLEM_FOUND -eq 0 ] && echo $READ_OUTPUT
           fi
         #################################################################################################################
         elif [ "${CRUD}" == "update" ]; then # .................... UPDATE ##############################################
@@ -428,19 +426,16 @@ pipe_crud() {
             else
               echo "ERROR: Nothing to update."
               display_pipe_crud_usage
-              return 1
             fi
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
               echo "ERROR: Document \"${DOC}\" does not exist or was deleted."
-              return 1
             else
               if [ "${ADV_OPT}" == "replace_all" ]; then
                 SYNC="$(echo ${SYNC} | sed 's/\(.*BOF='"${DOC}"'\)\(.*\)\(EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g')"
               else
                 echo "ERROR: Nothing to update."
                 display_pipe_crud_usage
-                return 1
               fi
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
@@ -490,7 +485,6 @@ pipe_crud() {
           elif [ ! -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})" ]; then
               echo "Error: Document \"${DOC}\" does not exist or was deleted."
-              return 1
             else
               if [ "${ADV_OPT}" == "except_for" ]; then
                 SYNC="$(echo ${SYNC} | grep -o BOF=${DOC}.*EOF=${DOC})"
@@ -500,6 +494,7 @@ pipe_crud() {
             fi
           elif [ ! -z "${DOC}" ] && [ ! -z "${ITEMS}" ]; then
             local KEEP_ITEMS=
+            local PROBLEM_FOUND=0
             for DELETE_ITEM in $ITEMS; do
               local PARSED_ITEM_NAME=$( \
                 echo ${DELETE_ITEM} | \
@@ -507,7 +502,10 @@ pipe_crud() {
               )
               if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${PARSED_ITEM_NAME}.*EOF=${DOC} | grep -o ${PARSED_ITEM_NAME})" ]; then
                 echo "ERROR: Item \"${PARSED_ITEM_NAME}\" does not exist or was deleted."
-                return 1
+                if [ $PROBLEM_FOUND -eq 0 ]; then
+                  PROBLEM_FOUND=1
+                  break
+                fi
               else
                 local DELETE_MATCH=$( \
                   echo ${SYNC} | \
@@ -524,11 +522,13 @@ pipe_crud() {
                 fi
               fi
             done
-            if [ "${ADV_OPT}" == "except_for" ] && [ ! -z "${KEEP_ITEMS}" ]; then
-              SYNC="$( \
-                echo ${SYNC} | \
-                sed 's/\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)/\1 '"${KEEP_ITEMS}"' \2/g; s/  / /g'
-              )"
+            if [ $PROBLEM_FOUND -eq 0 ]; then
+              if [ "${ADV_OPT}" == "except_for" ] && [ ! -z "${KEEP_ITEMS}" ]; then
+                SYNC="$( \
+                  echo ${SYNC} | \
+                  sed 's/\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)/\1 '"${KEEP_ITEMS}"' \2/g; s/  / /g'
+                )"
+              fi
             fi
           fi
         fi
