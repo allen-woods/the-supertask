@@ -6,6 +6,7 @@ display_pipe_crud_usage() {
   if [ "${1}" == "c" ] || [ -z "${1}" ]; then
     echo "  Create"
     echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
+    echo "" # Breathing space ###########################################################################################
     echo "          Examples:     pipe_crud -c -P=new_empty_pipe"
     echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
     echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
@@ -20,9 +21,11 @@ display_pipe_crud_usage() {
     echo "                        --secure          create a secure, air-gapped CRUD pipe."
     echo "                        --overwrite-pipe  overwrite existing data with empty data."
     echo "" # Breathing space ###########################################################################################
-  elif [ "${1}" == "r" ] || [ -z "${1}" ]; then
+  fi
+  if [ "${1}" == "r" ] || [ -z "${1}" ]; then
     echo "  Read"
     echo "          Description:  read from a named / secure CRUD pipe."
+    echo "" # Breathing space ###########################################################################################
     echo "          Examples:     pipe_crud -r -P=pipe_name"
     echo "                        pipe_crud -r -P=pipe_name -D=doc_id"
     echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
@@ -36,9 +39,11 @@ display_pipe_crud_usage() {
     echo "                        -I|--items=       the items whose values are to be returned."
     echo "                        --delete-after    delete data after they are read."
     echo "" # Breathing space ###########################################################################################
-  elif [ "${1}" == "u" ] || [ -z "${1}" ]; then
+  fi
+  if [ "${1}" == "u" ] || [ -z "${1}" ]; then
     echo "  Update"
     echo "          Description:  update existing data within or add new data to a named / secure CRUD pipe."
+    echo "" # Breathing space ###########################################################################################
     echo "          Examples:     pipe_crud -u -P=pipe_name"
     echo "                        pipe_crud -u -P=pipe_name -D=doc_id"
     echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
@@ -52,9 +57,11 @@ display_pipe_crud_usage() {
     echo "                        -I|--items=       the items whose values are to be updated."
     echo "                        --replace-all     replace contents of update target with update data."
     echo "" # Breathing space ###########################################################################################
-  elif [ "${1}" == "d" ] || [ -z "${1}" ]; then
+  fi
+  if [ "${1}" == "d" ] || [ -z "${1}" ]; then
     echo "  Delete"
     echo "          Description:  delete a named / secure RUD pipe or data contained inside of it."
+    echo "" # Breathing space ###########################################################################################
     echo "          Examples:     pipe_crud -d -P=pipe_name"
     echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
     echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
@@ -292,24 +299,34 @@ pipe_crud() {
           PIPE_ADDRESS="$(echo ${PIPE_ADDRESS} | base64 -d)" 2>/dev/null
         fi
         # ......................................................... Pull all DATA out of the pipe once, before any data mutation.
-        local _STR= # ............................................. Single use string for parsing existing contents of the pipe.
         if [ $IS_FD -eq 1 ]; then
-          _STR="$(cat <&${PIPE_ADDRESS})" # ....................... All data is removed first, careful not to block (ampersand).
-          _STR=$(echo ${_STR} | sed 's/\(.*\)\([\ ]\{0,1\}EOP.*\)/\1/g') # Strip off the "End of Pipe" notice and trailing space.
-          if [ -z "${SYNC}" ]; then
-            SYNC="${_STR}"
-          else
-            SYNC="${SYNC} ${_STR}"
-          fi
+            while IFS= read -r LINE; do
+              if [ ! -z "${LINE}" ]; then
+                if [ "${LINE}" == "EOP" ]; then
+                  break;
+                fi
+                if [ -z "${SYNC}" ]; then
+                  SYNC="${LINE}"
+                else
+                  SYNC="${SYNC} ${LINE}"
+                fi
+              fi
+            done <&"${PIPE_ADDRESS}"
         else
-          _STR="$(cat < ${PIPE_ADDRESS})"
-          _STR=$(echo ${_STR} | sed 's/\(.*\)\([\ ]\{0,1\}EOP.*\)/\1/g')
-          if [ -z "${SYNC}" ]; then
-            SYNC="${_STR}"
-          else
-            SYNC="${SYNC} ${_STR}"
-          fi
+            while IFS= read -r LINE; do
+              if [ ! -z "${LINE}" ]; then
+                if [ "${LINE}" == "EOP" ]; then
+                  break
+                fi
+                if [ -z "${SYNC}" ]; then
+                  SYNC="${LINE}"
+                else
+                  SYNC="${SYNC} ${LINE}"
+                fi
+              fi
+            done < "${PIPE_ADDRESS}"
         fi
+        SYNC=$(echo ${SYNC} | sed 's/\(.*\)\([\ ]\{0,1\}EOP.*\)/\1/g') # Strip off the "End of Pipe" notice and trailing space.
         #################################################################################################################
         if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 2 #####################################
         #################################################################################################################
