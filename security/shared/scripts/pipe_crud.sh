@@ -6,75 +6,75 @@ display_pipe_crud_usage() {
   if [ "${1}" == "c" ] || [ -z "${1}" ]; then
     echo "  Create"
     echo "          Description:  create a new named / secure CRUD pipe, create a new document inside existing CRUD pipe."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Examples:     pipe_crud -c -P=new_empty_pipe"
     echo "                        pipe_crud -c -P=new_pipe -D=empty_doc"
     echo "                        pipe_crud -c -P=new_pipe -D=new_doc -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
     echo "                        pipe_crud -c -P=sec_pipe -D=sec_doc -I={ ... } --secure"
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Options:      -c|--create       invoke the create CRUD action.  (Required)"
     echo "                        -P|--pipe=        the name of the created pipe.   (Required)"
     echo "                        -D|--doc=         the ID of the created document."
     echo "                        -I|--items=       the items that populate the created document."
     echo "                        --secure          create a secure, air-gapped CRUD pipe."
     echo "                        --overwrite-pipe  overwrite existing data with empty data."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
   fi
   if [ "${1}" == "r" ] || [ -z "${1}" ]; then
     echo "  Read"
     echo "          Description:  read from a named / secure CRUD pipe."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Examples:     pipe_crud -r -P=pipe_name"
     echo "                        pipe_crud -r -P=pipe_name -D=doc_id"
     echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
     echo "                        pipe_crud -r -P=pipe_name -D=doc_id -I={ ... } --delete-after"
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Options:      -r|--read         invoke the read CRUD action.    (Required)"
     echo "                        -P|--pipe=        the name of the pipe to read.   (Required)"
     echo "                        -D|--doc=         the ID of the document to read from."
     echo "                        -I|--items=       the items whose values are to be returned."
     echo "                        --delete-after    delete data after they are read."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
   fi
   if [ "${1}" == "u" ] || [ -z "${1}" ]; then
     echo "  Update"
     echo "          Description:  update existing data within or add new data to a named / secure CRUD pipe."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Examples:     pipe_crud -u -P=pipe_name"
     echo "                        pipe_crud -u -P=pipe_name -D=doc_id"
     echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={\\\"var1\\\":\\\"val1\\\", \\\"var2\\\":\\\"val2\\\"}"
     echo "                        pipe_crud -u -P=pipe_name -D=doc_id -I={ ... } --replace-all"
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Options:      -u|--update       invoke the update CRUD action.  (Required)"
     echo "                        -P|--pipe=        the name of the pipe to update. (Required)"
     echo "                        -D|--doc=         the ID of the document to update."
     echo "                        -I|--items=       the items whose values are to be updated."
     echo "                        --replace-all     replace contents of update target with update data."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
   fi
   if [ "${1}" == "d" ] || [ -z "${1}" ]; then
     echo "  Delete"
     echo "          Description:  delete a named / secure RUD pipe or data contained inside of it."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Examples:     pipe_crud -d -P=pipe_name"
     echo "                        pipe_crud -d -P=pipe_name -D=doc_id"
     echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={\\\"var1\\\", \\\"var2\\\"}"
     echo "                        pipe_crud -d -P=pipe_name -D=doc_id -I={ ... } --except-for"
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "                        NOTE: Escaped quotes (\\\") are required as shown."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
     echo "          Options:      -d|--delete       invoke the delete CRUD action.  (Required)"
     echo "                        -P|--pipe=        the name of the pipe to delete. (Required)"
     echo "                        -D|--doc=         the ID of the document to delete."
     echo "                        -I|--items=       the items that the user intends to delete."
     echo "                        --except-for      delete all items except for those specified."
-    echo "" # Breathing space ###########################################################################################
+    echo "" # Breathing space #########################################################################################
   fi
 }
 
@@ -86,11 +86,16 @@ pipe_crud() {
   local ADV_OPT=
   local SYNC=
   # ............................................................... Parse arguments. ##################################
+  local look_for_curlies=0
+  local open_brace=0
+  local close_brace=0
   for arg in "$@"; do
     local cmd=
     local str=
-    [ ! -z "$(echo ${arg} | grep -o '=')" ] && cmd="$(echo ${arg} | sed 's/\(^[-]\{1,2\}[^\=]\{1,\}\)[\=]\{0,1\}\(.*\)/\1/')" || cmd="${arg}"
-    [ ! -z "$(echo ${arg} | grep -o '=')" ] && str="$(echo ${arg} | sed 's/\(^[-]\{1,2\}[^\=]\{1,\}\)[\=]\{0,1\}\(.*\)/\2/')"
+    local chk=
+    # ............................................................. We must be confident that we are detecting and parsing the equal sign in the correct format.
+    [ ! -z "$(echo ${arg} | sed 's/^[-]\{1,2\}.*\([\=]\{1\}\).*$/\1/g' | grep -o '=')" ] && cmd="$(echo ${arg} | sed 's/^\([-]\{1,2\}[^\=]\{1,\}\)[\=]\{0,1\}\(.*\)$/\1/')" || cmd="${arg}"
+    [ ! -z "$(echo ${arg} | sed 's/^[-]\{1,2\}.*\([\=]\{1\}\).*$/\1/g' | grep -o '=')" ] && str="$(echo ${arg} | sed 's/^\([-]\{1,2\}[^\=]\{1,\}\)[\=]\{0,1\}\(.*\)$/\2/')"
     # ............................................................. Conditionally respond to arguments on a first come, first served basis.
     case $cmd in
       -P|--pipe)
@@ -99,8 +104,31 @@ pipe_crud() {
       -D|--doc)
         [ -z "${DOC}" ] && DOC="${str}"
         ;;
-      -I|--items)
-        [ -z "${ITEMS}" ] && ITEMS="$(echo ${str} | sed "s/[{}]//g; s/[\/\&\"\`\$\\]/\\\&/g")"
+      -I|--items) # ............................................... We have parsed the "items" command.
+        if [ $look_for_curlies -eq 0 ]; then
+          chk="$(echo ${str} | sed 's/^\({\).*/\1/g')" # .......... Look for an opening curly brace.
+          if [ ${#chk} -eq 1 ] && [ "${chk}" == "{" ] && [ $open_brace -eq 0 ]; then
+            open_brace=1 # ........................................ Inform future iterations that we have found the opening curly brace.
+          fi
+          chk="$(echo ${str} | sed 's/.*\(}\)$/\1/g')" # .......... Look for a closing curly brace.
+          if [ ${#chk} -eq 1 ] && [ "${chk}" == "}" ] && [ $close_brace -eq 0 ]; then
+            close_brace=1 # ....................................... Inform the subsequent code below that we have also found the closing curly brace.
+          fi
+          chk= # .................................................. Reset value of chk to prevent errors.
+          if [ $open_brace -eq 0 ] && [ $close_brace -eq 0 ]; then
+            echo "ERROR: Incorrect format for incoming item data."
+            display_pipe_crud_usage
+            return 1 # ............................................ Go no further, user error formatting item data.
+          elif [ $open_brace -eq 1 ] && [ $close_brace -eq 0 ]; then
+            ITEMS="$(echo ${str} | sed "s/^{\(.*\)/\1/g; s/[\/\&\"\`\$\\]/\\\&/g")"
+            look_for_curlies=1 # .................................. Specifically inform future iterations we intend to look for the closing curly brace.
+          elif [ $open_brace -eq 1 ] && [ $close_brace -eq 1 ]; then
+            ITEMS="$(echo ${str} | sed "s/^{\(.*\)}$/\1/g; s/[\/\&\"\`\$\\]/\\\&/g")"
+            open_brace=0
+            close_brace=0
+            look_for_curlies=-1 # ................................. Place item data into ITEMS and prevent future iterations from handling items in any way.
+          fi
+        fi
         ;;
       # ........................................................... Only available when creating new pipe.
       --secure)
@@ -135,8 +163,26 @@ pipe_crud() {
         [ -z "${CRUD}" ] && CRUD=delete
         ;;
       *)
-        display_pipe_crud_usage
-        return 1
+        if [ $look_for_curlies -eq 1 ]; then
+          chk="$(echo ${cmd} | sed 's/.*\(}\)$/\1/g')"
+          if [ ${#chk} -eq 1 ] && [ "${chk}" == "}" ] && [ $close_brace -eq 0 ]; then
+            close_brace=1
+          fi
+          chk=
+          if [ $close_brace -eq 1 ]; then
+            ITEMS="${ITEMS} $(echo ${cmd} | sed "s/\(.*\)}$/\1/g; s/[\/\&\"\`\$\\]/\\\&/g")"
+            open_brace=0
+            close_brace=0
+            look_for_curlies=-1 # ................................. Inform the script we are done looking for the closing curly brace.
+          else
+            # ..................................................... Default behavior while looking for closing curly brace is to append what data we find into ITEMS.
+            ITEMS="${ITEMS} $(echo ${cmd} | sed "s/[\/\&\"\`\$\\]/\\\&/g")"
+          fi
+        else
+          echo "Bad argument(s)"
+          display_pipe_crud_usage
+          return 1
+        fi
         ;;
     esac
   done
@@ -189,9 +235,9 @@ pipe_crud() {
       local IS_FD=0
       # ........................................................... FIFO has not been created yet.
       if [ -z "$(cat ${MAP_FILE} | grep -o ${PIPE_64})" ]; then
-        #################################################################################################################
-        if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 1 #####################################
-        #################################################################################################################
+        ###############################################################################################################
+        if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 1 ###################################
+        ###############################################################################################################
           ##########################################################
           # NOTE:                                                  #
           #       We only check for the advanced option "secure"   #
@@ -327,9 +373,9 @@ pipe_crud() {
             done < "${PIPE_ADDRESS}"
         fi
         SYNC=$(echo ${SYNC} | sed 's/\(.*\)\([\ ]\{0,1\}EOP.*\)/\1/g') # Strip off the "End of Pipe" notice and trailing space.
-        #################################################################################################################
-        if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 2 #####################################
-        #################################################################################################################
+        ###############################################################################################################
+        if [ "${CRUD}" == "create" ]; then # ...................... CREATE - part 2 ###################################
+        ###############################################################################################################
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ "${ADV_OPT}" == "overwrite_pipe" ]; then
               SYNC=
@@ -384,9 +430,9 @@ pipe_crud() {
               fi
             fi
           fi
-        #################################################################################################################
-        elif [ "${CRUD}" == "read" ]; then # ...................... READ ################################################
-        #################################################################################################################
+        ###############################################################################################################
+        elif [ "${CRUD}" == "read" ]; then # ...................... READ ##############################################
+        ###############################################################################################################
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             printf '%s\n' ${SYNC}
             if [ "${ADV_OPT}" == "delete_after" ]; then
@@ -417,8 +463,8 @@ pipe_crud() {
                 fi
               else
                 local READ_MATCH=$( \
-                  echo ${SYNC} | \
-                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${PARSED_ITEM_NAME}"'\\\"\):\\\"\(.*\)\\\".*EOF='"${DOC}"'.*/\2/g' \
+                  echo "${SYNC}" | \
+                  sed 's/^.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\([[:alnum:][:punct:]]\{1,\}\)\\\".*EOF='"${DOC}"'.*$/\1/g' \
                 )
                 if [ -z "${READ_OUTPUT}" ]; then
                   READ_OUTPUT="${READ_MATCH}"
@@ -428,16 +474,16 @@ pipe_crud() {
                 if [ "${ADV_OPT}" == "delete_after" ]; then
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g' \
+                    sed 's/^\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"[[:alnum:][:punct:]]\{1,\}\\\"\)\(.*EOF='"${DOC}"'.*\)$/\1 \3/g; s/  / /g' \
                   )"
                 fi
               fi
             done
             [ $PROBLEM_FOUND -eq 0 ] && echo $READ_OUTPUT
           fi
-        #################################################################################################################
-        elif [ "${CRUD}" == "update" ]; then # .................... UPDATE ##############################################
-        #################################################################################################################
+        ###############################################################################################################
+        elif [ "${CRUD}" == "update" ]; then # .................... UPDATE ############################################
+        ###############################################################################################################
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ "${ADV_OPT}" == "replace_all" ]; then
               SYNC=
@@ -494,9 +540,9 @@ pipe_crud() {
               )"
             fi
           fi
-        #################################################################################################################
-        elif [ "${CRUD}" == "delete" ]; then # .................... DELETE ##############################################
-        #################################################################################################################
+        ###############################################################################################################
+        elif [ "${CRUD}" == "delete" ]; then # .................... DELETE ############################################
+        ###############################################################################################################
           if [ -z "${DOC}" ] && [ -z "${ITEMS}" ]; then
             if [ $IS_FD -eq 1 ]; then
               eval "${PIPE_ADDRESS}>&-"

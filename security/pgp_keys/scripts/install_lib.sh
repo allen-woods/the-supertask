@@ -279,13 +279,53 @@ create_openssl_version_alias() {
   echo -e "\033[7;33mCreated Alias for AES Wrap Enabled OpenSSL\033[0m" 1>&5
 }
 generate_pass_phrases_for_pgp_keys() {
-  pipe_crud \
-  --pipe=my_pgp_pipe \
-  --doc-id=pass_phrases \
-  --crud=create \
-  --data="phrase_1=something, \
-  phrase_2=something_else,"
+  pipe_crud -c \
+  -P=pgp_data \
+  -D=phrases \
+  -I={\"key_01\":\"$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w$(jot -w %i -r 1 20 99) | head -n1)\", } \
+  --secure 1>&4
+  echo -e "\033[7;33mGenerated Pass Phrases for PGP Keys\033[0m" 1>&5
 }
+generate_random_payload() {
+  pipe_crud -u \
+  -P=pgp_data \
+  -D=payload \
+  -I={\"base64_enc_data\":\"openssl_data_here\"} 1>&4
+  echo -e "\033[7;33mGenerated Random Payload\033[0m" 1>&5
+}
+generate_random_ephemeral() {
+  pipe_crud -u \
+  -P=pgp_data \
+  -D=ephemeral \
+  -I={\"base64_enc_data\":\"openssl_data_here\"} 1>&4
+  echo -e "\033[7;33mGenerated Random Ephemeral\033[0m" 1>&5
+}
+generate_private_key() {
+  pipe_crud -u \
+  -P=pgp_data \
+  -D=RSA \
+  -I={\"private_key\":\"openssl_data_here\"} 1>&4
+  echo -e "\033[7;33mGenerated Private Key\033[0m" 1>&5
+}
+generate_public_key() {
+  pipe_crud -u \
+  -P=pgp_data \
+  -D=RSA \
+  -I={\"public_key\":\"openssl_data_here\"} 1>&4
+  echo -e "\033[7;33mGenerated Public Key\033[0m" 1>&5
+}
+wrap_phrases_in_payload() {
+  #
+} # persist file?
+wrap_payload_in_ephemeral() {
+  #
+}
+wrap_ephemeral_in_public_key() {
+  #
+}
+print_ephemeral_enc_payload_enc_to_file() {
+  #
+} # persist file
 
 # Generate phrases - write to pipe
 # Generate random payload - write to pipe
