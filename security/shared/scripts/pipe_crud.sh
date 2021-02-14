@@ -289,7 +289,7 @@ pipe_crud() {
               for CREATE_ITEM in $ITEMS; do
                 local PARSED_ITEM_NAME=$( \
                   echo ${CREATE_ITEM} | \
-                  sed 's/\(\\\"\)\(.*\)\(\\\"\)\(:\\\".*\\\"\).*/\2/g' \
+                  sed 's/\(\\\"\)\(.*\)\(\\\":\\\".*\\\"\).*/\2/g' \
                 )
                 if [ ! -z "$(echo ${CREATE_ITEM_NAMES} | grep -o ${PARSED_ITEM_NAME})" ]; then
                   echo "ERROR: Item name \"${PARSED_ITEM_NAME}\" must be unique within parent document."
@@ -510,12 +510,14 @@ pipe_crud() {
                 sed 's/\(\\\"\)\(.*\)\(\\\"\)\(:\\\".*\\\"\).*/\2/g' \
               )
               if [ -z "$(echo ${SYNC} | grep -o BOF=${DOC}.*${PARSED_ITEM_NAME}.*EOF=${DOC} | grep -o ${PARSED_ITEM_NAME})" ]; then
+                UPDATE_ITEM="$(echo ${UPDATE_ITEM} | sed "s/[\/\&\"\`\$\\]/\\\&/g")"
                 SYNC="$( \
                   echo ${SYNC} | \
-                  sed 's/\(.*BOF='"${DOC}"'\)\(.*\)\(EOF='"${DOC}"'.*\)/\1 \2 '"${UPDATE_ITEM}"' \3/g; s/  / /g'
+                  sed 's/^\(.*BOF='"${DOC}"'.*\)\(EOF='"${DOC}"'.*\)$/\1 '"${UPDATE_ITEM}"' \2/g; s/  / /g'
                 )" # .............................................. We add items to the target document if no match is found.
               else
                 if [ "${ADV_OPT}" == "replace_all" ]; then
+                  UPDATE_ITEM="$(echo ${UPDATE_ITEM} | sed "s/[\/\&\"\`\$\\]/\\\&/g")"
                   if [ -z "${UPDATE_NEW_ITEMS}" ]; then
                     UPDATE_NEW_ITEMS="${UPDATE_ITEM}"
                   else
@@ -524,11 +526,11 @@ pipe_crud() {
                 else
                   local PARSED_ITEM_VAL=$( \
                     echo ${UPDATE_ITEM} | \
-                    sed 's/\(\\\".*\\\":\\\"\)\(.*\)\(\\\"\).*/\2/g' \
+                    sed 's/\(\\\".*\\\":\\\"\)\([[:alnum:][:punct:]]\{1,\}\)\(\\\"\).*/\2/g' \
                   )
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/\(.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\)\(.*\)\(\\\".*EOF='"${DOC}"'.*\)/\1'"${PARSED_ITEM_VAL}"'\3/g' \
+                    sed 's/^\(.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\)\([[:alnum:][:punct:]]\{1,\}\)\(\\\".*EOF='"${DOC}"'.*\)$/\1'"${PARSED_ITEM_VAL}"'\3/g' \
                   )" # ............................................ We update the values of items we find matches for.
                 fi
               fi
@@ -536,7 +538,7 @@ pipe_crud() {
             if [ "${ADV_OPT}" == "replace_all" ] && [ ! -z "${UPDATE_NEW_ITEMS}" ]; then
               SYNC="$( \
                 echo ${SYNC} | \
-                sed 's/\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)/\1 '"${UPDATE_NEW_ITEMS}"' \2/g; s/  / /g'
+                sed 's/^\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)$/\1 '"${UPDATE_NEW_ITEMS}"' \2/g; s/  / /g'
               )"
             fi
           fi
@@ -577,7 +579,7 @@ pipe_crud() {
               else
                 local DELETE_MATCH="$( \
                   echo ${SYNC} | \
-                  sed 's/.*BOF='"${DOC}"'.*\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\).*EOF='"${DOC}"'.*/\1/g' \
+                  sed 's/^.*BOF='"${DOC}"'.*\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"[[:alnum:][:punct:]]\{1,\}\\\"[,]\{0,1\}\).*EOF='"${DOC}"'.*$/\1/g' \
                 )"
                 if [ "${ADV_OPT}" == "except_for" ]; then
                   if [ -z "${KEEP_ITEMS}" ]; then
@@ -586,7 +588,10 @@ pipe_crud() {
                     KEEP_ITEMS="${KEEP_ITEMS} ${DELETE_MATCH}"
                   fi
                 else
-                  SYNC="$(echo ${SYNC} | sed 's/\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)/\1 \3/g; s/  / /g')"
+                  SYNC="$( \
+                    echo ${SYNC} | \
+                    sed 's/^\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"[[:alnum:][:punct:]]\{1,\}\\\"[,]\{0,1\}\)\(.*EOF='"${DOC}"'.*\)$/\1 \3/g; s/  / /g' \
+                  )"
                 fi
               fi
             done
@@ -594,7 +599,7 @@ pipe_crud() {
               if [ "${ADV_OPT}" == "except_for" ] && [ ! -z "${KEEP_ITEMS}" ]; then
                 SYNC="$( \
                   echo ${SYNC} | \
-                  sed 's/\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)/\1 '"${KEEP_ITEMS}"' \2/g; s/  / /g'
+                  sed 's/^\(.*BOF='"${DOC}"'\).*\(EOF='"${DOC}"'.*\)$/\1 '"${KEEP_ITEMS}"' \2/g; s/  / /g'
                 )"
               fi
             fi
