@@ -101,7 +101,7 @@ create_openssl_alias() {
   alias OPENSSL_V111="$HOME/local/bin/openssl.sh"
 }
 
-generate_and_enrypt_pgp_data() {
+generate_and_encrypt_pgp_data() {
   local PHRASES="$(generate_pass_phrases)"  # Pass phrases for PGP keys.
   local PAYLOAD="$(OPENSSL_V111 rand 32)"   # Payload AES key used to encrypt data.
   local EPHEMERAL="$(OPENSSL_V111 rand 32)" # Ephemeral AES key used to wrap payload key.

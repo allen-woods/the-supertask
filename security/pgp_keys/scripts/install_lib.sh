@@ -101,6 +101,7 @@ update_instructions() {
   create_openssl_version_run_script \
   protect_openssl_version_run_script \
   create_openssl_version_alias \
+  generate_pgp_data 4 \
   EOP \
   ' ' 1>&3
 }
@@ -278,7 +279,19 @@ create_openssl_version_alias() {
   alias OPENSSL_V111="$HOME/local/bin/openssl.sh" 1>&4
   echo -e "\033[7;33mCreated Alias for AES Wrap Enabled OpenSSL\033[0m" 1>&5
 }
-generate_pass_phrases_for_pgp_keys() {
+generate_pgp_data() {
+  local max_iter=${1:-4}
+  local iter=1
+  while [ $iter -le $max_iter ]; do
+    # create a pass phrase,
+    local phrase_len=$(jot -w %i -r 1 20 99)
+    local phrase="$(tr -cd [[:alnum:][:punct:]] < dev/urandom | fold -w${phrase_len} | head -n1)"
+    # add info to batch file,
+    # export asc key,
+    # add data to pipe_crud as field/value pair.
+    iter=$(($iter + 1))
+  done
+
   pipe_crud -c \
   -P=pgp_data \
   -D=phrases \
@@ -323,7 +336,7 @@ wrap_payload_in_ephemeral() {
 wrap_ephemeral_in_public_key() {
   #
 }
-print_ephemeral_enc_payload_enc_to_file() {
+print_rsa_aes_wrapped_to_file() {
   #
 } # persist file
 
