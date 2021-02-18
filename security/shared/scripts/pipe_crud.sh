@@ -196,7 +196,7 @@ pipe_crud() {
       display_pipe_crud_usage
       return 1
     else
-      local MAP_FILE_DIR=/tmp
+      local MAP_FILE_DIR=/tmp/pcmfd
       local MAP_FILE=
       # ........................................................... Map file directory doesn't exist yet.
       if [ ! -d $MAP_FILE_DIR ]; then
@@ -464,7 +464,7 @@ pipe_crud() {
               else
                 local READ_MATCH=$( \
                   echo "${SYNC}" | \
-                  sed 's/^.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\([[:alnum:][:punct:]]\{1,\}\)\\\".*EOF='"${DOC}"'.*$/\1/g' \
+                  sed 's/^.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\([[:alnum:][:punct:][\ ]]\{1,\}\)\\\".*EOF='"${DOC}"'.*$/\1/g' \
                 )
                 if [ -z "${READ_OUTPUT}" ]; then
                   READ_OUTPUT="${READ_MATCH}"
@@ -474,7 +474,7 @@ pipe_crud() {
                 if [ "${ADV_OPT}" == "delete_after" ]; then
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/^\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"[[:alnum:][:punct:]]\{1,\}\\\"\)\(.*EOF='"${DOC}"'.*\)$/\1 \3/g; s/  / /g' \
+                    sed 's/^\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"[[:alnum:][:punct:][\ ]]\{1,\}\\\"\)\(.*EOF='"${DOC}"'.*\)$/\1 \3/g; s/  / /g' \
                   )"
                 fi
               fi
@@ -526,11 +526,11 @@ pipe_crud() {
                 else
                   local PARSED_ITEM_VAL=$( \
                     echo ${UPDATE_ITEM} | \
-                    sed 's/\(\\\".*\\\":\\\"\)\([[:alnum:][:punct:]]\{1,\}\)\(\\\"\).*/\2/g' \
+                    sed 's/\(\\\".*\\\":\\\"\)\([[:alnum:][:punct:][\ ]]\{1,\}\)\(\\\"\).*/\2/g' \
                   )
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/^\(.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\)\([[:alnum:][:punct:]]\{1,\}\)\(\\\".*EOF='"${DOC}"'.*\)$/\1'"${PARSED_ITEM_VAL}"'\3/g' \
+                    sed 's/^\(.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\)\([[:alnum:][:punct:][\ ]]\{1,\}\)\(\\\".*EOF='"${DOC}"'.*\)$/\1'"${PARSED_ITEM_VAL}"'\3/g' \
                   )" # ............................................ We update the values of items we find matches for.
                 fi
               fi

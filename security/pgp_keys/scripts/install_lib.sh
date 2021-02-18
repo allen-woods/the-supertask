@@ -101,7 +101,15 @@ update_instructions() {
   create_openssl_version_run_script \
   protect_openssl_version_run_script \
   create_openssl_version_alias \
-  generate_pgp_data 4 \
+  generate_asc_key_data \
+  generate_payload_aes \
+  generate_ephemeral_aes \
+  generate_private_rsa \
+  generate_public_rsa \
+  enc_phrases_with_payload \
+  wrap_payload_in_ephemeral \
+  wrap_ephemeral_in_public_key \
+  print_rsa_aes_wrapped_to_file \
   EOP \
   ' ' 1>&3
 }
@@ -279,76 +287,157 @@ create_openssl_version_alias() {
   alias OPENSSL_V111="$HOME/local/bin/openssl.sh" 1>&4
   echo -e "\033[7;33mCreated Alias for AES Wrap Enabled OpenSSL\033[0m" 1>&5
 }
-generate_pgp_data() {
-  local max_iter=${1:-4}
+generate_asc_key_data() {
+  # ......................... Default number of iterations is 4.
+  local max_iter=4
+  # ......................... Begin on iteration 1.
   local iter=1
+  # ......................... Where the batch file should be stored.
+  local batch_dir=/tmp/pgpb
+  # ......................... If the dir doesn't exist,
+  if [ ! -d "${batch_dir}" ]; then
+    # ....................... Make it.
+    mkdir -p "${batch_dir}" 1>&4
+  fi
+  # ......................... Where the key files should be stored.
+  local key_dest_dir=/pgp/keys
+  # ......................... If the dir doesn't exist,
+  if [ ! -d "${key_dest_dir}" ]; then
+    # ....................... Make it.
+    mkdir -p "${key_dest_dir}" 1>&4
+  fi
+  # ......................... Reserve a pipe to store our data in.
+  pipe_crud -c -P=pgp_data -D=pgp_keys --secure
+  # ......................... Iterate from 1 to N.
   while [ $iter -le $max_iter ]; do
-    # create a pass phrase,
+    # ....................... Generate unique, random batch file.
+    local batch_file="${batch_dir}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w16 | head -n1)"
+    # ....................... Generate random phrase length.
     local phrase_len=$(jot -w %i -r 1 20 99)
-    local phrase="$(tr -cd [[:alnum:][:punct:]] < dev/urandom | fold -w${phrase_len} | head -n1)"
-    # add info to batch file,
-    # export asc key,
-    # add data to pipe_crud as field/value pair.
+    # ....................... Generate random phrase.
+    local phrase=$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w${phrase_len} | head -n1)
+    # ....................... Format the key number based on length and value of N.
+    local iter_str=$(printf '%0'"${#max_iter}"'d' ${iter})
+    # ....................... Delare a message to display when each key is done.
+    local done_msg=
+    # ....................... conditionally assign a value to the done message.
+    [ $iter -eq $max_iter ] && done_msg="%echo Done!" || done_msg="%echo Key Details Complete."
+    # ....................... Print the contents of eah batch.
+    printf '%s\n' \
+      "%echo Generating Key [ $iter / $max_iter ]" \
+      "Key-Type: RSA" \
+      "Key-Length: 4096" \
+      "Subkey-Type: RSA" \
+      "Subkey-Length: 4096" \
+      "Passphrase: ${phrase}" \
+      "Name-Real: ${}" \
+      "Name-Email: ${}" \
+      "Name-Comment: ${}" \
+      "Expire-Date: 0" \
+      "%commit" \
+    "${done_msg}" >> $batch_file
+    # ....................... Put sensitive data into the pipe first.
+    pipe_crud -u -P=pgp_data -D=pgp_keys -I={\"key_${iter_str}_asc\":\"${phrase}\"}
+    # ....................... Generate the Nth key.
+    gpg2 \
+      --verbose \
+      --batch \
+    --gen-key $batch_file 1>&4
+    # ....................... Delete the batch file.
+    rm -f $batch_file 1>&4
+    # ....................... Identify the newest key made.
+    local revoc_file="$(ls -t | head -n1)"
+    # ....................... Export the newest key.
+    gpg2 \
+      --export \
+      "$(basename ${revoc_file} | cut -f1 -d '.')" | \
+    base64 > "${key_dest_dir}/key_${iter_str}.asc"
+    # ....................... Increment plus one.
     iter=$(($iter + 1))
   done
-
-  pipe_crud -c \
-  -P=pgp_data \
-  -D=phrases \
-  -I={\"key_01\":\"$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w$(jot -w %i -r 1 20 99) | head -n1)\", } \
-  --secure 1>&4
-  echo -e "\033[7;33mGenerated Pass Phrases for PGP Keys\033[0m" 1>&5
+  # ......................... Give the user feedback.
+  echo -e "\033[7;33mGenerated PGP Data\033[0m" 1>&5
 }
-generate_random_payload() {
-  pipe_crud -u \
-  -P=pgp_data \
-  -D=payload \
-  -I={\"base64_enc_data\":\"openssl_data_here\"} 1>&4
+generate_payload_aes() {
+  pipe_crud -c -P=pgp_data -D=payload -I={\"aes\":\"$(OPENSSL_V111 rand 32 | base64)\"} 1>&4
   echo -e "\033[7;33mGenerated Random Payload\033[0m" 1>&5
 }
-generate_random_ephemeral() {
-  pipe_crud -u \
-  -P=pgp_data \
-  -D=ephemeral \
-  -I={\"base64_enc_data\":\"openssl_data_here\"} 1>&4
+generate_ephemeral_aes() {
+  pipe_crud -c -P=pgp_data -D=ephemeral -I={\"aes\":\"$(OPENSSL_V111 rand 32 | base64)\"} 1>&4
   echo -e "\033[7;33mGenerated Random Ephemeral\033[0m" 1>&5
 }
-generate_private_key() {
-  pipe_crud -u \
-  -P=pgp_data \
-  -D=RSA \
-  -I={\"private_key\":\"openssl_data_here\"} 1>&4
+generate_private_rsa() {
+  local PRIVATE_KEY=$(OPENSSL_V111 genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:4096 | base64)
+  pipe_crud -c -P=pgp_data -D=private_rsa -I={\"key\":\"${PRIVATE_KEY}\"} 1>&4
   echo -e "\033[7;33mGenerated Private Key\033[0m" 1>&5
 }
-generate_public_key() {
-  pipe_crud -u \
-  -P=pgp_data \
-  -D=RSA \
-  -I={\"public_key\":\"openssl_data_here\"} 1>&4
+generate_public_rsa() {
+  local PRIVATE_KEY=$( \
+    pipe_crud -r -P=pgp_data -D=private_rsa -I={\"key\"} | \
+    sed 's/^.*BOF=private_rsa.*\\\"key\\\":\\\"\(.*\)\\\".*EOF=private_rsa.*$/\1/g' | \
+    base64 -d \
+  )
+  local PUB_KEY=$( \
+    echo "${PRIVATE_KEY}" | \
+    OPENSSL_V111 rsa -inform PEM -outform PEM -pubout | \
+    base64 \
+  )
+  pipe_crud -c -P=pgp_data -D=public_rsa -I={\"key\":\"${PUB_KEY}\"} 1>&4
   echo -e "\033[7;33mGenerated Public Key\033[0m" 1>&5
 }
-wrap_phrases_in_payload() {
-  #
-} # persist file?
+enc_phrases_with_payload() {
+  local PAYLOAD_HEX=$( \
+    pipe_crud -r -P=pgp_data -D=payload -I={\"aes\"} | \
+    base64 -d | \
+    hexdump -v -e '/1 "%02X"' \
+  )
+  local PGP_KEYS=$( \
+    pipe_crud -r -P=pgp_data -D=pgp_keys | \
+    sed 's/^.*BOF=pgp_keys\(.*\)EOF=pgp_keys.*$/\1/g' \
+  )
+  echo "${PGP_KEYS}" | OPENSSL_V111 enc -id-aes256-wrap-pad -K ${PAYLOAD_HEX} -iv A65959A6 -out /pgp/keys/phrases_wrapped 1>&4
+  echo -e "\033[7;33mEncrypted PGP Key Pass Phrases with Payload AES\033[0m" 1>&5
+}
 wrap_payload_in_ephemeral() {
-  #
+  local PAYLOAD_AES=$( \
+    pipe_crud -r -P=pgp_data -D=payload -I={\"aes\"} | \
+    base64 -d \
+  )
+  local EPHEMERAL_HEX=$( \
+    pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | \
+    base64 -d | \
+    hexdump -v -e '/1 "%02X"' \
+  )
+  pipe_crud -c -P=pgp_data -D=payload_wrapped -I={\"enc\":\"$(echo "${PAYLOAD_AES}" | OPENSSL_V111 enc -id-aes256-wrap-pad -K "${EPHEMERAL_HEX}" -iv A65959A6 | base64)\"} 1>&4
+  echo -e "\033[7;33mWrapped Payload AES with Ephemeral AES\033[0m" 1>&5
 }
 wrap_ephemeral_in_public_key() {
-  #
+  local EPHEMERAL_AES=$( \
+    pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | \
+    base64 -d \
+  )
+  local PUB_KEY=$( \
+    pipe_crud -r -P=pgp_data -D=public_rsa -I={\"key\"} | \
+    sed 's/^.*BOF=public_rsa.*\\\"key\\\":\\\"\(.*\)\\\".*EOF=public_rsa.*$/\1/g' | \
+    base64 -d \
+  )
+  pipe_crud -c -P=pgp_data -D=ephemeral_wrapped -I={\"enc\":\"$(echo "${EPHEMERAL_AES} ${PUB_KEY}" | OPENSSL_V111 pkeyutl -encrypt -pubin -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha1 -pkeyopt rsa_mgf1_md:sha1 | base64)\"} 1>&4
+  echo -e "\033[7;33mWrapped Ephemeral AES with Public Key\033[0m" 1>&5
 }
 print_rsa_aes_wrapped_to_file() {
-  #
-} # persist file
-
-# Generate phrases - write to pipe
-# Generate random payload - write to pipe
-# Generate random ephemeral - write to pipe
-# Generate private key - write to pipe
-# Generate public key - write to pipe
-# Wrap phrases in payload (pgp_data.enc) - persist on disk
-# Wrap payload in ephemeral - write to pipe
-# Wrap ephemeral in public key - write to pipe
-# Print ephemeral* and payload* to file (rsa_aes_wrapped) - perist on disk
+  local EPHEMERAL_WRAPPED=$( \
+    pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | \
+    sed 's/^.*BOF=ephemeral_wrapped.*\\\"enc\\\":\\\"\(.*\)\\\".*EOF=ephemeral_wrapped.*$/\1/g' | \
+    base64 -d \
+  )
+  local PAYLOAD_WRAPPED=$( \
+    pipe_crud -r -P=pgp_data -D=payload_wrapped -I={\"enc\"} | \
+    sed 's/^.*BOF=payload_wrapped.*\\\"enc\\\":\\\"\(.*\)\\\".*EOF=payload_wrapped.*$/\1/g' | \
+    base64 -d \
+  )
+  printf '%s\n' ${EPHEMERAL_WRAPPED} ${PAYLOAD_WRAPPED} >> /pgp/rsa_aes_wrapped 1>&4
+  echo -e "\033[7;33mPrinted RSA AES Wrapped Data to File\033[0m" 1>&5
+}
 
 # NOTE:
 # These Commented functions are retained for completeness where they originally appeared.
