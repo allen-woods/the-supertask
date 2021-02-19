@@ -464,7 +464,7 @@ pipe_crud() {
               else
                 local READ_MATCH=$( \
                   echo "${SYNC}" | \
-                  sed 's/^.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\([[:alnum:][:punct:][\ ]]\{1,\}\)\\\".*EOF='"${DOC}"'.*$/\1/g' \
+                  sed 's/^.*BOF='"${DOC}"'.*\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"\(.*\)\\\".*EOF='"${DOC}"'.*$/\1/g' \
                 )
                 if [ -z "${READ_OUTPUT}" ]; then
                   READ_OUTPUT="${READ_MATCH}"
@@ -474,7 +474,7 @@ pipe_crud() {
                 if [ "${ADV_OPT}" == "delete_after" ]; then
                   SYNC="$( \
                     echo ${SYNC} | \
-                    sed 's/^\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\"[[:alnum:][:punct:][\ ]]\{1,\}\\\"\)\(.*EOF='"${DOC}"'.*\)$/\1 \3/g; s/  / /g' \
+                    sed 's/^\(.*BOF='"${DOC}"'.*\)\(\\\"'"${PARSED_ITEM_NAME}"'\\\":\\\".*\\\"\)\(.*EOF='"${DOC}"'.*\)$/\1 \3/g; s/  / /g' \
                   )"
                 fi
               fi

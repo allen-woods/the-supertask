@@ -80,6 +80,7 @@ update_instructions() {
   apk_static_add_build_base \
   apk_static_add_gnupg \
   apk_static_add_linux_headers \
+  apk_static_add_outils_jot \
   apk_static_add_perl \
   create_home_build_dir \
   create_home_local_ssl_dir \
@@ -97,10 +98,9 @@ update_instructions() {
   config_openssl_version_build \
   make_j_grep_openssl_version_build \
   make_install_openssl_version_build \
-  change_to_home_local_bin_dir \
-  create_openssl_version_run_script \
-  protect_openssl_version_run_script \
-  create_openssl_version_alias \
+  export_ld_library_path \
+  export_openssl_v111 \
+  verify_openssl_version \
   generate_asc_key_data \
   generate_payload_aes \
   generate_ephemeral_aes \
@@ -123,38 +123,18 @@ delete_instructions() {
   set +v #              # Cancel verbose mode
 }
 
-# EXAMPLE SYNTAX:
-# pretty_print  -H|--header -N|--name="name of setion"  -D|--desc="desription of section"
-# pretty_print  -B|--body   -M|--message="message text" -C|--class="class_name"
-# pretty_print  -F|--footer -T|--text="text to display"
-
-# TODO: Write `pretty_print`
-
-pretty_print() {
-  local OPT_1=$1
-  case $OPT_1 in
-    -H|--header)
-    ;;
-    -B|--body)
-    ;;
-    -F|--footer)
-    ;;
-    *)
-    # Do nothing
-    ;;
-  esac
-}
-
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
-patch_etc_apk_repositories() {
-  sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
-  echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
-}
-apk_update() {
-  apk update 1>&4
-  echo -e "\033[7;33mApk Update\033[0m" 1>&5
-}
+# patch_etc_apk_repositories() {
+#   # not used
+#   sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
+#   echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
+# }
+# apk_update() {
+#   # not used
+#   apk update 1>&4
+#   echo -e "\033[7;33mApk Update\033[0m" 1>&5
+# }
 apk_add_busybox_static() {
   apk add busybox-static 1>&4
   echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
@@ -163,22 +143,19 @@ apk_add_apk_tools_static() {
   apk add apk-tools-static 1>&4
   echo -e "\033[7;33mAdded APK Static Tools\033[0m" 1>&5
 }
-apk_static_upgrade_simulate() {
-  apk.static upgrade --no-self-upgrade --available --simulate 1>&4
-  echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
-}
-apk_static_upgrade() {
-  apk.static upgrade --no-self-upgrade --available 1>&4
-  echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
-}
+# apk_static_upgrade_simulate() {
+#   # not used
+#   apk.static upgrade --no-self-upgrade --available --simulate 1>&4
+#   echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
+# }
+# apk_static_upgrade() {
+#   # not used
+#   apk.static upgrade --no-self-upgrade --available 1>&4
+#   echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
+# }
 apk_static_add_build_base() {
   apk.static add build-base 1>&4
   echo -e "\033[7;33mAdded Build Base\033[0m" 1>&5
-}
-apk_static_add_gcc() {
-  # Unused, included for completeness.
-  apk.static add gcc 1>&4
-  echo -e "\033[7;33mAdded GCC\033[0m" 1>&5
 }
 apk_static_add_gnupg() {
   apk.static add gnupg 1>&4
@@ -188,10 +165,9 @@ apk_static_add_linux_headers() {
   apk.static add linux-headers 1>&4
   echo -e "\033[7;33mAdded Linux Headers\033[0m" 1>&5
 }
-apk_static_add_make() {
-  # Unused, included for completeness.
-  apk.static add make 1>&4
-  echo -e "\033[7;33mAdded Make\033[0m" a>&5
+apk_static_add_outils_jot() {
+  apk.static add outils-jot 1>&4
+  echo -e "\033[7;33mAdded OUtils-Jot\033[0m" 1>&5
 }
 apk_static_add_perl() {
   apk.static add perl 1>&4
@@ -222,7 +198,7 @@ openssl_source_version_head_first_result() {
   echo -e "\033[7;33mParsed Latest Stable Version of OpenSSL from Release Numbers\033[0m" 1>&5
 }
 openssl_source_version_sed_remove_tar() {
-  OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | sed 's/.tar$//')" 1>&4
+  OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | sed 's/.tar$//g')" 1>&4
   echo -e "\033[7;33mRemoved Unwanted Trailing Data from Latest Stable\033[0m" 1>&5
 }
 change_to_home_build_dir() {
@@ -255,37 +231,23 @@ config_openssl_version_build() {
 }
 make_j_grep_openssl_version_build() {
   make -j$(grep -c ^processor /proc/cpuinfo) 1>&4
-  echo -e "Ran Make With -j Option" 1>&5
-}
-make_openssl_version_build() {
-  # Unused, included for completeness.
-  make 1>&4
-  echo -e "\033[7;33mRan Make With No Arguments\033[0m" 1>&5
-}
-make_test_openssl_version_build() {
-  # Unused, included for completeness.
-  make test 1>&4
-  echo -e "\033[7;33mRan Make Test\033[0m" 1>&5
+  echo -e "\033[7;33mRan Make With -j Option\033[0m" 1>&5
 }
 make_install_openssl_version_build() {
   make install 1>&4
   echo -e "\033[7;33mRan Make Install to Build OpenSSL\033[0m" 1>&5
 }
-change_to_home_local_bin_dir() {
-  cd $HOME/local/bin/ 1>&4
-  echo -e "\033[7;33mChanged Current Directory to ${HOME}/local/bin\033[0m" 1>&5
+export_ld_library_path() {
+  export LD_LIBRARY_PATH=$HOME/local/lib/ 1>&4
+  echo -e "\033[7;33mExported LD_LIBRARY_PATH Env Var\033[0m" 1>&5
 }
-create_openssl_version_run_script() {
-  printf '%s\n' '#!/bin/sh' 'export LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > ./openssl.sh 1>&4
-  echo -e "\033[7;33mCreated OpenSSL Run Script\033[0m" 1>&5
+export_openssl_v111() {
+  export OPENSSL_V111=$HOME/local/bin/openssl 1>&4
+  echo -e "\033[7;33mExported OPENSSL_V111 Env Var\033[0m" 1>&5
 }
-protect_openssl_version_run_script() {
-  chmod 755 ./openssl.sh 1>&4
-  echo -e "\033[7;33mProtected Run Script Using CHMOD\033[0m" 1>&5
-}
-create_openssl_version_alias() {
-  alias OPENSSL_V111="$HOME/local/bin/openssl.sh" 1>&4
-  echo -e "\033[7;33mCreated Alias for AES Wrap Enabled OpenSSL\033[0m" 1>&5
+verify_openssl_version() {
+  $OPENSSL_V111 version 1>&4
+  echo -e "\033[7;33mVerified OpenSSL Version\033[0m" 1>&5
 }
 generate_asc_key_data() {
   # ......................... Default number of iterations is 4.
@@ -311,7 +273,7 @@ generate_asc_key_data() {
   # ......................... Iterate from 1 to N.
   while [ $iter -le $max_iter ]; do
     # ....................... Generate unique, random batch file.
-    local batch_file="${batch_dir}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w16 | head -n1)"
+    local batch_file=${batch_dir}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w16 | head -n1)
     # ....................... Generate random phrase length.
     local phrase_len=$(jot -w %i -r 1 20 99)
     # ....................... Generate random phrase.
@@ -330,23 +292,26 @@ generate_asc_key_data() {
       "Subkey-Type: RSA" \
       "Subkey-Length: 4096" \
       "Passphrase: ${phrase}" \
-      "Name-Real: ${}" \
-      "Name-Email: ${}" \
-      "Name-Comment: ${}" \
+      "Name-Real: ${name_real:-Thomas Tester}" \
+      "Name-Email: ${name_email:-test@thesupertask.com}" \
+      "Name-Comment: ${name_comment:-Auto-generated Key Used for Testing.}" \
       "Expire-Date: 0" \
       "%commit" \
     "${done_msg}" >> $batch_file
     # ....................... Put sensitive data into the pipe first.
-    pipe_crud -u -P=pgp_data -D=pgp_keys -I={\"key_${iter_str}_asc\":\"${phrase}\"}
+    pipe_crud -u -P=pgp_data -D=pgp_keys -I={\"key_${iter_str}_asc\":\"$(echo "${phrase}" | base64 | tr -d '\n' | sed 's/ //g')\"} 2>/dev/null
     # ....................... Generate the Nth key.
     gpg2 \
       --verbose \
       --batch \
     --gen-key $batch_file 1>&4
+    #
+    sleep 1s # .............. SLEEP
+    #
     # ....................... Delete the batch file.
     rm -f $batch_file 1>&4
     # ....................... Identify the newest key made.
-    local revoc_file="$(ls -t | head -n1)"
+    local revoc_file="$(ls -t ${HOME}/.gnupg/openpgp-revocs.d | head -n1)"
     # ....................... Export the newest key.
     gpg2 \
       --export \
@@ -359,83 +324,122 @@ generate_asc_key_data() {
   echo -e "\033[7;33mGenerated PGP Data\033[0m" 1>&5
 }
 generate_payload_aes() {
-  pipe_crud -c -P=pgp_data -D=payload -I={\"aes\":\"$(OPENSSL_V111 rand 32 | base64)\"} 1>&4
+  local PAYLOAD="$( \
+    $OPENSSL_V111 rand 32 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  pipe_crud -c -P=pgp_data -D=payload -I={\"aes\":\"${PAYLOAD}\"} 1>&4
+  echo "payload: $(pipe_crud -r -P=pgp_data -D=payload -I={\"aes\"} | base64 -d)"
+  echo "original: $(echo ${PAYLOAD} | base64 -d)"
   echo -e "\033[7;33mGenerated Random Payload\033[0m" 1>&5
 }
 generate_ephemeral_aes() {
-  pipe_crud -c -P=pgp_data -D=ephemeral -I={\"aes\":\"$(OPENSSL_V111 rand 32 | base64)\"} 1>&4
+  local EPHEMERAL="$( \
+    $OPENSSL_V111 rand 32 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  pipe_crud -c -P=pgp_data -D=ephemeral -I={\"aes\":\"${EPHEMERAL}\"} 1>&4
+  echo "ephemeral: $(pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | base64 -d)"
+  echo "original: $(echo ${EPHEMERAL} | base64 -d)"
   echo -e "\033[7;33mGenerated Random Ephemeral\033[0m" 1>&5
 }
 generate_private_rsa() {
-  local PRIVATE_KEY=$(OPENSSL_V111 genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:4096 | base64)
+  local PRIVATE_KEY="$( \
+    $OPENSSL_V111 genpkey \
+    -outform PEM \
+    -algorithm RSA \
+    -pkeyopt rsa_keygen_bits:4096 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
   pipe_crud -c -P=pgp_data -D=private_rsa -I={\"key\":\"${PRIVATE_KEY}\"} 1>&4
+  echo "private rsa: $(pipe_crud -r -P=pgp_data -D=private_rsa -I={\"key\"} | base64 -d)"
   echo -e "\033[7;33mGenerated Private Key\033[0m" 1>&5
 }
 generate_public_rsa() {
-  local PRIVATE_KEY=$( \
+  local PRIVATE_KEY="$( \
     pipe_crud -r -P=pgp_data -D=private_rsa -I={\"key\"} | \
-    sed 's/^.*BOF=private_rsa.*\\\"key\\\":\\\"\(.*\)\\\".*EOF=private_rsa.*$/\1/g' | \
     base64 -d \
-  )
-  local PUB_KEY=$( \
+  )"
+  local PUB_KEY="$( \
     echo "${PRIVATE_KEY}" | \
-    OPENSSL_V111 rsa -inform PEM -outform PEM -pubout | \
-    base64 \
-  )
+    $OPENSSL_V111 rsa -inform PEM -outform PEM -pubout | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
   pipe_crud -c -P=pgp_data -D=public_rsa -I={\"key\":\"${PUB_KEY}\"} 1>&4
+  echo "public rsa: $(pipe_crud -r -P=pgp_data -D=public_rsa -I={\"key\"} | base64 -d)"
   echo -e "\033[7;33mGenerated Public Key\033[0m" 1>&5
 }
 enc_phrases_with_payload() {
-  local PAYLOAD_HEX=$( \
+  local PAYLOAD_HEX="$( \
     pipe_crud -r -P=pgp_data -D=payload -I={\"aes\"} | \
     base64 -d | \
     hexdump -v -e '/1 "%02X"' \
-  )
-  local PGP_KEYS=$( \
-    pipe_crud -r -P=pgp_data -D=pgp_keys | \
-    sed 's/^.*BOF=pgp_keys\(.*\)EOF=pgp_keys.*$/\1/g' \
-  )
-  echo "${PGP_KEYS}" | OPENSSL_V111 enc -id-aes256-wrap-pad -K ${PAYLOAD_HEX} -iv A65959A6 -out /pgp/keys/phrases_wrapped 1>&4
+  )"
+  local PGP_KEYS="$( \
+    pipe_crud -r -P=pgp_data -D=pgp_keys \
+  )"
+  echo "${PGP_KEYS}" | $OPENSSL_V111 enc -id-aes256-wrap-pad -K ${PAYLOAD_HEX} -iv A65959A6 -out /pgp/keys/phrases_wrapped 1>&4
   echo -e "\033[7;33mEncrypted PGP Key Pass Phrases with Payload AES\033[0m" 1>&5
 }
 wrap_payload_in_ephemeral() {
-  local PAYLOAD_AES=$( \
+  local PAYLOAD_AES="$( \
     pipe_crud -r -P=pgp_data -D=payload -I={\"aes\"} | \
     base64 -d \
-  )
-  local EPHEMERAL_HEX=$( \
+  )"
+  local EPHEMERAL_HEX="$( \
     pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | \
     base64 -d | \
     hexdump -v -e '/1 "%02X"' \
-  )
-  pipe_crud -c -P=pgp_data -D=payload_wrapped -I={\"enc\":\"$(echo "${PAYLOAD_AES}" | OPENSSL_V111 enc -id-aes256-wrap-pad -K "${EPHEMERAL_HEX}" -iv A65959A6 | base64)\"} 1>&4
+  )"
+  local PAYLOAD_WRAPPED="$( \
+    echo "${PAYLOAD_AES}" | \
+    $OPENSSL_V111 enc -id-aes256-wrap-pad \
+    -K "${EPHEMERAL_HEX}" \
+    -iv A65959A6 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  pipe_crud -c -P=pgp_data -D=payload_wrapped -I={\"enc\":\"${PAYLOAD_WRAPPED}\"}
+  echo "payload_wrapped: $(pipe_crud -r -P=pgp_data -D=payload_wrapped -I={\"enc\"} | base64 -d)"
   echo -e "\033[7;33mWrapped Payload AES with Ephemeral AES\033[0m" 1>&5
 }
 wrap_ephemeral_in_public_key() {
-  local EPHEMERAL_AES=$( \
+  local EPHEMERAL_AES="$( \
     pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | \
     base64 -d \
-  )
-  local PUB_KEY=$( \
+  )"
+  local PUB_KEY="$( \
     pipe_crud -r -P=pgp_data -D=public_rsa -I={\"key\"} | \
-    sed 's/^.*BOF=public_rsa.*\\\"key\\\":\\\"\(.*\)\\\".*EOF=public_rsa.*$/\1/g' | \
     base64 -d \
-  )
-  pipe_crud -c -P=pgp_data -D=ephemeral_wrapped -I={\"enc\":\"$(echo "${EPHEMERAL_AES} ${PUB_KEY}" | OPENSSL_V111 pkeyutl -encrypt -pubin -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha1 -pkeyopt rsa_mgf1_md:sha1 | base64)\"} 1>&4
+  )"
+  mkfifo public_pem
+  ( echo "${PUB_KEY}" > public_pem & )
+  local EPHEMERAL_WRAPPED="$( \
+    echo "${EPHEMERAL_AES}" | \
+    $OPENSSL_V111 pkeyutl \
+    -encrypt \
+    -pubin -inkey public_pem \
+    -pkeyopt rsa_padding_mode:oaep \
+    -pkeyopt rsa_oaep_md:sha1 \
+    -pkeyopt rsa_mgf1_md:sha1 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  ( rm -f public_pem )
+  pipe_crud -c -P=pgp_data -D=ephemeral_wrapped -I={\"enc\":\"${EPHEMERAL_WRAPPED}\"}
+  echo "ephemeral_wrapped: $(pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | base64 -d)"
   echo -e "\033[7;33mWrapped Ephemeral AES with Public Key\033[0m" 1>&5
 }
 print_rsa_aes_wrapped_to_file() {
-  local EPHEMERAL_WRAPPED=$( \
+  local EPHEMERAL_WRAPPED="$( \
     pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | \
-    sed 's/^.*BOF=ephemeral_wrapped.*\\\"enc\\\":\\\"\(.*\)\\\".*EOF=ephemeral_wrapped.*$/\1/g' | \
     base64 -d \
-  )
-  local PAYLOAD_WRAPPED=$( \
+  )"
+  local PAYLOAD_WRAPPED="$( \
     pipe_crud -r -P=pgp_data -D=payload_wrapped -I={\"enc\"} | \
-    sed 's/^.*BOF=payload_wrapped.*\\\"enc\\\":\\\"\(.*\)\\\".*EOF=payload_wrapped.*$/\1/g' | \
     base64 -d \
-  )
-  printf '%s\n' ${EPHEMERAL_WRAPPED} ${PAYLOAD_WRAPPED} >> /pgp/rsa_aes_wrapped 1>&4
+  )"
+  echo ${EPHEMERAL_WRAPPED} >> /pgp/rsa_aes_wrapped
+  echo ${PAYLOAD_WRAPPED} >> /pgp/rsa_aes_wrapped
+  cat /pgp/rsa_aes_wrapped
   echo -e "\033[7;33mPrinted RSA AES Wrapped Data to File\033[0m" 1>&5
 }
 
