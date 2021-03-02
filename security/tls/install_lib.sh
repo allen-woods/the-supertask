@@ -1,8 +1,9 @@
 #!/bin/sh
 
-# Name: install_lib.sh
-# Desc: A collection of methods that must be called in proper sequence to install a specific set of data.
-
+# Dependencies:
+#   - OS X Mojave 10.14.6+
+#   - OpenSSL 1.1.1j
+#     - Location: /usr/local/etc/openssl@1.1
 call_instructions() {
   tls_export_lc_ctype && \
   tls_generate_random_password && \
@@ -287,7 +288,7 @@ tls_generate_tls_intermediate_certs_cacert_pem() {
   echo -e "\033[7;33mGenerated Intermediate Certs CACERT PEM\033[0m"
 }
 tls_persist_cert_chain_phrase() {
-  echo $CERT_CHAIN_PHRASE > ${CONTAINER_PATH}/tls/.phrase
+  echo $CERT_CHAIN_PHRASE | base64 > ${CONTAINER_PATH}/tls/.phrase
   echo -e "\033[7;33mPersisted Cert Chain Phrase\033[0m"
 }
 unset_environment_variables() {
