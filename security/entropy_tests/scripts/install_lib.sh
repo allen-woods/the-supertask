@@ -111,21 +111,22 @@ update_instructions() {
   insert_m_pi_constant_libdieharder_h \
   insert_uint_type_def_libdieharder_h \
   compile_dieharder_using_make_install \
-  change_dir_to_tmp_test \
-  generate_urandom_file_using_dd \
-  pass_urandom_file_to_ent_no_args \
-  pass_urandom_file_to_ent_with_args \
-  display_available_random_entropy \
-  change_dir_to_tmp_test \
-  pass_dev_random_to_rngtest \
-  rim_raf_tmp_test_dir \
-  display_available_random_entropy \
-  change_dir_to_slash \
-  run_all_dieharder_tests \
   display_available_random_entropy \
   EOP \
   ' ' 1>&3
 }
+
+  # change_dir_to_tmp_test \
+  # generate_urandom_file_using_dd \
+  # pass_urandom_file_to_ent_no_args \
+  # pass_urandom_file_to_ent_with_args \
+  # display_available_random_entropy \
+  # change_dir_to_tmp_test \
+  # pass_dev_random_to_rngtest \
+  # rim_raf_tmp_test_dir \
+  # display_available_random_entropy \
+  # change_dir_to_slash \
+  # run_all_dieharder_tests \
 
 delete_instructions() {
   exec 2>&1             # Restore stderr

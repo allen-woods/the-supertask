@@ -109,7 +109,7 @@ update_instructions() {
   enc_phrases_with_payload \
   wrap_payload_in_ephemeral \
   wrap_ephemeral_in_public_key \
-  print_rsa_aes_wrapped_to_file \
+  persist_rsa_aes_wrapped \
   EOP \
   ' ' 1>&3
 }
@@ -428,7 +428,7 @@ wrap_ephemeral_in_public_key() {
   echo "ephemeral_wrapped: $(pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | base64 -d)"
   echo -e "\033[7;33mWrapped Ephemeral AES with Public Key\033[0m" 1>&5
 }
-print_rsa_aes_wrapped_to_file() {
+persist_rsa_aes_wrapped() {
   local EPHEMERAL_WRAPPED="$( \
     pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | \
     base64 -d \

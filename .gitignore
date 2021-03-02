@@ -4,3 +4,5 @@
 **/*.asc
 **/*.enc
 **/.*
+**/tls/**
+!**/tls/install_lib.sh
