@@ -128,7 +128,7 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 ## CURRENT FOCUS:
 
-All shell scripts written in `sh` are being re-engineered for use in the local environment of the project to prevent leaks of sensitive data from Docker containers.
+All shell scripts written in `sh` have been re-engineered for use in the local environment on macOS 10.14.6+ and are located in folder `/local`. These variants of the scripts will have their own branch in future commits, however, this folder will suffice for now. These refactors for use in the local environment were made to prevent leaks of sensitive data from Docker containers via file descriptors used by the [pipe_crud](https://github.com/allen-woods/pipe-crud) project.
 
 Second to this first priority is the full configuration of Vault using PKI secrets engine running under TLS 1.3.
 
