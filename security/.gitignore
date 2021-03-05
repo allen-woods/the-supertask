@@ -1,6 +1,4 @@
 /tls/**
-/tls/intermediate/**
-/tls/intermediate/certs/**
 !/tls/install_lib.sh
 /pgp/**
 !/pgp/install_lib.sh

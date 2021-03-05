@@ -131,8 +131,8 @@ create_home_local_ssl_dir() {
 }
 export_openssl_source_version_wget() {
   export OPENSSL_SOURCE_VERSION="$(echo \
-    $(wget -c https://www.openssl.org/source/index.html -O -) | \
-    sed 's/^.*\"\(openssl[-]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[a-zA-Z]\{0,\}\).tar.gz\".*$/\1/g' \
+  $(wget -c https://www.openssl.org/source/index.html -O -) | \
+    sed 's/^.*\"\(openssl[-]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[a-zA-Z]\{0,\}\).tar.gz\".*$/\1/g; s/^.* \([^ ]\{1,\}\)$/\1/g;' \
   )" 1>&4
   echo -e "\033[7;33mParsed OpenSSL Version to Variable Using WGET and SED\033[0m" 1>&5
 }
@@ -189,54 +189,63 @@ source_home_shrc() {
   echo -e "\033[7;33mSourced SHRC File in Home Directory\033[0m" 1>&5
 }
 verify_openssl_version() {
-  $OPENSSL_V111 version 1>&4
+  OPENSSL_V111 version 1>&4
   echo -e "\033[7;33mVerified OpenSSL Version\033[0m" 1>&5
 }
 generate_asc_key_data() {
-  local max_iter=4
-  local iter=1
-  local batch_dir=/tmp/pgpb
-  if [ ! -d "${batch_dir}" ]; then
-    mkdir -p "${batch_dir}" 1>&4
+  local MAX_ITER=4
+  local ITER=1
+  local BATCH_PATH=/tmp/pgpb
+  if [ ! -d "${BATCH_PATH}" ]; then
+    mkdir -p "${BATCH_PATH}" 1>&4
   fi
-  local key_dest_dir=/pgp/keys
-  if [ ! -d "${key_dest_dir}" ]; then
-    mkdir -p "${key_dest_dir}" 1>&4
+  local KEYS_PATH=/pgp/keys
+  if [ ! -d "${KEYS_PATH}" ]; then
+    mkdir -p "${KEYS_PATH}" 1>&4
   fi
-  pipe_crud -c -P=pgp_data -D=pgp_keys --secure
-  while [ $iter -le $max_iter ]; do
-    local batch_file=${batch_dir}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w16 | head -n1)
-    local phrase_len=$(jot -w %i -r 1 20 99)
-    local phrase=$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w${phrase_len} | head -n1)
-    local iter_str=$(printf '%0'"${#max_iter}"'d' ${iter})
-    local done_msg=
-    [ $iter -eq $max_iter ] && done_msg="%echo Done!" || done_msg="%echo Key Details Complete."
+  # Replaced usage of pipe_crud utility with file system solution.
+  local PHRASES_PATH=/pgp/phrases
+  if [ ! -d "${PHRASES_PATH}" ]; then
+    mkdir "${PHRASES_PATH}" 1>&4
+  fi
+
+  while [ $ITER -le $MAX_ITER ]; do
+    # Doubled length of file name for increased entropy.
+    local BATCH_FILE=${BATCH_PATH}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w32 | head -n1)
+    local PHRASE_LEN=$(jot -w %i -r 1 20 99)
+    local PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w${PHRASE_LEN} | head -n1)
+    local ITER_STR=$(printf '%0'"${#MAX_ITER}"'d' ${ITER})
+    local DONE_MSG=
+    [ $ITER -eq $MAX_ITER ] && DONE_MSG="%echo Done!" || DONE_MSG="%echo Key Details Complete."
     printf '%s\n' \
-      "%echo Generating Key [ $iter / $max_iter ]" \
+      "%echo Generating Key [ $ITER / $MAX_ITER ]" \
       "Key-Type: RSA" \
       "Key-Length: 4096" \
       "Subkey-Type: RSA" \
       "Subkey-Length: 4096" \
-      "Passphrase: ${phrase}" \
+      "Passphrase: ${PHRASE}" \
       "Name-Real: ${name_real:-Thomas Tester}" \
       "Name-Email: ${name_email:-test@thesupertask.com}" \
       "Name-Comment: ${name_comment:-Auto-generated Key Used for Testing.}" \
       "Expire-Date: 0" \
       "%commit" \
-    "${done_msg}" >> $batch_file
-    pipe_crud -u -P=pgp_data -D=pgp_keys -I={\"key_${iter_str}_asc\":\"$(echo "${phrase}" | base64 | tr -d '\n' | sed 's/ //g')\"} 2>/dev/null
-    gpg2 \
+    "${DONE_MSG}" >> $BATCH_FILE
+    # Replace usage of pipe_crud utility with file system solution.
+    # Improved security of phrases by placing them into discreet files.
+    echo "key_${ITER_STR}_asc::${PHRASE}" | base64 > ${PHRASES_PATH}/.phrase_${ITER_STR} 2>/dev/null
+    gpg \
       --verbose \
       --batch \
-    --gen-key $batch_file 1>&4
+    --gen-key $BATCH_FILE 1>&4
     sleep 1s # .............. SLEEP
-    rm -f $batch_file 1>&4
-    local revoc_file="$(ls -t ${HOME}/.gnupg/openpgp-revocs.d | head -n1)"
-    gpg2 \
+    rm -f $BATCH_FILE 1>&4
+
+    local REVOC_FILE="$(ls -t ${HOME}/.gnupg/openpgp-revocs.d | head -n1)"
+    gpg \
       --export \
-      "$(basename ${revoc_file} | cut -f1 -d '.')" | \
-    base64 > "${key_dest_dir}/key_${iter_str}.asc"
-    iter=$(($iter + 1))
+      "$(basename ${REVOC_FILE} | cut -f1 -d '.')" | \
+    base64 > "${KEYS_PATH}/key_${ITER_STR}.asc"
+    ITER=$(($ITER + 1))
   done
   echo -e "\033[7;33mGenerated PGP Data\033[0m" 1>&5
 }

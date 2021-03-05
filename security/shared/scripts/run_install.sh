@@ -41,6 +41,12 @@ run_install() {
     return 0            # Go no further, already installed.
   fi
 
+  # NOTE: We may not need to load the OpenSSL alias in advance of purpose-built scripts.
+  #       We will be building the aes-wrap enabled OpenSSL, then using it to create pgp data and a certificate chain.
+  #
+  # [ -f $HOME/.shrc ] && [ -z "${OPENSSL_V111}" ] && . $HOME/.shrc # If the SHRC file exists and the alias for OpenSSL is undefined,
+  #                                                                 # source the SHRC file to create the alias for OpenSSL.
+
   create_instructions $OUTPUT_MODE # Call install_lib method to create pipe where function names are stored.
   if [ ! $? -eq 0 ]
   then
