@@ -8,7 +8,6 @@
 #         - read_instruction      A method for reading instruction names from the non-blocking pipe.
 #         - update_instructions   A method for placing instruction names into the non-blocking pipe.
 #         - delete_instructions   A method for deleting the non-blocking pipe and any instructions inside.
-#         - pretty_print          A method for printing text in a concise, colorful, "pretty" way.
 #
 #       `create_instructions` must accept a single argument, OPT, whose value is always 0, 1, or 2.
 #       Evaluations of OPT should be interpreted as follows:
@@ -134,28 +133,6 @@ delete_instructions() {
   exec 5>&-             # Remove file descriptor 5
   rm -f /tmp/instructs  # Force deletion of pipe
   set +v #              # Cancel verbose mode
-}
-
-# EXAMPLE SYNTAX:
-# pretty_print  -H|--header -N|--name="name of setion"  -D|--desc="desription of section"
-# pretty_print  -B|--body   -M|--message="message text" -C|--class="class_name"
-# pretty_print  -F|--footer -T|--text="text to display"
-
-# TODO: Write `pretty_print`
-
-pretty_print() {
-  local OPT_1=$1
-  case $OPT_1 in
-    -H|--header)
-    ;;
-    -B|--body)
-    ;;
-    -F|--footer)
-    ;;
-    *)
-    # Do nothing
-    ;;
-  esac
 }
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *

@@ -136,9 +136,9 @@ services:
       #   target: /pgp
       #   volume:
       #     nocopy: false
-      - type: bind
-        source: ./security/pgp_keys/data
-        target: /pgp/
+      # - type: bind
+      #   source: ./security/pgp_keys/data
+      #   target: /pgp/
       # - type: bind
       #   source: ./security/public
       #   target: /public

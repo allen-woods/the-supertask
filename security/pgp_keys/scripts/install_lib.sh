@@ -8,7 +8,6 @@
 #         - read_instruction      A method for reading instruction names from the non-blocking pipe.
 #         - update_instructions   A method for placing instruction names into the non-blocking pipe.
 #         - delete_instructions   A method for deleting the non-blocking pipe and any instructions inside.
-#         - pretty_print          A method for printing text in a concise, colorful, "pretty" way.
 #
 #       `create_instructions` must accept a single argument, OPT, whose value is always 0, 1, or 2.
 #       Evaluations of OPT should be interpreted as follows:
@@ -75,20 +74,10 @@ read_instruction() {
 
 update_instructions() {
   printf '%s\n' \
-  apk_add_busybox_static \
-  apk_add_apk_tools_static \
-  apk_static_add_build_base \
-  apk_static_add_gnupg \
-  apk_static_add_linux_headers \
-  apk_static_add_outils_jot \
-  apk_static_add_perl \
+  apk_add_packages \
   create_home_build_dir \
   create_home_local_ssl_dir \
   export_openssl_source_version_wget \
-  openssl_source_version_grep_version_str \
-  openssl_source_version_grep_version_num \
-  openssl_source_version_head_first_result \
-  openssl_source_version_sed_remove_tar \
   change_to_home_build_dir \
   download_openssl_source_version \
   extract_openssl_source_version_tar \
@@ -97,9 +86,11 @@ update_instructions() {
   change_to_home_build_openssl_version_dir \
   config_openssl_version_build \
   make_j_grep_openssl_version_build \
-  make_install_openssl_version_build \
+  make_install_sw_openssl_version_build \
+  make_clean_openssl_version_build \
   export_ld_library_path \
-  export_openssl_v111 \
+  alias_openssl_v111 \
+  source_home_shrc \
   verify_openssl_version \
   generate_asc_key_data \
   generate_payload_aes \
@@ -125,53 +116,10 @@ delete_instructions() {
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
-# patch_etc_apk_repositories() {
-#   # not used
-#   sed -ie 's/v[[:digit:]]\..*\//latest-stable\//g' /etc/apk/repositories 1>&4
-#   echo -e "\033[7;33mPatched Alpine to Latest Stable\033[0m" 1>&5 # These are status messages that have fg/bg commands (colors).
-# }
-# apk_update() {
-#   # not used
-#   apk update 1>&4
-#   echo -e "\033[7;33mApk Update\033[0m" 1>&5
-# }
-apk_add_busybox_static() {
-  apk add busybox-static 1>&4
-  echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
-}
-apk_add_apk_tools_static() {
-  apk add apk-tools-static 1>&4
-  echo -e "\033[7;33mAdded APK Static Tools\033[0m" 1>&5
-}
-# apk_static_upgrade_simulate() {
-#   # not used
-#   apk.static upgrade --no-self-upgrade --available --simulate 1>&4
-#   echo -e "\033[7;33mChecked for Problems in Alpine Upgrade\033[0m" 1>&5
-# }
-# apk_static_upgrade() {
-#   # not used
-#   apk.static upgrade --no-self-upgrade --available 1>&4
-#   echo -e "\033[7;33mProceeded with Alpine Upgrade\033[0m" 1>&5
-# }
-apk_static_add_build_base() {
-  apk.static add build-base 1>&4
-  echo -e "\033[7;33mAdded Build Base\033[0m" 1>&5
-}
-apk_static_add_gnupg() {
-  apk.static add gnupg 1>&4
-  echo -e "\033[7;33mAdded GnuPG\033[0m" 1>&5
-}
-apk_static_add_linux_headers() {
-  apk.static add linux-headers 1>&4
-  echo -e "\033[7;33mAdded Linux Headers\033[0m" 1>&5
-}
-apk_static_add_outils_jot() {
-  apk.static add outils-jot 1>&4
-  echo -e "\033[7;33mAdded OUtils-Jot\033[0m" 1>&5
-}
-apk_static_add_perl() {
-  apk.static add perl 1>&4
-  echo -e "\033[7;33mAdded Perl\033[0m" 1>&5
+apk_add_packages() {
+  apk add busybox-static apk-tools-static && \
+  apk.static add build-base gnupg linux-headers outils-jot perl 1>&4
+  echo -e "\033[7;33mAdded Packages using APK\033[0m" 1>&5
 }
 create_home_build_dir() {
   mkdir $HOME/build 1>&4
@@ -182,48 +130,35 @@ create_home_local_ssl_dir() {
   echo -e "\033[7;33mCreated ${HOME}/local/ssl directory\033[0m" 1>&5
 }
 export_openssl_source_version_wget() {
-  export OPENSSL_SOURCE_VERSION="$(wget -c https://www.openssl.org/source/index.html -O -)" 1>&4
-  echo -e "\033[7;33mSaved OpenSSL.org HTML File to Variable Using WGET\033[0m" 1>&5
-}
-openssl_source_version_grep_version_str() {
-  OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | grep -o '\"openssl-.*.tar.gz\"')" 1>&4
-  echo -e "\033[7;33mParsed OpenSSL Version Strings from HTML Syntax\033[0m" 1>&5
-}
-openssl_source_version_grep_version_num() {
-  OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | grep -o '[0-9]\{1\}.[0-9]\{1\}.[0-9]\{1\}[a-z]\{0,\}.tar')" 1>&4
-  echo -e "\033[7;33mParsed OpenSSL Version Release Numbers from Strings\033[0m" 1>&5
-}
-openssl_source_version_head_first_result() {
-  OPENSSL_SOURCE_VERSION="$(printf '%s\n' "${OPENSSL_SOURCE_VERSION}" | head -n1)" 1>&4
-  echo -e "\033[7;33mParsed Latest Stable Version of OpenSSL from Release Numbers\033[0m" 1>&5
-}
-openssl_source_version_sed_remove_tar() {
-  OPENSSL_SOURCE_VERSION="$(echo ${OPENSSL_SOURCE_VERSION} | sed 's/.tar$//g')" 1>&4
-  echo -e "\033[7;33mRemoved Unwanted Trailing Data from Latest Stable\033[0m" 1>&5
+  export OPENSSL_SOURCE_VERSION="$(echo \
+    $(wget -c https://www.openssl.org/source/index.html -O -) | \
+    sed 's/^.*\"\(openssl[-]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[a-zA-Z]\{0,\}\).tar.gz\".*$/\1/g' \
+  )" 1>&4
+  echo -e "\033[7;33mParsed OpenSSL Version to Variable Using WGET and SED\033[0m" 1>&5
 }
 change_to_home_build_dir() {
   cd $HOME/build 1>&4
   echo -e "\033[7;33mChanged Current Directory to ${HOME}/build\033[0m" 1>&5
 }
 download_openssl_source_version() {
-  wget -c https://openssl.org/source/openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
+  wget -c https://openssl.org/source/${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
   echo -e "\033[7;33mDownloaded Source TAR for Latest Stable OpenSSL\033[0m" 1>&5
 }
 extract_openssl_source_version_tar() {
-  tar -xzf openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
+  tar -xzf ${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
   echo -e "\033[7;33mExtracted Source TAR for Latest Stable OpenSSL\033[0m" 1>&5
 }
 remove_openssl_source_version_tar() {
-  rm -f openssl-${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
+  rm -f ${OPENSSL_SOURCE_VERSION}.tar.gz 1>&4
   echo -e "\033[7;33mForced Removal of Source TAR File\033[0m" 1>&5
 }
 enable_aes_wrapping_in_openssl() {
-  sed -i 's/\(.*\)BIO_get_cipher_ctx(benc, \&ctx);/\1BIO_get_cipher_ctx(benc, \&ctx);\n\1EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);/g' ./openssl-${OPENSSL_SOURCE_VERSION}/apps/enc.c 1>&4
+  sed -i 's/\(.*\)BIO_get_cipher_ctx(benc, \&ctx);/\1BIO_get_cipher_ctx(benc, \&ctx);\n\1EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);/g' ./${OPENSSL_SOURCE_VERSION}/apps/enc.c 1>&4
   echo -e "\033[7;33mPatched OpenSSL to Enable AES Wrapping\033[0m" 1>&5
 }
 change_to_home_build_openssl_version_dir() {
-  cd $HOME/build/openssl-${OPENSSL_SOURCE_VERSION} 1>&4
-  echo -e "\033[7;33mChanged Current Directory to ${HOME}/build/openssl-${OPENSSL_SOURCE_VERSION}\033[0m" 1>&5
+  cd $HOME/build/${OPENSSL_SOURCE_VERSION} 1>&4
+  echo -e "\033[7;33mChanged Current Directory to ${HOME}/build/${OPENSSL_SOURCE_VERSION}\033[0m" 1>&5
 }
 config_openssl_version_build() {
   ./config --prefix=$HOME/local --openssldir=$HOME/local/ssl 1>&4
@@ -233,58 +168,49 @@ make_j_grep_openssl_version_build() {
   make -j$(grep -c ^processor /proc/cpuinfo) 1>&4
   echo -e "\033[7;33mRan Make With -j Option\033[0m" 1>&5
 }
-make_install_openssl_version_build() {
-  make install 1>&4
-  echo -e "\033[7;33mRan Make Install to Build OpenSSL\033[0m" 1>&5
+make_install_sw_openssl_version_build() {
+  make install_sw 1>&4
+  echo -e "\033[7;33mRan Make install_sw to Build OpenSSL (Software Only)\033[0m" 1>&5
+}
+make_clean_openssl_version_build() {
+  make clean 1>&4
+  echo -e "\033[7;33mRan Make clean to Remove Build Files\033[0m" 1>&5
 }
 export_ld_library_path() {
   export LD_LIBRARY_PATH=$HOME/local/lib/ 1>&4
   echo -e "\033[7;33mExported LD_LIBRARY_PATH Env Var\033[0m" 1>&5
 }
-export_openssl_v111() {
-  export OPENSSL_V111=$HOME/local/bin/openssl 1>&4
-  echo -e "\033[7;33mExported OPENSSL_V111 Env Var\033[0m" 1>&5
+alias_openssl_v111() {
+  echo "alias OPENSSL_V111=$HOME/local/bin/openssl" > $HOME/.shrc 1>&4
+  echo -e "\033[7;33mCreated Alias OPENSSL_V111 in SHRC File\033[0m" 1>&5
+}
+source_home_shrc() {
+  . $HOME/.shrc 1>&4
+  echo -e "\033[7;33mSourced SHRC File in Home Directory\033[0m" 1>&5
 }
 verify_openssl_version() {
   $OPENSSL_V111 version 1>&4
   echo -e "\033[7;33mVerified OpenSSL Version\033[0m" 1>&5
 }
 generate_asc_key_data() {
-  # ......................... Default number of iterations is 4.
   local max_iter=4
-  # ......................... Begin on iteration 1.
   local iter=1
-  # ......................... Where the batch file should be stored.
   local batch_dir=/tmp/pgpb
-  # ......................... If the dir doesn't exist,
   if [ ! -d "${batch_dir}" ]; then
-    # ....................... Make it.
     mkdir -p "${batch_dir}" 1>&4
   fi
-  # ......................... Where the key files should be stored.
   local key_dest_dir=/pgp/keys
-  # ......................... If the dir doesn't exist,
   if [ ! -d "${key_dest_dir}" ]; then
-    # ....................... Make it.
     mkdir -p "${key_dest_dir}" 1>&4
   fi
-  # ......................... Reserve a pipe to store our data in.
   pipe_crud -c -P=pgp_data -D=pgp_keys --secure
-  # ......................... Iterate from 1 to N.
   while [ $iter -le $max_iter ]; do
-    # ....................... Generate unique, random batch file.
     local batch_file=${batch_dir}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w16 | head -n1)
-    # ....................... Generate random phrase length.
     local phrase_len=$(jot -w %i -r 1 20 99)
-    # ....................... Generate random phrase.
     local phrase=$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w${phrase_len} | head -n1)
-    # ....................... Format the key number based on length and value of N.
     local iter_str=$(printf '%0'"${#max_iter}"'d' ${iter})
-    # ....................... Delare a message to display when each key is done.
     local done_msg=
-    # ....................... conditionally assign a value to the done message.
     [ $iter -eq $max_iter ] && done_msg="%echo Done!" || done_msg="%echo Key Details Complete."
-    # ....................... Print the contents of eah batch.
     printf '%s\n' \
       "%echo Generating Key [ $iter / $max_iter ]" \
       "Key-Type: RSA" \
@@ -298,29 +224,20 @@ generate_asc_key_data() {
       "Expire-Date: 0" \
       "%commit" \
     "${done_msg}" >> $batch_file
-    # ....................... Put sensitive data into the pipe first.
     pipe_crud -u -P=pgp_data -D=pgp_keys -I={\"key_${iter_str}_asc\":\"$(echo "${phrase}" | base64 | tr -d '\n' | sed 's/ //g')\"} 2>/dev/null
-    # ....................... Generate the Nth key.
     gpg2 \
       --verbose \
       --batch \
     --gen-key $batch_file 1>&4
-    #
     sleep 1s # .............. SLEEP
-    #
-    # ....................... Delete the batch file.
     rm -f $batch_file 1>&4
-    # ....................... Identify the newest key made.
     local revoc_file="$(ls -t ${HOME}/.gnupg/openpgp-revocs.d | head -n1)"
-    # ....................... Export the newest key.
     gpg2 \
       --export \
       "$(basename ${revoc_file} | cut -f1 -d '.')" | \
     base64 > "${key_dest_dir}/key_${iter_str}.asc"
-    # ....................... Increment plus one.
     iter=$(($iter + 1))
   done
-  # ......................... Give the user feedback.
   echo -e "\033[7;33mGenerated PGP Data\033[0m" 1>&5
 }
 generate_payload_aes() {
