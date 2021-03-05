@@ -73,12 +73,7 @@ read_instruction() {
 }
 
 update_instructions() {
-  printf '%s\n' \
-  apk_add_busybox_static \
-  apk_add_apk_tools_static \
-  apk_static_add_openssl \
-  apk_static_add_outils_jot \
-  generate_random_password_in_pipe \
+  printf '%s\n' export_certificate_chain_passphrase \
   create_tls_root_certs_dir \
   create_tls_root_private_dir \
   initialize_tls_root_serial_file \
@@ -121,9 +116,7 @@ update_instructions() {
   generate_tls_intermediate_private_cakey_pem \
   generate_tls_intermediate_csr_csr_pem \
   generate_tls_intermediate_certs_cacert_pem \
-  unset_environment_variables \
-  EOP \
-  ' ' 1>&3
+  unset_environment_variables 1>&3
 }
 
 delete_instructions() {
@@ -138,7 +131,7 @@ delete_instructions() {
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
 apk_add_busybox_static() {
-  apk add busybox-static 1>&4
+  apk add busybox-static apk-tools-static && apk.static add openssl1>&4
   echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
 }
 apk_add_apk_tools_static() {
@@ -153,9 +146,10 @@ apk_static_add_outils_jot() {
   apk.static add outils-jot 1>&4
   echo -e "\033[7;33mAdded OUtils Jot\033[0m" 1>&5
 }
-generate_random_password_in_pipe() {
-  # TODO: Replace this with the new pipe_crud method
-  pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=create --data="cert_chain_password=$(random_string [[:alnum:]][[:punct:]] 20 99),"
+export_certificate_chain_passphrase() {
+  local PHRASE_LEN=$(jot -w %i -r 1 20 99)
+  # Use blocking RNG source for better entropy.
+  export CERTIFICATE_CHAIN_PASSPHRASE=$(tr -cd [[:alnum:]][[:punct:]] < /dev/random | fold -w${PHRASE_LEN} | head -n1)
   echo -e "\033[7;33mGenerated Secure Password in Pipe\033[0m" 1>&5
 }
 create_tls_root_certs_dir() {
@@ -303,7 +297,7 @@ change_dir_to_tls_root() {
   echo -e "\033[7;33mChanged Current Directory to /tls/root\033[0m" 1>&5
 }
 generate_tls_root_private_cakey_pem() {
-  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   openssl genpkey \
   -out ./private/cakey.pem \
   -outform PEM \
@@ -314,7 +308,7 @@ generate_tls_root_private_cakey_pem() {
   echo -e "\033[7;33mGenerated Root Private CAKEY PEM\033[0m" 1>&5
 }
 generate_tls_root_certs_cacert_pem() {
-  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   openssl req \
   -new \
   -x509 \
@@ -333,7 +327,7 @@ change_dir_to_tls_intermediate() {
   cd /tls/intermediate 1>&4
 }
 generate_tls_intermediate_private_cakey_pem() {
-  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   openssl genpkey \
   -out ./private/intermediate.cakey.pem \
   -outform PEM \
@@ -344,7 +338,7 @@ generate_tls_intermediate_private_cakey_pem() {
   echo -e "\033[7;33mGenerated Intermediate Private CAKEY PEM\033[0m" 1>&5
 }
 generate_tls_intermediate_csr_csr_pem() {
-  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   openssl req \
   -new \
   -sha512 \
@@ -359,7 +353,7 @@ generate_tls_intermediate_csr_csr_pem() {
 generate_tls_intermediate_certs_cacert_pem() {
   # TODO: Place all identifying information inside of the .admin file, export using sed '##q;d' of desired line
   local ADMIN_CONTACT=$(cat $HOME/.admin | head -n1)
-  echo "$(pipe_crud --pipe=my_first_pipe --doc-id=my_first_doc --crud=read --data="cert_chain_password,")" | \
+  echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   openssl ca \
   -config ./openssl.cnf.intermediate \
   -extensions v3_intermediate_ca \

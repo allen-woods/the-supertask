@@ -9,6 +9,9 @@ run_install() {
   local OUTPUT_MODE=1   # Default setting, status messages displayed only.
   local PROC_ID=        # Variable for capturing PID of installation function(s).
 
+  # This needs to be refactored to accept an unknown number of instruction sets passed in as shell script file names.
+  # No longer check for "install_lib.sh", allow build process to throw those errors.
+
   case $OPT in          # Check incoming arguments.
     -Q|--quiet)
       OUTPUT_MODE=0     # Strict silent mode, nothing displayed.
