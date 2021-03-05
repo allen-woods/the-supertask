@@ -67,10 +67,10 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 - [ ] Complete `trust` Golang binary.
 - [ ] Copy `trust` executable into Vault container.
-- [x] Generate `*.pem` files required by TLS.
+- [x] Generate `*.pem` files required by TLS _offline_.
 - [x] Reference `*.pem` files correctly in config where needed.
-- [x] Complete config in `/vault/config/local.json`.
-- [ ] Create policies for roles determined in ERD.
+- [x] Complete config in `/vault/config/local.json` _offline_.
+- [ ] Create policies for roles determined in ERD _offline_.
 - [x] Run `gpg --gen-key` _offline_.
 - [x] **Store private key(s) in hardware, _NOT_ on a network**.
 - [ ] Export public key(s) as standard **unarmored base64** or **binary**.
@@ -128,10 +128,8 @@ Personal portfolio site and current passion project, tentatively planned for fir
 
 ## CURRENT FOCUS:
 
-The installation process for each build stage of the `truth_src` container currently uses multiple files. The commands are held in a dedicated `*.sh` file and the corresponding status messages are held in a separate `*.txt` file.
+All shell scripts written in `sh` are being re-engineered for use in the local environment of the project to prevent leaks of sensitive data from Docker containers.
 
-The thinking was that being able to silence the output of each function in the installation process would benefit the end user due to a "quiet" mode. The most efficient way of silencing was to loop over the functions and direct their output signals to `/dev/null`.
+Second to this first priority is the full configuration of Vault using PKI secrets engine running under TLS 1.3.
 
-Unfortunately, using a loop appears to create race conditions with asynchronous code involving `wget` and `tar`. Also, each installation process is unique and requires specific steps to be confirmed before continuing with the rest of the install.
-
-This means the installation process needs to be rethought, such that functional steps and their status messages are unified within one "library" file and steps in the process are incremented conditionally upon verified success.
+Lastly, greater attention will be payed to best-practice locations for files inside Linux.

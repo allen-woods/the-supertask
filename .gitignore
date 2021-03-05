@@ -1,6 +1,11 @@
 !.gitkeep
 !init.sh
 **/*.env
-**/*.asc
 **/*.enc
-**/.*
+**/\.*
+!.dockerignore
+!.gitignore
+**/tls/**
+!**/tls/install_lib.sh
+**/pgp/**
+!**/pgp/install_lib.sh
