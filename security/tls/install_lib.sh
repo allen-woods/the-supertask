@@ -55,16 +55,16 @@ create_instructions() {
   esac
 
   mkfifo /tmp/instructs 1>&4
-  echo "Created pipe for instructions." 1>&5
+  echo -e "\033[7;33mCreated pipe for instructions\033[0m" 1>&5
 
   exec 3<> /tmp/instructs 1>&4
-  echo "Executed file descriptor to unblock pipe." 1>&5
+  echo -e "\033[7;33mExecuted file descriptor to unblock pipe\033[0m" 1>&5
 
   unlink /tmp/instructs 1>&4
-  echo "Unlinked the unblocked pipe." 1>&5
+  echo -e "\033[7;33mUnlinked the unblocked pipe\033[0m" 1>&5
 
-  $(echo ' ' 1>&3) 1>&4
-  echo "Inserted blank space into unblocked pipe." 1>&5
+  echo ' ' 1>&3
+  echo -e "\033[7;33mInserted blank space into unblocked pipe\033[0m" 1>&5
 }
 
 read_instruction() {

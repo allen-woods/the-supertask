@@ -23,48 +23,52 @@ check_skip_install() {
 }
 
 create_instructions() {
-  local OPT=$1
-  case $OPT in
-    0)
-      # completely silent * * * * * * * * * * * * * * * * * * *
-      #
-      exec 4>/dev/null  # stdout:   disabled  (Shell process)
-      exec 5>/dev/null  # echo:     disabled  (Status command)
-      exec 2>/dev/null  # stderr:   disabled
-      set +v #          # verbose:  disabled
-      ;;
-    1)
-      # status only * * * * * * * * * * * * * * * * * * * * * *
-      #
-      exec 4>/dev/null  # stdout:   disabled  (Shell process)
-      exec 5>&1         # echo:     ENABLED   (Status command)
-      exec 2>/dev/null  # stderr:   disabled
-      set +v #          # verbose:  disabled
-      ;;
-    2)
-      # verbose * * * * * * * * * * * * * * * * * * * * * * * *
-      #
-      exec 4>&1         # stdout:   ENABLED   (Shell process)
-      exec 5>&1         # echo:     ENABLED   (Status command)
-      exec 2>&1         # stderr:   ENABLED
-      set -v #          # verbose:  ENABLED
-      ;;
-    *)
-      # do nothing  * * * * * * * * * * * * * * * * * * * * * *
-      #
-  esac
+  if [ -z "${FD_3_RESERVED}" ]; then
+    local OPT=$1
+    case $OPT in
+      0)
+        # completely silent * * * * * * * * * * * * * * * * * * *
+        #
+        exec 4>/dev/null  # stdout:   disabled  (Shell process)
+        exec 5>/dev/null  # echo:     disabled  (Status command)
+        exec 2>/dev/null  # stderr:   disabled
+        set +v #          # verbose:  disabled
+        ;;
+      1)
+        # status only * * * * * * * * * * * * * * * * * * * * * *
+        #
+        exec 4>/dev/null  # stdout:   disabled  (Shell process)
+        exec 5>&1         # echo:     ENABLED   (Status command)
+        exec 2>/dev/null  # stderr:   disabled
+        set +v #          # verbose:  disabled
+        ;;
+      2)
+        # verbose * * * * * * * * * * * * * * * * * * * * * * * *
+        #
+        exec 4>&1         # stdout:   ENABLED   (Shell process)
+        exec 5>&1         # echo:     ENABLED   (Status command)
+        exec 2>&1         # stderr:   ENABLED
+        set -v #          # verbose:  ENABLED
+        ;;
+      *)
+        # do nothing  * * * * * * * * * * * * * * * * * * * * * *
+        #
+    esac
 
-  mkfifo /tmp/instructs 1>&4
-  echo "Created pipe for instructions." 1>&5
+    mkfifo /tmp/instructs 1>&4
+    echo "Created pipe for instructions." 1>&5
 
-  exec 3<> /tmp/instructs 1>&4
-  echo "Executed file descriptor to unblock pipe." 1>&5
+    exec 3<> /tmp/instructs 1>&4
+    echo "Executed file descriptor to unblock pipe." 1>&5
 
-  unlink /tmp/instructs 1>&4
-  echo "Unlinked the unblocked pipe." 1>&5
+    unlink /tmp/instructs 1>&4
+    echo "Unlinked the unblocked pipe." 1>&5
 
-  $(echo ' ' 1>&3) 1>&4
-  echo "Inserted blank space into unblocked pipe." 1>&5
+    $(echo ' ' 1>&3) 1>&4
+    echo "Inserted blank space into unblocked pipe." 1>&5
+
+    export FD_3_RESERVED=1
+  fi
 }
 
 read_instruction() {
@@ -189,28 +193,36 @@ source_home_shrc() {
   echo -e "\033[7;33mSourced SHRC File in Home Directory\033[0m" 1>&5
 }
 verify_openssl_version() {
-  OPENSSL_V111 version 1>&4
-  echo -e "\033[7;33mVerified OpenSSL Version\033[0m" 1>&5
+  local OUTPUT_MSG="Verified OpenSSL Version"
+  local VERIFIED="$(OPENSSL_V111 version 2>&1)"
+  local RETURN_ONE=0
+  if [ -z "${VERIFIED}" ] || [ "$(echo "${VERIFIED}" | sed 's/^.*\(not found\)$/\1/g')" == "not found" ]; then
+    OUTPUT_MSG="ERROR: Unable to Verify OpenSSL Version"
+    RETURN_ONE=1
+  fi
+  echo -e "\033[7;33m${OUTPUT_MSG}\033[0m" 1>&5
+  [ $RETURN_ONE -eq 1 ] && return 1 # Tell further instructions to abort, the failure of this one is critical.
 }
 generate_asc_key_data() {
   local MAX_ITER=4
   local ITER=1
+
   local BATCH_PATH=/tmp/pgpb
   if [ ! -d "${BATCH_PATH}" ]; then
     mkdir -p "${BATCH_PATH}" 1>&4
   fi
+
   local KEYS_PATH=/pgp/keys
   if [ ! -d "${KEYS_PATH}" ]; then
     mkdir -p "${KEYS_PATH}" 1>&4
   fi
-  # Replaced usage of pipe_crud utility with file system solution.
+
   local PHRASES_PATH=/pgp/phrases
   if [ ! -d "${PHRASES_PATH}" ]; then
     mkdir "${PHRASES_PATH}" 1>&4
   fi
 
   while [ $ITER -le $MAX_ITER ]; do
-    # Doubled length of file name for increased entropy.
     local BATCH_FILE=${BATCH_PATH}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w32 | head -n1)
     local PHRASE_LEN=$(jot -w %i -r 1 20 99)
     local PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/urandom | fold -w${PHRASE_LEN} | head -n1)
@@ -230,8 +242,6 @@ generate_asc_key_data() {
       "Expire-Date: 0" \
       "%commit" \
     "${DONE_MSG}" >> $BATCH_FILE
-    # Replace usage of pipe_crud utility with file system solution.
-    # Improved security of phrases by placing them into discreet files.
     echo "key_${ITER_STR}_asc::${PHRASE}" | base64 > ${PHRASES_PATH}/.phrase_${ITER_STR} 2>/dev/null
     gpg \
       --verbose \

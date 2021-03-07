@@ -5,33 +5,56 @@
 #       method found in /etc/profile.d/install_lib.sh, in a manner that prevents race conditions.
 
 run_install() {
-  local OPT=$1
-  local OUTPUT_MODE=1   # Default setting, status messages displayed only.
-  local PROC_ID=        # Variable for capturing PID of installation function(s).
+  local INSTRUCTION_SET_LIST=
+  local OUTPUT_MODE=-1
+  local PROC_ID=
 
-  # This needs to be refactored to accept an unknown number of instruction sets passed in as shell script file names.
-  # No longer check for "install_lib.sh", allow build process to throw those errors.
+  for OPT in "$@"; do
+    case $OPT in
+      -Q|--quiet)
+        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=0
+        ;;
+      -M|--messages)
+        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=1
+        ;;
+      -V|--verbose)
+        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=2
+        ;;
+      *)
+        if [ ! -f "${OPT}" ]; then
+          echo -e "\033[7;33mERROR: File \"${OPT}\" does not exist!\033[0m"
+          echo -e "\033[7;33mAborting Install.\033[0m"
+          return 1
+        else
+          if [ "$(echo ${OPT} | grep -o 'install_.*.sh')" == "" ]; then
+            echo -e "\033[7;33mERROR: Wrong format for filename \"${OPT}\".\033[0m"
+            echo -e "\033[7;33mProper Format: \"install_<description_here>.sh\".\033[0m"
+            echo -e "\033[7;33mAborting Install.\033[0m"
+            return 1
+          fi
 
-  case $OPT in          # Check incoming arguments.
-    -Q|--quiet)
-      OUTPUT_MODE=0     # Strict silent mode, nothing displayed.
-      ;;
-    -S|--status)
-      #                 # Do nothing to default settings.
-      ;;
-    -V|--verbose)
-      OUTPUT_MODE=2     # Strict verbose mode, everything displayed.
-      ;;
-    *)
-      echo "Bad Argument!"
-      echo "Usage: $0 [-Q | --quiet | -S | --status | -V | --verbose]"
-      echo "  -Q : Display no messages."
-      echo "  -S : Display status messages only. (Default)"
-      echo "  -V : Display all messages."
-      return 1          # Go no further, user error.
-      ;;
-  esac
+          if [ -z "${INSTRUCTION_SET_LIST}" ]; then
+            INSTRUCTION_SET_LIST="${OPT}"
+          else
+            INSTRUCTION_SET_LIST="${INSTRUCTION_SET_LIST} ${OPT}"
+          fi
+        fi
+        ;;
+    esac
+  done
 
+  for INSTALL_SCRIPT in "${INSTRUCTION_SET_LIST}"; do
+    local DESCRIPTION=$(echo $INSTALL_SCRIPT | sed 's/^[^ ]\{0,\}install_\(.*\).sh$/\1/g')
+    . $INSTALL_SCRIPT
+    if [ "$(check_skip_${DESCRIPTION}_install)" == "SKIP" ]; then
+      echo -e "\033[7;33mSKIPPING: ${DESCRIPTION} already installed.\033[0m"
+    else
+      # Normal behavior.
+    fi
+  done
+
+  # # # Below there be dragons # # #
+  
   if [ ! -f /etc/profile.d/install_lib.sh ]
   then
     echo "ERROR: Install Library File Missing: /etc/profile.d/install_lib.sh"
