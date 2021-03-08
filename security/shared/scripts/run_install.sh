@@ -7,128 +7,157 @@
 run_install() {
   local INSTRUCTION_SET_LIST=
   local OUTPUT_MODE=-1
+  local FIRST_RUN=1
   local PROC_ID=
 
-  for OPT in "$@"; do
-    case $OPT in
-      -Q|--quiet)
-        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=0
+  # # Section 1 - Validation of Arguments - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  for OPT in "$@"; do # Iterate over every incoming argument.
+    case $OPT in      # Check the value of each argument.
+      -Q|--quiet)     # Silent running flag found.
+        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=0  # Latch the output mode to 0 only once.
         ;;
-      -M|--messages)
-        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=1
+      -S|--status)    # Status message reporting flag found.
+        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=1  # Latch the output mode to 1 only once.
         ;;
-      -V|--verbose)
-        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=2
+      -V|--verbose)   # Verbose command reporting flag found.
+        [ $OUTPUT_MODE -eq -1 ] && OUTPUT_MODE=2  # Latch the output mode to 2 only once.
         ;;
-      *)
-        if [ ! -f "${OPT}" ]; then
-          echo -e "\033[7;33mERROR: File \"${OPT}\" does not exist!\033[0m"
+      *) # No flag found, possibly an instruction (*.sh) file.
+        if [ ! -f "${OPT}" ]; then 
+        # If the argument is not a path to a file that exists...
+          echo -e "\033[7;33mERROR: File \"${OPT}\" does not exist!\033[0m"         # ...Error out.
           echo -e "\033[7;33mAborting Install.\033[0m"
-          return 1
+          return 1    # Go no further, unknown argument.
         else
+        # The argument is a path to a file that exists.
           if [ "$(echo ${OPT} | grep -o 'install_.*.sh')" == "" ]; then
-            echo -e "\033[7;33mERROR: Wrong format for filename \"${OPT}\".\033[0m"
+          # If the correct filename format is not found...
+            echo -e "\033[7;33mERROR: Wrong format for filename \"${OPT}\".\033[0m" # ...Error out.
             echo -e "\033[7;33mProper Format: \"install_<description_here>.sh\".\033[0m"
             echo -e "\033[7;33mAborting Install.\033[0m"
-            return 1
+            return 1  # Go no further, incorrect filename.
           fi
 
           if [ -z "${INSTRUCTION_SET_LIST}" ]; then
-            INSTRUCTION_SET_LIST="${OPT}"
+          # If the list of instructions is empty...
+            INSTRUCTION_SET_LIST="${OPT}" # ...Insert the first element.
           else
-            INSTRUCTION_SET_LIST="${INSTRUCTION_SET_LIST} ${OPT}"
+          # If the list of instructions is NOT empty...
+            INSTRUCTION_SET_LIST="${INSTRUCTION_SET_LIST} ${OPT}" # ...Append the next element.
           fi
         fi
         ;;
     esac
   done
 
+  # # Section 2 - Execution of Instructions - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   for INSTALL_SCRIPT in "${INSTRUCTION_SET_LIST}"; do
-    local DESCRIPTION=$(echo $INSTALL_SCRIPT | sed 's/^[^ ]\{0,\}install_\(.*\).sh$/\1/g')
-    . $INSTALL_SCRIPT
-    if [ "$(check_skip_${DESCRIPTION}_install)" == "SKIP" ]; then
-      echo -e "\033[7;33mSKIPPING: ${DESCRIPTION} already installed.\033[0m"
+    local DESCRIPTION=$( \
+      echo $INSTALL_SCRIPT | \
+      sed 's/^[^ ]\{0,\}install_\(.*\).sh$/\1/g' \
+    )
+
+    local SKIP=$(. $INSTALL_SCRIPT && check_skip_${DESCRIPTION}_install)
+
+    if [ "${SKIP}" == "SKIP" ]; then
+      echo -e "\033[7;33mSKIPPING: \"${DESCRIPTION}\"; already installed.\033[0m"
+      # NOTE: We cannot call return here or we will cancel all instruction sets beyond this condition.
     else
-      # Normal behavior.
+      create_instructions_queue $OUTPUT_MODE
+      [ ! $? -eq 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && return 1
+
+        . $INSTALL_SCRIPT
+
+        add_${DESCRIPTION}_instructions_to_queue
+        [ ! $? -eq 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && return 1
+
+        [ $FIRST_RUN -eq 1 ] && export INSTALL_FUNC_NAME= || INSTALL_FUNC_NAME= # Prevent variable shadowing.
+
+        while [ "${INSTALL_FUNC_NAME}" != "EOP" ]; do
+          read_queued_instruction
+          [ ! $? -eq 0 ] && echo "ERROR: Call to \"read_queued_instruction\" failed." && return 1
+
+          if [ ! -z "${INSTALL_FUNC_NAME}" ]; then
+            [ "${INSTALL_FUNC_NAME}" == "EOP" ] && continue # Halt once we have reached the end of instructions queue.
+
+            $INSTALL_FUNC_NAME ${OUTPUT_MODE}
+            PROC_ID=$( \
+              ps -o pid,args | \
+              grep -e ${INSTALL_FUNC_NAME} | \
+              grep -v "grep" | \
+              awk '{print $1}' | \
+              sed 's/PID//' | \
+              head -n1 \
+            )
+            [ ! -z "${PROC_ID}" ] && wait $PROC_ID || sleep 0.25s
+            [ ! $? -eq 0 ] && echo "ERROR: Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed." && return 1
+          fi
+        done
+
+      delete_instructions_queue
+      [ ! $? -eq 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && return 1
     fi
+    FIRST_RUN=$(($FIRST_RUN + 1)) # Prevent variable shadowing of INSTALL_FUNC_NAME on line 74.
   done
+}
 
-  # # # Below there be dragons # # #
-  
-  if [ ! -f /etc/profile.d/install_lib.sh ]
-  then
-    echo "ERROR: Install Library File Missing: /etc/profile.d/install_lib.sh"
-    return 1            # Go no further, install library missing.
-  fi
+# Instructions Queue Functions
 
-  if [ "$(check_skip_install)" == "SKIP" ]
-  then
-    echo "SKIPPING: Already installed."
-    return 0            # Go no further, already installed.
-  fi
+create_instructions_queue() {
+  local OPT=$1
+  case $OPT in
+    0)
+      # completely silent * * * * * * * * * * * * * * * * * * *
+      #
+      exec 4>/dev/null  # stdout:   disabled  (Shell process)
+      exec 5>/dev/null  # echo:     disabled  (Status command)
+      exec 2>/dev/null  # stderr:   disabled
+      set +v #          # verbose:  disabled
+      ;;
+    1)
+      # status only * * * * * * * * * * * * * * * * * * * * * *
+      #
+      exec 4>/dev/null  # stdout:   disabled  (Shell process)
+      exec 5>&1         # echo:     ENABLED   (Status command)
+      exec 2>/dev/null  # stderr:   disabled
+      set +v #          # verbose:  disabled
+      ;;
+    2)
+      # verbose * * * * * * * * * * * * * * * * * * * * * * * *
+      #
+      exec 4>&1         # stdout:   ENABLED   (Shell process)
+      exec 5>&1         # echo:     ENABLED   (Status command)
+      exec 2>&1         # stderr:   ENABLED
+      set -v #          # verbose:  ENABLED
+      ;;
+    *)
+      # do nothing  * * * * * * * * * * * * * * * * * * * * * *
+      echo " " >/dev/null
+      ;;
+  esac
 
-  # NOTE: We may not need to load the OpenSSL alias in advance of purpose-built scripts.
-  #       We will be building the aes-wrap enabled OpenSSL, then using it to create pgp data and a certificate chain.
-  #
-  # [ -f $HOME/.shrc ] && [ -z "${OPENSSL_V111}" ] && . $HOME/.shrc # If the SHRC file exists and the alias for OpenSSL is undefined,
-  #                                                                 # source the SHRC file to create the alias for OpenSSL.
+  mkfifo /tmp/instructs 1>&4
+  echo "Created pipe for instructions." 1>&5
 
-  create_instructions $OUTPUT_MODE # Call install_lib method to create pipe where function names are stored.
-  if [ ! $? -eq 0 ]
-  then
-    echo "ERROR: Failed to call create_instructions"
-    return 1            # Go no further, critical error.
-  fi
+  exec 3<> /tmp/instructs 1>&4
+  echo "Executed file descriptor to unblock pipe." 1>&5
 
-  update_instructions   # Call install_lib method to store function names in pipe.
-  if [ ! $? -eq 0 ]
-  then
-    echo "ERROR: Failed to call update_instructions"
-    return 1            # Go no further, critical error.
-  fi
+  unlink /tmp/instructs 1>&4
+  echo "Unlinked the unblocked pipe." 1>&5
 
-  export INSTALL_FUNC_NAME= # Environment variable to which read instruction is assigned.
+  $(echo ' ' 1>&3) 1>&4
+  echo "Inserted blank space into unblocked pipe." 1>&5
+}
 
-  while [ "${INSTALL_FUNC_NAME}" != "EOP" ] # Loop as long as we haven't reached EOP. (End of Pipe)
-  do
-    read_instruction    # Read next instruction.
-    if [ ! -z $INSTALL_FUNC_NAME ]
-    then
-      if [ ! $? -eq 0 ]
-      then
-        echo "ERROR: failed to call read_instruction"
-        return 1        # Go no further, critical error.
-      fi
-      if [ "${INSTALL_FUNC_NAME}" == "EOP" ]
-      then
-        continue        # Conditionally halt if "EOP" found.
-      fi
-      $INSTALL_FUNC_NAME # Execute the instruction
-      PROC_ID=$( \
-        ps -o pid,args | \
-        grep -e ${INSTALL_FUNC_NAME} | \
-        grep -v "grep" | \
-        awk '{print $1}' | \
-        sed 's/PID//' | \
-        head -n1 \
-      ) #               # Extract PID of background process.
-      if [ ! -z "${PROC_ID}" ]
-      then
-        wait $PROC_ID   # Wait for the process to finish (if there is one).
-        sleep 0.25s
-      fi
-      if [ ! $? -eq 0 ]
-      then
-        echo "ERROR: ${INSTALL_FUNC_NAME} (or wait ${PROC_ID}) encountered a problem."
-        return 1        # Go no further, unknown or unexpected error.
-      fi
-    fi
-  done
+read_queued_instruction() {
+  read -u 3 INSTALL_FUNC_NAME
+}
 
-  delete_instructions   # Remove the pipe once it's empty.
-  if [ ! $? -eq 0 ]
-  then
-    echo "ERROR: failed to call delete_instructions"
-    return 1            # Go no further, critical error.
-  fi
+delete_instructions_queue() {
+  exec 2>&1             # Restore stderr
+  exec 3>&-             # Remove file descriptor 3
+  exec 4>&-             # Remove file descriptor 4
+  exec 5>&-             # Remove file descriptor 5
+  rm -f /tmp/instructs  # Force deletion of pipe
+  set +v #              # Cancel verbose mode
 }
