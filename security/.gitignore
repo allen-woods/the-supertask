@@ -1,4 +1,4 @@
 /tls/**
-!/tls/install_lib.sh
+!/tls/install_tls.sh
 /pgp/**
-!/pgp/install_lib.sh
+!/pgp/install_pgp.sh
