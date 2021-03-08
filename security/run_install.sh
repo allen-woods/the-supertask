@@ -51,13 +51,13 @@ run_install() {
   done
 
   # # Section 2 - Execution of Instructions - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  for INSTALL_SCRIPT in "${INSTRUCTION_SET_LIST}"; do
+  for INSTALL_SCRIPT in $INSTRUCTION_SET_LIST; do
     local DESCRIPTION=$( \
       echo $INSTALL_SCRIPT | \
-      sed 's/^[^ ]\{0,\}install_\(.*\).sh$/\1/g' \
+      sed 's/^.*install_\(.*\)\.sh$/\1/g' \
     )
 
-    local SKIP=$(. $INSTALL_SCRIPT && check_skip_${DESCRIPTION}_install)
+    local SKIP=$(. $INSTALL_SCRIPT && "check_skip_${DESCRIPTION}_install")
 
     if [ "${SKIP}" == "SKIP" ]; then
       echo -e "\033[7;33mSKIPPING: \"${DESCRIPTION}\"; already installed.\033[0m"
@@ -68,7 +68,7 @@ run_install() {
 
         . $INSTALL_SCRIPT
 
-        add_${DESCRIPTION}_instructions_to_queue
+        $("add_${DESCRIPTION}_instructions_to_queue")
         [ ! $? -eq 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && return 1
 
         [ $FIRST_RUN -eq 1 ] && export INSTALL_FUNC_NAME= || INSTALL_FUNC_NAME= # Prevent variable shadowing.
@@ -101,7 +101,7 @@ run_install() {
   done
 }
 
-# Instructions Queue Functions
+# Instructions Queue CRUD Functions
 
 create_instructions_queue() {
   local OPT=$1

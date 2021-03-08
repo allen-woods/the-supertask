@@ -136,12 +136,11 @@ services:
       #   target: /pgp
       #   volume:
       #     nocopy: false
-      # - type: bind
-      #   source: ./security/pgp_keys/data
-      #   target: /pgp/
-      # - type: bind
-      #   source: ./security/public
-      #   target: /public
+      # - type: volume
+      #   source: persist_tls
+      #   target: /tls
+      #   volume:
+      #     nocopy: false
 
 networks:
   # frontend:
@@ -151,5 +150,6 @@ volumes:
   persist_mongo:
   persist_redis:
   persist_pgp:
+  persist_tls:
   persist_vault_data: # Bind mounts instead for Vault volumes?
   persist_vault_logs:

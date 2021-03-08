@@ -1,12 +1,17 @@
 # # 1 - Compile entropy tests.
-# FROM alpine:3.10.5 AS entropy_tests
+FROM alpine:3.10.5 AS builder
 
-# WORKDIR /
+WORKDIR /
 
-# COPY --chown=root:root ["./entropy_tests/scripts/install_lib.sh",   "/etc/profile.d/"]
-# COPY --chown=root:root ["./shared/scripts/run_install.sh",          "/etc/profile.d/"]
+COPY --chown=root:root ["./pgp/install_pgp.sh",   "/etc/profile.d/"]
+COPY --chown=root:root ["./tls/install_tls.sh",   "/etc/profile.d/"]
+COPY --chown=root:root ["./run_install.sh",       "/etc/profile.d/"]
+COPY --chown=root:root ["./tls/.admin",           "/root/"]
 
-# RUN ["/bin/sh", "-c", ". /etc/profile && run_install --verbose"]
+RUN ["/bin/sh", "-c", ". /etc/profile && \
+  run_install --verbose \
+  /etc/profile.d/install_pgp.sh \
+  /etc/profile.d/install_tls.sh"]
 
 # # 2 - Generate certificates.
 # FROM alpine:3.10.5 AS cert_authority
@@ -56,12 +61,9 @@ FROM vault:1.5.6 AS supervault
 
 WORKDIR /
 
-#COPY --from=entropy_tests /usr/bin/dieharder/ /usr/bin/dieharder/
-#COPY --from=pgp_keys /pgp/ /pgp/
+COPY --chown=root:root --from=builder /pgp/ /pgp/
+COPY --chown=root:root --from=builder /tls/ /tls/
 COPY --chown=root:root ./config /vault/config/
-#COPY --chown=root:root ["./shared/scripts/pipe_crud.sh",            "/etc/profile.d/"]
-# COPY --chown=root:root ["./pgp_keys/scripts/pgp_init_vault.sh",           "/etc/profile.d/"]
-# COPY --chown=root:root ["./pgp_keys/scripts/pgp_pass_keys_into_vault.sh", "/etc/profile.d/"]
 
 # RUN ["/bin/sh", "-c", ". /etc/profile && pgp_init_vault"]
 CMD ["server"]
