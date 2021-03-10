@@ -5,8 +5,10 @@ WORKDIR /
 
 COPY --chown=root:root ["./pgp/install_pgp.sh",   "/etc/profile.d/"]
 COPY --chown=root:root ["./tls/install_tls.sh",   "/etc/profile.d/"]
-COPY --chown=root:root ["./run_install.sh",       "/etc/profile.d/"]
 COPY --chown=root:root ["./tls/.admin",           "/root/"]
+COPY --chown=root:root ["./run_install.sh",       "/etc/profile.d/"]
+
+VOLUME [ "./external:/external" ]
 
 RUN ["/bin/sh", "-c", ". /etc/profile && \
   run_install --verbose \
