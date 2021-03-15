@@ -2,5 +2,5 @@
 !/tls/install_tls.sh
 /pgp/**
 !/pgp/install_pgp.sh
-/external/**
-!/external/.gitkeep
+/manage_private_files/**
+!/manage_private_files/.gitkeep

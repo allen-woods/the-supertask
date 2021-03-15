@@ -22,11 +22,11 @@ add_pgp_instructions_to_queue() {
   pgp_change_to_home_build_openssl_version_dir \
   pgp_config_openssl_version_build \
   pgp_make_j_grep_openssl_version_build \
-  pgp_make_install_sw_openssl_version_build \
-  pgp_make_clean_openssl_version_build \
+  pgp_make_install_openssl_version_build \
   pgp_create_openssl_shell_script \
   pgp_openssl_v111_in_shrc \
   pgp_verify_openssl_version \
+  pgp_create_persist_dir \
   pgp_generate_asc_key_data \
   EOP \
   ' ' 1>&3
@@ -86,7 +86,7 @@ pgp_make_j_grep_openssl_version_build() {
   make -j$(grep -c ^processor /proc/cpuinfo) 1>&4
   echo -e "\033[7;33mRan Make With -j Option\033[0m" 1>&5
 }
-pgp_make_install_sw_openssl_version_build() {
+pgp_make_install_openssl_version_build() {
   make install_sw 1>&4
   echo -e "\033[7;33mRan Make install_sw to Build OpenSSL (Software Only)\033[0m" 1>&5
 }
@@ -96,23 +96,32 @@ pgp_make_clean_openssl_version_build() {
 }
 pgp_create_openssl_shell_script() {
   echo -e '#!/bin/sh \nenv LD_LIBRARY_PATH=$HOME/local/lib/ $HOME/local/bin/openssl "$@"' > $HOME/local/bin/openssl.sh 1>&4
+  chmod 0755 $HOME/local/bin/openssl.sh 1>&4
   echo -e "\033[7;33mExported LD_LIBRARY_PATH Env Var\033[0m" 1>&5
 }
 pgp_openssl_v111_in_shrc() {
-  echo -e '#!/bin/sh \nexport OPENSSL_V111="${HOME}/local/bin/openssl.sh"' > $HOME/.shrc 1>&4
+  export OPENSSL_V111="${HOME}/local/bin/openssl.sh"
+  # echo -e '#!/bin/sh \nexport OPENSSL_V111="${HOME}/local/bin/openssl.sh"' > $HOME/.shrc 1>&4
   echo -e "\033[7;33mCreated Env Var OPENSSL_V111\033[0m" 1>&5
 }
 pgp_verify_openssl_version() {
   local OUTPUT_MSG="Verified OpenSSL Version"
-  . $HOME/.shrc
+  # . $HOME/.shrc
   local VERIFIED="$($OPENSSL_V111 version 2>&1)"
-  local RETURN_ONE=0
-  if [ -z "${VERIFIED}" ] || [ "$(echo "${VERIFIED}" | sed 's/^.*\(not found\)$/\1/g')" == "not found" ]; then
-    OUTPUT_MSG="ERROR: Unable to Verify OpenSSL Version"
-    RETURN_ONE=1
-  fi
-  echo -e "\033[7;33m${OUTPUT_MSG}\033[0m" 1>&5
-  [ $RETURN_ONE -eq 1 ] && return 1 # Tell further instructions to abort, the failure of this one is critical.
+  # local RETURN_ONE=0
+  # if [ -z "${VERIFIED}" ] || [ "$(echo "${VERIFIED}" | sed 's/^.*\(not found\)$/\1/g')" == "not found" ]; then
+  #   OUTPUT_MSG="ERROR: Unable to Verify OpenSSL Version"
+  #   RETURN_ONE=1
+  # fi
+  # echo -e "\033[7;33m${OUTPUT_MSG}\033[0m" 1>&5
+  # [ $RETURN_ONE -eq 1 ] && return 1 # Tell further instructions to abort, the failure of this one is critical.
+  echo ""
+  echo -n "OPENSSL_V111 printed: ${VERIFIED}"
+  echo ""
+}
+pgp_create_persist_dir() {
+  [ ! -d /persist ] && mkdir /persist && echo -e "\033[7;33mDirectory \"/persist\" not found, so created it...\033[0m" 1>&4
+  echo -e "\033[7;33mCreated /persist Directory\033[0m" 1>&5
 }
 pgp_generate_asc_key_data() {
   local MAX_ITER=4
@@ -133,6 +142,11 @@ pgp_generate_asc_key_data() {
     mkdir "${PHRASES_PATH}" 1>&4
   fi
 
+  local PGP_WRAP_PAD_PAYLOAD=
+  local PGP_WRAP_PAD_EPHEMERAL=
+  local PGP_WRAP_PAD_PRIVATE=
+  local PGP_WRAP_PAD_PUBLIC=
+
   while [ $ITER -le $MAX_ITER ]; do
     local BATCH_FILE=${BATCH_PATH}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w32 | head -n1)
     local PHRASE_LEN=$(jot -w %i -r 1 20 99)
@@ -140,6 +154,66 @@ pgp_generate_asc_key_data() {
     local ITER_STR=$(printf '%0'"${#MAX_ITER}"'d' ${ITER})
     local DONE_MSG=
     [ $ITER -eq $MAX_ITER ] && DONE_MSG="%echo Done!" || DONE_MSG="%echo Key Details Complete."
+    
+    # Declare encryption variables
+    PGP_WRAP_PAD_PAYLOAD="$($OPENSSL_V111 rand 32)"
+    PGP_WRAP_PAD_EPHEMERAL="$($OPENSSL_V111 rand 32)"
+    PGP_WRAP_PAD_PRIVATE="$( \
+      $OPENSSL_V111 genpkey \
+      -outform PEM \
+      -algorithm RSA \
+      -pkeyopt rsa_keygen_bits:4096 | \
+      base64 | tr -d '\n' | sed s'/ //g' \
+    )"
+    PGP_WRAP_PAD_PUBLIC="$( \
+      echo ${PGP_WRAP_PAD_PRIVATE} | base64 -d | \
+      $OPENSSL_V111 rsa \
+      -inform PEM \
+      -outform PEM \
+      -pubout | \
+      base64 | tr -d '\n' | sed 's/ //g' \
+    )"
+
+    # Persist each phrase as an encrypted external file.
+    echo "key_${ITER_STR}_asc::${PHRASE}" | \
+    $OPENSSL_V111 enc -id-aes256-wrap-pad \
+    -K $(echo "${PGP_PAYLOAD}" | hexdump -v -e '/1 "%02X"') \
+    -iv A65959A6 \
+    -out /persist/pgp_key_${ITER_STR}.asc.wrapped 2>/dev/null 1>&4
+
+    # Wrap the payload in the ephemeral.
+    local PGP_WRAP_PAD_PAYLOAD_WRAPPED="$( \
+      echo "${PGP_WRAP_PAD_PAYLOAD}" | \
+      $OPENSSL_V111 enc -id-aes256-wrap-pad \
+      -K $(echo "${PGP_WRAP_PAD_EPHEMERAL}" | hexdump -v -e '/1 "%02X"') \
+      -iv A65959A6 | \
+      base64 | tr -d '\n' | sed 's/ //g' \
+    )"
+    
+    # Wrap the ephemeral in the public key.
+    mkfifo pgp_public_named_pipe
+    ( echo "${TLS_WRAP_PAD_PUBLIC}" > pgp_public_named_pipe & )
+    #
+    local PGP_WRAP_PAD_EPHEMERAL_WRAPPED="$( \
+      echo "${PGP_WRAP_PAD_EPHEMERAL}" | \
+      $OPENSSL_V111 pkeyutl \
+      -encrypt \
+      -pubin -inkey pgp_public_named_pipe \
+      -pkeyopt rsa_padding_mode:oaep \
+      -pkeyopt rsa_oaep_md:sha1 \
+      -pkeyopt rsa_mgf1_md:sha1 | \
+      base64 | tr -d '\n' | sed 's/ //g' \
+    )"
+    #
+    ( rm -f pgp_public_named_pipe )
+
+    # Concatenate the ephemeral wrapped and payload wrapped into rsa aes wrapped.
+    echo "${PGP_WRAP_PAD_EPHEMERAL_WRAPPED}" >> /persist/pgp-key-${ITER_STR}.rsa-aes.wrapped 1>&4
+    echo "${PGP_WRAP_PAD_PAYLOAD_WRAPPED}" >> /persist/pgp-key-${ITER_STR}.rsa-aes.wrapped 1>&4
+
+    # Export the private key to /persist.
+    printf '%s\n' ${PGP_WRAP_PAD_PRIVATE} > /persist/pgp-key-${ITER_STR}.private.key 1>&4
+
     printf '%s\n' \
       "%echo Generating Key [ $ITER / $MAX_ITER ]" \
       "Key-Type: RSA" \
@@ -153,7 +227,6 @@ pgp_generate_asc_key_data() {
       "Expire-Date: 0" \
       "%commit" \
     "${DONE_MSG}" >> $BATCH_FILE
-    echo "key_${ITER_STR}_asc::${PHRASE}" | base64 > ${PHRASES_PATH}/.phrase_${ITER_STR} 2>/dev/null
     gpg \
       --verbose \
       --batch \
@@ -170,124 +243,3 @@ pgp_generate_asc_key_data() {
   done
   echo -e "\033[7;33mGenerated PGP Data\033[0m" 1>&5
 }
-
-# Below there be dragons. To be determined whether to use id-aes256-wrap-pad.
-
-# generate_payload_aes() {
-#   local PAYLOAD="$( \
-#     $OPENSSL_V111 rand 32 | \
-#     base64 | tr -d '\n' | sed 's/ //g' \
-#   )"
-#   echo "original: $(echo ${PAYLOAD} | base64 -d)"
-#   echo -e "\033[7;33mGenerated Random Payload\033[0m" 1>&5
-# }
-
-# generate_ephemeral_aes() {
-#   local EPHEMERAL="$( \
-#     $OPENSSL_V111 rand 32 | \
-#     base64 | tr -d '\n' | sed 's/ //g' \
-#   )"
-#   echo "original: $(echo ${EPHEMERAL} | base64 -d)"
-#   echo -e "\033[7;33mGenerated Random Ephemeral\033[0m" 1>&5
-# }
-
-# generate_private_rsa() {
-#   local PRIVATE_KEY="$( \
-#     $OPENSSL_V111 genpkey \
-#     -outform PEM \
-#     -algorithm RSA \
-#     -pkeyopt rsa_keygen_bits:4096 | \
-#     base64 | tr -d '\n' | sed 's/ //g' \
-#   )"
-#   echo -e "\033[7;33mGenerated Private Key\033[0m" 1>&5
-# }
-
-# generate_public_rsa() {
-#   local PRIVATE_KEY="$( \
-#     pipe_crud -r -P=pgp_data -D=private_rsa -I={\"key\"} | \
-#     base64 -d \
-#   )"
-#   local PUB_KEY="$( \
-#     echo "${PRIVATE_KEY}" | \
-#     $OPENSSL_V111 rsa -inform PEM -outform PEM -pubout | \
-#     base64 | tr -d '\n' | sed 's/ //g' \
-#   )"
-#   echo -e "\033[7;33mGenerated Public Key\033[0m" 1>&5
-# }
-
-# enc_phrases_with_payload() {
-#   local PAYLOAD_HEX="$( \
-#     echo ${PAYLOAD} | \
-#     base64 -d | \
-#     hexdump -v -e '/1 "%02X"' \
-#   )"
-#   local PGP_KEYS="$( \
-#     pipe_crud -r -P=pgp_data -D=pgp_keys \
-#   )"
-#   echo "${PGP_KEYS}" | $OPENSSL_V111 enc -id-aes256-wrap-pad -K ${PAYLOAD_HEX} -iv A65959A6 -out /pgp/keys/phrases_wrapped 1>&4
-#   echo -e "\033[7;33mEncrypted PGP Key Pass Phrases with Payload AES\033[0m" 1>&5
-# }
-
-# wrap_payload_in_ephemeral() {
-#   local PAYLOAD_AES="$( \
-#     pipe_crud -r -P=pgp_data -D=payload -I={\"aes\"} | \
-#     base64 -d \
-#   )"
-#   local EPHEMERAL_HEX="$( \
-#     pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | \
-#     base64 -d | \
-#     hexdump -v -e '/1 "%02X"' \
-#   )"
-#   local PAYLOAD_WRAPPED="$( \
-#     echo "${PAYLOAD_AES}" | \
-#     $OPENSSL_V111 enc -id-aes256-wrap-pad \
-#     -K "${EPHEMERAL_HEX}" \
-#     -iv A65959A6 | \
-#     base64 | tr -d '\n' | sed 's/ //g' \
-#   )"
-#   pipe_crud -c -P=pgp_data -D=payload_wrapped -I={\"enc\":\"${PAYLOAD_WRAPPED}\"}
-#   echo "payload_wrapped: $(pipe_crud -r -P=pgp_data -D=payload_wrapped -I={\"enc\"} | base64 -d)"
-#   echo -e "\033[7;33mWrapped Payload AES with Ephemeral AES\033[0m" 1>&5
-# }
-
-# wrap_ephemeral_in_public_key() {
-#   local EPHEMERAL_AES="$( \
-#     pipe_crud -r -P=pgp_data -D=ephemeral -I={\"aes\"} | \
-#     base64 -d \
-#   )"
-#   local PUB_KEY="$( \
-#     pipe_crud -r -P=pgp_data -D=public_rsa -I={\"key\"} | \
-#     base64 -d \
-#   )"
-#   mkfifo public_pem
-#   ( echo "${PUB_KEY}" > public_pem & )
-#   local EPHEMERAL_WRAPPED="$( \
-#     echo "${EPHEMERAL_AES}" | \
-#     $OPENSSL_V111 pkeyutl \
-#     -encrypt \
-#     -pubin -inkey public_pem \
-#     -pkeyopt rsa_padding_mode:oaep \
-#     -pkeyopt rsa_oaep_md:sha1 \
-#     -pkeyopt rsa_mgf1_md:sha1 | \
-#     base64 | tr -d '\n' | sed 's/ //g' \
-#   )"
-#   ( rm -f public_pem )
-#   pipe_crud -c -P=pgp_data -D=ephemeral_wrapped -I={\"enc\":\"${EPHEMERAL_WRAPPED}\"}
-#   echo "ephemeral_wrapped: $(pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | base64 -d)"
-#   echo -e "\033[7;33mWrapped Ephemeral AES with Public Key\033[0m" 1>&5
-# }
-
-# print_rsa_aes_wrapped_to_file() {
-#   local EPHEMERAL_WRAPPED="$( \
-#     pipe_crud -r -P=pgp_data -D=ephemeral_wrapped -I={\"enc\"} | \
-#     base64 -d \
-#   )"
-#   local PAYLOAD_WRAPPED="$( \
-#     pipe_crud -r -P=pgp_data -D=payload_wrapped -I={\"enc\"} | \
-#     base64 -d \
-#   )"
-#   echo ${EPHEMERAL_WRAPPED} >> /pgp/rsa_aes_wrapped
-#   echo ${PAYLOAD_WRAPPED} >> /pgp/rsa_aes_wrapped
-#   cat /pgp/rsa_aes_wrapped
-#   echo -e "\033[7;33mPrinted RSA AES Wrapped Data to File\033[0m" 1>&5
-# }

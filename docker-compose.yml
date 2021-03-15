@@ -99,13 +99,14 @@ services:
       - '50051'
     networks:
       - backend
-
   truth:
     container_name: truth_src
     build:
       context: ./security
       dockerfile: ./Dockerfile
       target: supervault
+    depends_on:
+      - data_wrapper
     restart: always
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
@@ -119,28 +120,54 @@ services:
     networks:
       - backend
     volumes:
-      # Used by the `file` audit backend to persist storage data.
+      # Vault storage data. (Requires `file` audit backend enabled)
       - type: volume
         source: persist_vault_data
         target: /vault/file
         volume:
           nocopy: true
-      # Used to persist audit logs, REQUIRES `file` audit backend enabled.
+      # Vault audit logs.   (Requires `file` audit backend enabled)
       - type: volume
         source: persist_vault_logs
         target: /vault/logs
         volume:
           nocopy: true
-      # - type: volume
-      #   source: persist_pgp
-      #   target: /pgp
-      #   volume:
-      #     nocopy: false
-      # - type: volume
-      #   source: persist_tls
-      #   target: /tls
-      #   volume:
-      #     nocopy: false
+      # Public PGP data.
+      - type: volume
+        source: persist_pgp
+        target: /pgp
+        volume:
+          nocopy: true
+      # Public TLS data.
+      - type: volume
+        source: persist_tls
+        target: /tls
+        volume:
+          nocopy: true
+  data_wrapper:
+    container_name: enc_util
+    build:
+      context: ./security/aes_wrap_enabled_openssl
+      dockerfile: ./Dockerfile
+      target: wrap_enabled
+    restart: always
+    volumes:
+      # Private data that does not belong in a volume.
+      - type: bind
+        source: ./security/private_files
+        target: /to_host
+      # Public PGP data.
+      - type: volume
+        source: persist_pgp
+        target: /pgp
+        volume:
+          nocopy: false
+      # Public TLS data.
+      - type: volume
+        source: persist_tls
+        target: /tls
+        volume:
+          nocopy: false
 
 networks:
   # frontend:
@@ -151,5 +178,6 @@ volumes:
   persist_redis:
   persist_pgp:
   persist_tls:
-  persist_vault_data: # Bind mounts instead for Vault volumes?
+  persist_vault_private_files:
+  persist_vault_data:
   persist_vault_logs:

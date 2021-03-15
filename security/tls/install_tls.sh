@@ -24,7 +24,6 @@ check_skip_tls_install() {
 
 add_tls_instructions_to_queue() {
   printf '%s\n' \
-  tls_source_shrc_openssl_v111 \
   tls_export_certificate_chain_passphrase \
   tls_create_tls_root_certs_dir \
   tls_create_tls_root_private_dir \
@@ -68,6 +67,7 @@ add_tls_instructions_to_queue() {
   tls_generate_tls_intermediate_certs_cacert_pem \
   tls_concatenate_certificate_bundle \
   tls_verify_certificate_bundle \
+  tls_create_tls_intermediate_enc_dir \
   tls_encrypt_certificate_bundle \
   tls_unset_environment_variables \
   EOP \
@@ -330,13 +330,70 @@ tls_verify_certificate_bundle() {
   /tls/intermediate/certs/ca-chain-bundle.cert.pem 1>&4
   echo -e "\033[7;33mVerified Certificate Bundle Using OpenSSL\033[0m" 1>&5
 }
-tls_encrypt_certificate_bundle() {
-  local PAYLOAD=$(enc_generate_payload_aes)
-  local EPHEMERAL=$(enc_generate_ephemeral_aes)
-  local PRIVATE=$(enc_generate_private_rsa)
-  local PUBLIC=$(enc_generate_public_rsa)
+tls_create_tls_intermediate_enc_dir() {
+  mkdir /tls/intermediate/enc 1>&4
+  echo -e "\033[7;33mCreated Enc Directory under /tls/intermediate\033[0m" 1>&5
+}
+tls_encrypt_to_external() {
+  local TLS_WRAP_PAD_PAYLOAD="$($OPENSSL_V111 rand 32)"
+  local TLS_WRAP_PAD_EPHEMERAL="$($OPENSSL_V111 rand 32)"
+  local TLS_WRAP_PAD_PRIVATE="$( \
+    $OPENSSL_V111 genpkey \
+    -outform PEM \
+    -algorithm RSA \
+    -pkeyopt rsa_keygen_bits:4096 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  local TLS_WRAP_PAD_PUBLIC="$( \
+    echo ${TLS_WRAP_PAD_PRIVATE} | base64 -d | \
+    $OPENSSL_V111 rsa \
+    -inform PEM \
+    -outform PEM \
+    -pubout | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
 
-  # Encryption Code In Progress.
+  # Wrap the certificate chain file in the payload.
+  cat /tls/intermediate/certs/ca-chain-bundle.cert.pem | \
+  $OPENSSL_V111 enc -id-aes256-wrap-pad \
+  -K $(echo "${TLS_WRAP_PAD_PAYLOAD}" | hexdump -v -e '/1 "%02X"') \
+  -iv A65959A6 \
+  -out /tls/intermediate/enc/ca-chain-bundle.wrapped 1>&4
+  
+  # Wrap the payload in the ephemeral.
+  local TLS_WRAP_PAD_PAYLOAD_WRAPPED="$( \
+    echo "${TLS_WRAP_PAD_PAYLOAD}" | \
+    $OPENSSL_V111 enc -id-aes256-wrap-pad \
+    -K $(echo "${TLS_WRAP_PAD_EPHEMERAL}" | hexdump -v -e '/1 "%02X"') \
+    -iv A65959A6 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  
+  # Wrap the ephemeral in the public key.
+  mkfifo tls_public_named_pipe
+  ( echo "${TLS_WRAP_PAD_PUBLIC}" > tls_public_named_pipe & )
+  #
+  local TLS_WRAP_PAD_EPHEMERAL_WRAPPED="$( \
+    echo "${TLS_WRAP_PAD_EPHEMERAL}" | \
+    $OPENSSL_V111 pkeyutl \
+    -encrypt \
+    -pubin -inkey tls_public_named_pipe \
+    -pkeyopt rsa_padding_mode:oaep \
+    -pkeyopt rsa_oaep_md:sha1 \
+    -pkeyopt rsa_mgf1_md:sha1 | \
+    base64 | tr -d '\n' | sed 's/ //g' \
+  )"
+  #
+  ( rm -f tls_public_named_pipe )
+
+  # Concatenate the ephemeral wrapped and payload wrapped into rsa aes wrapped.
+  echo "${TLS_WRAP_PAD_EPHEMERAL_WRAPPED}" >> /tls/intermediate/enc/ca-chain-bundle.rsa-aes.wrapped 1>&4
+  echo "${TLS_WRAP_PAD_PAYLOAD_WRAPPED}" >> /tls/intermediate/enc/ca-chain-bundle.rsa-aes.wrapped 1>&4
+  
+  # Export the private key and move the root certificate to external.
+  printf '%s\n' ${TLS_WRAP_PAD_PRIVATE} > /external/tls-intermediate-ca-chain-bundle.private.key 1>&4
+  mv /tls/root/ /external/root/ 1>&4
+  echo -e "\033[7;33mEncrypted Data at Rest and Moved Files to External\033[0m" 1>&5
 }
 tls_unset_environment_variables() {
   unset CERTIFICATE_CHAIN_PASSPHRASE

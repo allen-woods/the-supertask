@@ -66,8 +66,6 @@ run_install() {
       create_instructions_queue $OUTPUT_MODE
       [ ! $? -eq 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && return 1
 
-        . $INSTALL_SCRIPT
-
         $("add_${DESCRIPTION}_instructions_to_queue")
         [ ! $? -eq 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && return 1
 
@@ -90,7 +88,7 @@ run_install() {
               head -n1 \
             )
             [ ! -z "${PROC_ID}" ] && wait $PROC_ID || sleep 0.25s
-            [ ! $? -eq 0 ] && echo "ERROR: Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed." && return 1
+            [ ! $? -eq 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && return 1
           fi
         done
 
