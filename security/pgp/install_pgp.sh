@@ -91,7 +91,7 @@ pgp_generate_asc_key_data() {
       -K ${PGP_WRAP_PAD_PAYLOAD_HEX} \
       -iv A65959A6 | \
       base64 | tr -d '\n' | sed 's/ //g' \
-    )" 2>/dev/null
+    )"
     #
     echo "${PGP_PHRASE_WRAPPED}" > ${PHRASES_PATH}/pgp_key_${ITER_STR}.asc.wrapped
 
@@ -128,6 +128,10 @@ pgp_generate_asc_key_data() {
     # Export the private key to /to_host/pgp.
     printf '%s\n' ${PGP_WRAP_PAD_PRIVATE} > ${PRIVATE_PATH}/pgp-key-${ITER_STR}.private.key
 
+    # Use printf to pseudo-heredoc creation of PGP batch file.
+    #
+    # TODO: Remove "Thomas Tester" and related "test" entries in field / value pairs.
+    #
     printf '%s\n' \
       "%echo Generating Key [ $ITER / $MAX_ITER ]" \
       "Key-Type: RSA" \
