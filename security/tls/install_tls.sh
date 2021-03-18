@@ -76,26 +76,6 @@ add_tls_instructions_to_queue() {
 
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
-tls_apk_add_busybox_static() {
-  apk add busybox-static apk-tools-static && apk.static add openssl1>&4
-  echo -e "\033[7;33mAdded BusyBox Static Tools\033[0m" 1>&5
-}
-tls_apk_add_apk_tools_static() {
-  apk add apk-tools-static 1>&4
-  echo -e "\033[7;33mAdded APK Static Tools\033[0m" 1>&5
-}
-tls_apk_static_add_openssl() {
-  apk.static add openssl 1>&4
-  echo -e "\033[7;33mAdded OpenSSL\033[0m" 1>&5
-}
-tls_apk_static_add_outils_jot() {
-  apk.static add outils-jot 1>&4
-  echo -e "\033[7;33mAdded OUtils Jot\033[0m" 1>&5
-}
-tls_source_shrc_openssl_v111() {
-  . $HOME/.shrc 1>&4
-  echo -e "\033[7;33mSourced OPENSSL_V111 From SHRC File\033[0m" 1>&5
-}
 tls_export_certificate_chain_passphrase() {
   local PHRASE_LEN=$(jot -w %i -r 1 20 99)
   export CERTIFICATE_CHAIN_PASSPHRASE=$(tr -cd [[:alnum:]][[:punct:]] < /dev/random | fold -w${PHRASE_LEN} | head -n1)

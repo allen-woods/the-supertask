@@ -11,6 +11,5 @@ FROM builder AS wrap-enabled
 WORKDIR /
 COPY --chown=root:root --from=builder ["/root/", "/root/"]
 COPY --chown=root:root ["./aes_wrap_enabled_openssl/docker-entrypoint.sh",  "/usr/local/bin"]
-ENV OPENSSL_V111=/root/local/bin/openssl.sh
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["/usr/local/bin/docker-entrypoint.sh"]
