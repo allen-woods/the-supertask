@@ -105,8 +105,8 @@ services:
       context: ./security
       dockerfile: ./Dockerfile
       target: supervault
-    depends_on:
-      - data_wrapper
+    # depends_on:
+    #   - wrapper
     restart: always
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
@@ -144,30 +144,42 @@ services:
         target: /tls
         volume:
           nocopy: true
-  data_wrapper:
-    container_name: enc_util
-    build:
-      context: ./security/aes_wrap_enabled_openssl
-      dockerfile: ./Dockerfile
-      target: wrap_enabled
-    restart: always
-    volumes:
-      # Private data that does not belong in a volume.
-      - type: bind
-        source: ./security/private_files
-        target: /to_host
-      # Public PGP data.
-      - type: volume
-        source: persist_pgp
-        target: /pgp
-        volume:
-          nocopy: false
-      # Public TLS data.
-      - type: volume
-        source: persist_tls
-        target: /tls
-        volume:
-          nocopy: false
+  # wrapper:
+  #   container_name: enc_util
+  #   build:
+  #     context: ./security
+  #     dockerfile: ./aes_wrap_enabled_openssl/Dockerfile
+  #     target: wrap-enabled
+  #   restart: unless-stopped
+  #   # ports:
+  #   #   - '80'
+  #   # expose:
+  #   #   - '80'
+  #   # networks:
+  #   #   - backend
+  #   volumes:
+  #     # Private data that does not belong in a volume.
+  #     - type: bind
+  #       source: ./security/private_files
+  #       target: /to_host
+  #     # AES wrap-enabled build
+  #     - type: volume
+  #       source: persist_v111_build
+  #       target: /root
+  #       volume:
+  #         nocopy: true
+  #     # Public PGP data.
+  #     - type: volume
+  #       source: persist_pgp
+  #       target: /pgp
+  #       volume:
+  #         nocopy: false
+  #     # Public TLS data.
+  #     - type: volume
+  #       source: persist_tls
+  #       target: /tls
+  #       volume:
+  #         nocopy: false
 
 networks:
   # frontend:
@@ -176,8 +188,11 @@ networks:
 volumes:
   persist_mongo:
   persist_redis:
+  persist_v111_build:
+    external: true
   persist_pgp:
+    external: true
   persist_tls:
-  persist_vault_private_files:
+    external: true
   persist_vault_data:
   persist_vault_logs:

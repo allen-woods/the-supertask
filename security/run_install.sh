@@ -3,6 +3,7 @@
 # Name: run_install
 # Desc: A method that executes a sequence of installation commands, as defined by the `update_instructions`
 #       method found in /etc/profile.d/install_lib.sh, in a manner that prevents race conditions.
+export INSTRUCT_PATH=/tmp/instructs
 
 run_install() {
   local INSTRUCTION_SET_LIST=
@@ -63,7 +64,9 @@ run_install() {
       echo -e "\033[7;33mSKIPPING: \"${DESCRIPTION}\"; already installed.\033[0m"
       # NOTE: We cannot call return here or we will cancel all instruction sets beyond this condition.
     else
+      # # # # # 
       create_instructions_queue $OUTPUT_MODE
+      # # # # #
       [ ! $? -eq 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && return 1
 
         $("add_${DESCRIPTION}_instructions_to_queue")
@@ -72,7 +75,9 @@ run_install() {
         [ $FIRST_RUN -eq 1 ] && export INSTALL_FUNC_NAME= || INSTALL_FUNC_NAME= # Prevent variable shadowing.
 
         while [ "${INSTALL_FUNC_NAME}" != "EOP" ]; do
+          # # # # #
           read_queued_instruction
+          # # # # #
           [ ! $? -eq 0 ] && echo "ERROR: Call to \"read_queued_instruction\" failed." && return 1
 
           if [ ! -z "${INSTALL_FUNC_NAME}" ]; then
@@ -91,8 +96,9 @@ run_install() {
             [ ! $? -eq 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && return 1
           fi
         done
-
+      # # # # #
       delete_instructions_queue
+      # # # # #
       [ ! $? -eq 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && return 1
     fi
     FIRST_RUN=$(($FIRST_RUN + 1)) # Prevent variable shadowing of INSTALL_FUNC_NAME on line 74.
@@ -134,13 +140,13 @@ create_instructions_queue() {
       ;;
   esac
 
-  mkfifo /tmp/instructs 1>&4
+  [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH 1>&4
   echo "Created pipe for instructions." 1>&5
 
-  exec 3<> /tmp/instructs 1>&4
+  exec 3<> $INSTRUCT_PATH 1>&4
   echo "Executed file descriptor to unblock pipe." 1>&5
 
-  unlink /tmp/instructs 1>&4
+  unlink $INSTRUCT_PATH 1>&4
   echo "Unlinked the unblocked pipe." 1>&5
 
   $(echo ' ' 1>&3) 1>&4
@@ -152,10 +158,11 @@ read_queued_instruction() {
 }
 
 delete_instructions_queue() {
-  exec 2>&1             # Restore stderr
-  exec 3>&-             # Remove file descriptor 3
-  exec 4>&-             # Remove file descriptor 4
-  exec 5>&-             # Remove file descriptor 5
-  rm -f /tmp/instructs  # Force deletion of pipe
-  set +v #              # Cancel verbose mode
+  set +v # Cancel verbose mode
+  exec 2>&1 # Restore stderr
+  exec 3>&-
+  exec 4>&-
+  exec 5>&-
+  [ -d $INSTRUCT_PATH ] && rm -f $INSTRUCT_PATH
+  unset INSTRUCT_PATH
 }
