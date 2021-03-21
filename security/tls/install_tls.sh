@@ -56,10 +56,10 @@ add_tls_instructions_to_queue() {
   tls_initialize_tls_intermediate_crlnumber \
   tls_copy_root_conf_as_intermediate_conf \
   tls_export_intermediate_ca_conf_path_env_var \
-  tls_patch_line_46_intermediate_ca_conf \
+  tls_patch_line_45_intermediate_ca_conf \
   tls_patch_line_54_intermediate_ca_conf \
-  tls_patch_line_59_intermediate_ca_conf \
-  tls_patch_line_84_intermediate_ca_conf \
+  tls_patch_line_58_intermediate_ca_conf \
+  tls_patch_line_83_intermediate_ca_conf \
   tls_generate_tls_root_private_cakey_pem \
   tls_generate_tls_root_certs_cacert_pem \
   tls_generate_tls_intermediate_private_cakey_pem \
@@ -67,8 +67,6 @@ add_tls_instructions_to_queue() {
   tls_generate_tls_intermediate_certs_cacert_pem \
   tls_concatenate_certificate_bundle \
   tls_verify_certificate_bundle \
-  tls_create_tls_intermediate_enc_dir \
-  tls_encrypt_certificate_bundle \
   tls_unset_environment_variables \
   EOP \
   ' ' 1>&3
@@ -78,35 +76,35 @@ add_tls_instructions_to_queue() {
 
 tls_export_certificate_chain_passphrase() {
   local PHRASE_LEN=$(jot -w %i -r 1 20 99)
-  export CERTIFICATE_CHAIN_PASSPHRASE=$(tr -cd [[:alnum:]][[:punct:]] < /dev/random | fold -w${PHRASE_LEN} | head -n1)
+  export CERTIFICATE_CHAIN_PASSPHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PHRASE_LEN} | head -n1)
   echo -e "\033[7;33mGenerated Secure Password in Env Var\033[0m" 1>&5
 }
 tls_create_tls_root_certs_dir() {
-  mkdir -pm 0700 /tls/root/certs 1>&4
-  echo -e "\033[7;33mCreated /tls/root/certs Directory\033[0m" 1>&5
+  mkdir -pm 0700 /to_host/tls/root/certs 1>&4
+  echo -e "\033[7;33mCreated /to_host/tls/root/certs Directory\033[0m" 1>&5
 }
 tls_create_tls_root_private_dir() {
-  mkdir -m 0700 /tls/root/private 1>&4
-  echo -e "\033[7;33mCreated /tls/root/private Directory\033[0m" 1>&5
+  mkdir -m 0700 /to_host/tls/root/private 1>&4
+  echo -e "\033[7;33mCreated /to_host/tls/root/private Directory\033[0m" 1>&5
 }
 tls_initialize_tls_root_serial_file() {
-  echo 01 > /tls/root/serial # 1>&4
+  echo 01 > /to_host/tls/root/serial # 1>&4
   echo -e "\033[7;33mInitialized Root Serial File\033[0m" 1>&5
 }
 tls_initialize_tls_root_index_file() {
-  touch /tls/root/index.txt 1>&4
+  touch /to_host/tls/root/index.txt 1>&4
   echo -e "\033[7;33mInitialized Root Index File\033[0m" 1>&5
 }
 tls_copy_default_conf_as_root_conf() {
-  cp /etc/ssl/openssl.cnf /tls/root/openssl.cnf.root 1>&4
+  cp /etc/ssl/openssl.cnf /to_host/tls/root/openssl.cnf.root 1>&4
   echo -e "\033[7;33mCopied Default OpenSSL Config as Root Config\033[0m" 1>&5
 }
 tls_export_root_ca_conf_path_env_var() {
-  export ROOT_CA_CONF_PATH=/tls/root/openssl.cnf.root 1>&4
+  export ROOT_CA_CONF_PATH=/to_host/tls/root/openssl.cnf.root 1>&4
   echo -e "\033[7;33mExported ROOT_CA_CONF_PATH Environment Variable\033[0m" 1>&5
 }
 tls_patch_line_45_root_ca_conf() {
-  sed -i '45s/.\/demoCA/\/tls\/root/' $ROOT_CA_CONF_PATH 1>&4
+  sed -i '45s/.\/demoCA/\/to_host\/tls\/root/' $ROOT_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mPatched Line 45 of Root Config\033[0m" 1>&5
 }
 tls_patch_line_51_root_ca_conf() {
@@ -164,19 +162,21 @@ tls_insert_new_line_261_root_ca_conf() {
   echo -e "\033[7;33mInserted New Line 261 into Root Config\033[0m" 1>&5
 }
 tls_insert_new_line_262_root_ca_conf() {
-  sed -i '262i subjectKeyIdentifier = hash' $ROOT_CA_CONF_PATH 1>&4
+  sed -i '262i subjectKeyIdentifier=hash' $ROOT_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mInserted New Line 262 into Root Config\033[0m" 1>&5
 }
 tls_insert_new_line_263_root_ca_conf() {
-  sed -i '263i authorityKeyIdentifier = keyid:always,issuer' $ROOT_CA_CONF_PATH 1>&4
+  sed -i '263i authorityKeyIdentifier=keyid:always,issuer' $ROOT_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mInserted New Line 263 into Root Config\033[0m" 1>&5
 }
 tls_insert_new_line_264_root_ca_conf() {
-  sed -i '264i basicConstraints = critical, CA:true, pathlen:0' $ROOT_CA_CONF_PATH 1>&4
+  sed -i '264i basicConstraints = critical,CA:true,pathlen:0' $ROOT_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mInserted New Line 264 into Root Config\033[0m" 1>&5
 }
 tls_insert_new_line_265_root_ca_conf() {
-  sed -i '265i keyUsage = critical, digitalSignature, cRLSign, keyCertSign' $ROOT_CA_CONF_PATH 1>&4
+  sed -i '265i keyUsage = critical,digitalSignature,cRLSign,keyCertSign' $ROOT_CA_CONF_PATH 1>&4
+  # Insert an empty line for padding in conf file.
+  sed -i '266i  ' $ROOT_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mInserted New Line 265 into Root Config\033[0m" 1>&5
 }
 tls_create_tls_intermediate_certs_dir() {
@@ -204,33 +204,33 @@ tls_initialize_tls_intermediate_crlnumber() {
   echo -e "\033[7;33mInitialized Intermediate CRL Number\033[0m" 1>&5
 }
 tls_copy_root_conf_as_intermediate_conf() {
-  cp /tls/root/openssl.cnf.root /tls/intermediate/openssl.cnf.intermediate 1>&4
+  cp /to_host/tls/root/openssl.cnf.root /tls/intermediate/openssl.cnf.intermediate 1>&4
   echo -e "\033[7;33mCopied Root OpenSSL Config as Intermediate Config\033[0m" 1>&5
 }
 tls_export_intermediate_ca_conf_path_env_var() {
   export INTERMEDIATE_CA_CONF_PATH=/tls/intermediate/openssl.cnf.intermediate 1>&4
   echo -e "\033[7;33mExported INTERMEDIATE_CA_CONF_PATH Environment Variable\033[0m" 1>&5
 }
-tls_patch_line_46_intermediate_ca_conf() {
-  sed -i '46s/=\ \/tls\/root/=\ \/tls\/intermediate/' $INTERMEDIATE_CA_CONF_PATH 1>&4
+tls_patch_line_45_intermediate_ca_conf() {
+  sed -i '45s/=\ \/tls\/root/=\ \/tls\/intermediate/' $INTERMEDIATE_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mPatched Line 46 of Intermediate Config\033[0m" 1>&5
 }
 tls_patch_line_54_intermediate_ca_conf() {
-  sed -i '54s/=\ \$dir\/certs\/cacert.pem/=\ \$dir\/certs\/intermediate.cacert.pem/' $INTERMEDIATE_CA_CONF_PATH 1>&4
+  sed -i '53s/=\ \$dir\/certs\/cacert.pem/=\ \$dir\/certs\/intermediate.cacert.pem/' $INTERMEDIATE_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mPatched Line 54 of Intermediate Config\033[0m" 1>&5
 }
-tls_patch_line_59_intermediate_ca_conf() {
-  sed -i '59s/=\ \$dir\/private\/cakey.pem/=\ \$dir\/private\/intermediate.cakey.pem/' $INTERMEDIATE_CA_CONF_PATH 1>&4
+tls_patch_line_58_intermediate_ca_conf() {
+  sed -i '58s/=\ \$dir\/private\/cakey.pem/=\ \$dir\/private\/intermediate.cakey.pem/' $INTERMEDIATE_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mPatched Line 59 of Intermediate Config\033[0m" 1>&5
 }
-tls_patch_line_84_intermediate_ca_conf() {
-  sed -i '84s/=\ policy_match/=\ policy_anything/' $INTERMEDIATE_CA_CONF_PATH 1>&4
+tls_patch_line_83_intermediate_ca_conf() {
+  sed -i '83s/=\ policy_match/=\ policy_anything/' $INTERMEDIATE_CA_CONF_PATH 1>&4
   echo -e "\033[7;33mPatched Line 84 of Intermediate Config\033[0m" 1>&5
 }
 tls_generate_tls_root_private_cakey_pem() {
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   $OPENSSL_V111 genpkey \
-  -out /tls/root/private/cakey.pem \
+  -out /to_host/tls/root/private/cakey.pem \
   -outform PEM \
   -pass stdin \
   -aes256 \
@@ -239,6 +239,11 @@ tls_generate_tls_root_private_cakey_pem() {
   echo -e "\033[7;33mGenerated Root Private CAKEY PEM\033[0m" 1>&5
 }
 tls_generate_tls_root_certs_cacert_pem() {
+  local ADMIN_CONTACT="$(sed '5q;d' $HOME/.admin)"
+  local COUNTRY_CODE="$(sed '1q;d' $HOME/.admin)"
+  local STATE_NAME="$(sed '6q;d' $HOME/.admin)"
+  local LOCATION_NAME="$(sed '7q;d' $HOME/.admin)"
+  local ORGANIZATION_NAME="$(sed '8q;d' $HOME/.admin)"
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   $OPENSSL_V111 req \
   -new \
@@ -246,10 +251,11 @@ tls_generate_tls_root_certs_cacert_pem() {
   -sha512 \
   -days 3650 \
   -passin stdin \
-  -config /tls/root/openssl.cnf.root \
+  -config /to_host/tls/root/openssl.cnf.root \
   -extensions v3_ca \
-  -key /tls/root/private/cakey.pem \
-  -out /tls/root/certs/cacert.pem \
+  -subj "/CN=Alpine 3-10/emailAddress=${ADMIN_CONTACT}/C=${COUNTRY_CODE}/ST=${STATE_NAME}/L=${LOCATION_NAME}/O=${ORGANIZATION_NAME}" \
+  -key /to_host/tls/root/private/cakey.pem \
+  -out /to_host/tls/root/certs/cacert.pem \
   -outform PEM \
   -batch 1>&4
   echo -e "\033[7;33mGenerated Root Certs CACERT PEM\033[0m" 1>&5
@@ -286,94 +292,32 @@ tls_generate_tls_intermediate_certs_cacert_pem() {
   local ORGANIZATION_NAME="$(sed '8q;d' $HOME/.admin)"
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
   $OPENSSL_V111 ca \
-  -config tls/intermediate/openssl.cnf.intermediate \
+  -config /to_host/tls/root/openssl.cnf.root \
   -extensions v3_intermediate_ca \
+  -subj "/CN=Alpine 3-10 Intermediate CA/emailAddress=${ADMIN_CONTACT}/C=${COUNTRY_CODE}/ST=${STATE_NAME}/L=${LOCATION_NAME}/O=${ORGANIZATION_NAME}" \
   -days 365 \
   -notext \
   -batch \
   -passin stdin \
-  -subj "/CN=Alpine 3-10 Intermediate CA/emailAddress=${ADMIN_CONTACT}/C=${COUNTRY_CODE}/ST=${STATE_NAME}/L=${LOCATION_NAME}/O=${ORGANIZATION_NAME}" \
   -in /tls/intermediate/csr/intermediate.csr.pem \
-  -out /tls/intermediate/certs/intermediate.cacert.pem 1>&4
+  -out /tls/intermediate/certs/intermediate.cacert.pem
   echo -e "\033[7;33mGenerated Intermediate Certs CACERT PEM\033[0m" 1>&5
 }
 tls_concatenate_certificate_bundle() {
-  cat \
-  /tls/intermediate/certs/intermediate.cacert.pem \
-  /tls/root/certs/cacert.pem > /tls/intermediate/certs/ca-chain-bundle.cert.pem 1>&4
+  # Vault expects a certificate bundle consisting of a private key in PEM format
+  # followed by a certificate in PEM format.
+  cat /tls/intermediate/private/intermediate.cakey.pem \
+  /tls/intermediate/certs/intermediate.cacert.pem > /tls/intermediate/certs/ca-chain-bundle.cert.pem
   echo -e "\033[7;33mConcatenated Certificate Bundle\033[0m" 1>&5
 }
 tls_verify_certificate_bundle() {
-  $OPENSSL_V111 verify \
-  -CAfile \
-  /tls/root/certs/cacert.pem \
-  /tls/intermediate/certs/ca-chain-bundle.cert.pem 1>&4
-  echo -e "\033[7;33mVerified Certificate Bundle Using OpenSSL\033[0m" 1>&5
-}
-tls_create_tls_intermediate_enc_dir() {
-  mkdir /tls/intermediate/enc 1>&4
-  echo -e "\033[7;33mCreated Enc Directory under /tls/intermediate\033[0m" 1>&5
-}
-tls_encrypt_to_external() {
-  local TLS_WRAP_PAD_PAYLOAD="$($OPENSSL_V111 rand 32)"
-  local TLS_WRAP_PAD_EPHEMERAL="$($OPENSSL_V111 rand 32)"
-  local TLS_WRAP_PAD_PRIVATE="$( \
-    $OPENSSL_V111 genpkey \
-    -outform PEM \
-    -algorithm RSA \
-    -pkeyopt rsa_keygen_bits:4096 | \
-    base64 | tr -d '\n' | sed 's/ //g' \
+  local VERIFICATION_RESULT="$( \
+    $OPENSSL_V111 verify \
+    -CAfile \
+    /to_host/tls/root/certs/cacert.pem \
+    /tls/intermediate/certs/ca-chain-bundle.cert.pem \
   )"
-  local TLS_WRAP_PAD_PUBLIC="$( \
-    echo ${TLS_WRAP_PAD_PRIVATE} | base64 -d | \
-    $OPENSSL_V111 rsa \
-    -inform PEM \
-    -outform PEM \
-    -pubout | \
-    base64 | tr -d '\n' | sed 's/ //g' \
-  )"
-
-  # Wrap the certificate chain file in the payload.
-  cat /tls/intermediate/certs/ca-chain-bundle.cert.pem | \
-  $OPENSSL_V111 enc -id-aes256-wrap-pad \
-  -K $(echo "${TLS_WRAP_PAD_PAYLOAD}" | hexdump -v -e '/1 "%02X"') \
-  -iv A65959A6 \
-  -out /tls/intermediate/enc/ca-chain-bundle.wrapped 1>&4
-  
-  # Wrap the payload in the ephemeral.
-  local TLS_WRAP_PAD_PAYLOAD_WRAPPED="$( \
-    echo "${TLS_WRAP_PAD_PAYLOAD}" | \
-    $OPENSSL_V111 enc -id-aes256-wrap-pad \
-    -K $(echo "${TLS_WRAP_PAD_EPHEMERAL}" | hexdump -v -e '/1 "%02X"') \
-    -iv A65959A6 | \
-    base64 | tr -d '\n' | sed 's/ //g' \
-  )"
-  
-  # Wrap the ephemeral in the public key.
-  mkfifo tls_public_named_pipe
-  ( echo "${TLS_WRAP_PAD_PUBLIC}" > tls_public_named_pipe & )
-  #
-  local TLS_WRAP_PAD_EPHEMERAL_WRAPPED="$( \
-    echo "${TLS_WRAP_PAD_EPHEMERAL}" | \
-    $OPENSSL_V111 pkeyutl \
-    -encrypt \
-    -pubin -inkey tls_public_named_pipe \
-    -pkeyopt rsa_padding_mode:oaep \
-    -pkeyopt rsa_oaep_md:sha1 \
-    -pkeyopt rsa_mgf1_md:sha1 | \
-    base64 | tr -d '\n' | sed 's/ //g' \
-  )"
-  #
-  ( rm -f tls_public_named_pipe )
-
-  # Concatenate the ephemeral wrapped and payload wrapped into rsa aes wrapped.
-  echo "${TLS_WRAP_PAD_EPHEMERAL_WRAPPED}" >> /tls/intermediate/enc/ca-chain-bundle.rsa-aes.wrapped 1>&4
-  echo "${TLS_WRAP_PAD_PAYLOAD_WRAPPED}" >> /tls/intermediate/enc/ca-chain-bundle.rsa-aes.wrapped 1>&4
-  
-  # Export the private key and move the root certificate to external.
-  printf '%s\n' ${TLS_WRAP_PAD_PRIVATE} > /external/tls-intermediate-ca-chain-bundle.private.key 1>&4
-  mv /tls/root/ /external/root/ 1>&4
-  echo -e "\033[7;33mEncrypted Data at Rest and Moved Files to External\033[0m" 1>&5
+  echo -e "\033[7;33mCertificate Bundle Verification Returned: ${VERIFICATION_RESULT}\033[0m" 1>&5
 }
 tls_unset_environment_variables() {
   unset CERTIFICATE_CHAIN_PASSPHRASE
