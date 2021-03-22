@@ -2,5 +2,6 @@
 !/tls/install_tls.sh
 /pgp/**
 !/pgp/install_pgp.sh
+!/pgp/vault_operator_init_pgp_key_shares.sh
 /private_files/**
 !/private_files/.gitkeep

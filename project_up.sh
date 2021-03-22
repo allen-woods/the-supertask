@@ -58,8 +58,24 @@ project_up() {
   docker-compose up -d
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 7\033[0m" && return 1
 
-  cd "${OLDPWD}"
+  # Copy the PGP key migration script into Vault's container.
+  docker cp $(pwd)/pgp/vault_operator_init_pgp_key_shares.sh truth_src:/etc/profile.d/
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 8\033[0m" && return 1
+
+  # Run the script to initialize Vault with PGP hardening.
+  docker exec -it \
+  truth_src \
+  /bin/sh -c '. /etc/profile && \
+  vault_operator_init_pgp_key_shares'
+  [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 9\033[0m" && return 1
+
+  docker cp truth_src:/to_host/vault $(pwd)/private_files/vault
+  [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 10\033[0m" && return 1
+
+  cd "${OLDPWD}"
+  [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 11\033[0m" && return 1
+
+  docker exec -it truth_src /bin/sh
 }
 
 project_up
