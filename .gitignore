@@ -2,3 +2,4 @@
 !init.sh
 **/*.env
 **/*.enc
+/local/**

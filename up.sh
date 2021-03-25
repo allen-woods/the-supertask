@@ -8,7 +8,11 @@ project_up() {
 
   # Only Build AES Wrap-Enabled OpenSSL if necessary.
   if [ -z "$(docker images | grep -o ${ENC_UTIL_IMAGE_NAME})" ]; then
-    echo -e "\033[7;31m\n                                                  \nImage ${ENC_UTIL_IMAGE_NAME} Needs to be Built :( \n                                                  \033[0m"
+    echo -e "\033[0m\n"
+    echo -e "\033[7;31m                                                   "
+    echo -e "\033[7;31m Image ${ENC_UTIL_IMAGE_NAME} Needs to be Built :( "
+    echo -e "\033[7;31m                                                   "
+    echo -e "\033[0m\n"
     # Build OpenSSL image.
     docker build --no-cache \
     --tag the-supertask_wrapper:latest \
@@ -18,7 +22,11 @@ project_up() {
     .
     [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 2\033[0m" && return 1
   else
-    echo -e "\033[7;32m\n                                              \n Image ${ENC_UTIL_IMAGE_NAME} Already Built :) \n                                              \033[0m"
+    echo -e "\033[0m\n"
+    echo -e "\033[7;32m                                                   "
+    echo -e "\033[7;32m   Image ${ENC_UTIL_IMAGE_NAME} Already Built :)   "
+    echo -e "\033[7;32m                                                   "
+    echo -e "\033[0m\n"
   fi
 
   # Run instance of image.
@@ -58,6 +66,10 @@ project_up() {
   docker-compose up -d
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 7\033[0m" && return 1
 
+  # # Copy gnupg data into Vault container.
+  docker cp enc_util:/root/.gnupg/ $(pwd)/private_files/.gnupg/
+  docker cp $(pwd)/private_files/.gnupg/ truth_src:/root/.gnupg/
+
   # Copy the PGP key migration script into Vault's container.
   docker cp $(pwd)/pgp/vault_operator_init_pgp_key_shares.sh truth_src:/etc/profile.d/
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 8\033[0m" && return 1
@@ -72,8 +84,19 @@ project_up() {
   docker cp truth_src:/to_host/vault $(pwd)/private_files/vault
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 10\033[0m" && return 1
 
-  cd "${OLDPWD}"
+  # Copy the TLS parsing script into Vault's container.
+  docker cp $(pwd)/tls/vault_v1_pki_config_ca_submit_ca_information.sh truth_src:/etc/profile.d/
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 11\033[0m" && return 1
+
+  # Run the script to configure the PKI Secrets Engine to use TLS.
+  docker exec -it \
+  truth_src \
+  /bin/sh -c '. /etc/profile && \
+  vault_v1_pki_config_ca_submit_ca_information'
+  [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 12\033[0m" && return 1
+
+  cd "${OLDPWD}"
+  [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 13\033[0m" && return 1
 
   docker exec -it truth_src /bin/sh
 }

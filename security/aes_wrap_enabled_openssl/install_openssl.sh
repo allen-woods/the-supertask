@@ -24,6 +24,7 @@ check_skip_openssl_install() {
 
 add_openssl_instructions_to_queue() {
   printf '%s\n' \
+  openssl_apk_add_packages \
   openssl_create_home_build_dir \
   openssl_create_home_local_ssl_dir \
   openssl_export_openssl_source_version_wget \
@@ -55,7 +56,8 @@ openssl_apk_add_packages() {
     gnupg \
     linux-headers \
     outils-jot \
-    perl
+    perl \
+    pinentry-gtk
   echo -e "\033[7;33mAdded Packages using APK\033[0m"
 }
 openssl_create_home_build_dir() {

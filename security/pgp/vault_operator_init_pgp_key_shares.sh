@@ -1,12 +1,16 @@
 #!/bin/sh
 
 vault_operator_init_pgp_key_shares() {
-  local ASC_PATH=/pgp/keys/*
+  local PUB_PATH=/pgp/keys/pub
+  #local IMPORT_PATH=$HOME/.gnupg/private-keys-v1.d
   local ROOT_KEY_ASC=
   local KEYS_ASC=
   local n=0
 
-  for ASC in $ASC_PATH; do
+  chown root:root $HOME/.gnupg
+  apk --no-cache add gnupg pinentry-gtk
+
+  for ASC in $PUB_PATH/*; do
     n=$(($n + 1))
     if [ $n -eq 1 ]; then
       [ -z "${ROOT_KEY_ASC}" ] && ROOT_KEY_ASC="${ASC}"
@@ -41,6 +45,6 @@ vault_operator_init_pgp_key_shares() {
     -pgp-keys=$KEYS_ASC \
   )" > "${EXPORT_PATH}/.${EXPORT_FILE}"
   [ $? -gt 0 ] && \
-  echo -e "\033[7;31mSOMETHING NOPED...\033[0m" && return 1 || \
-  echo -e "\033[7;32mSUCCESS!!\033[0m"
+  echo -e "\033[7;31m SOMETHING NOPED... \033[0m" && return 1 || \
+  echo -e "\033[7;32m     SUCCESS!!      \033[0m"
 }

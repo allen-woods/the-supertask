@@ -3,6 +3,7 @@
 # Name: run_install
 # Desc: A method that executes a sequence of installation commands, as defined by the `update_instructions`
 #       method found in /etc/profile.d/install_lib.sh, in a manner that prevents race conditions.
+
 export INSTRUCT_PATH=/tmp/instructs
 
 run_install() {
@@ -141,16 +142,16 @@ create_instructions_queue() {
   esac
 
   [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH 1>&4
-  echo "Created pipe for instructions." 1>&5
+  echo -e "\033[7;37mCreated pipe for instructions.\033[0m" 1>&5
 
   exec 3<> $INSTRUCT_PATH 1>&4
-  echo "Executed file descriptor to unblock pipe." 1>&5
+  echo -e "\033[7;37mExecuted file descriptor to unblock pipe.\033[0m" 1>&5
 
   unlink $INSTRUCT_PATH 1>&4
-  echo "Unlinked the unblocked pipe." 1>&5
+  echo -e "\033[7;37mUnlinked the unblocked pipe.\033[0m" 1>&5
 
   $(echo ' ' 1>&3) 1>&4
-  echo "Inserted blank space into unblocked pipe." 1>&5
+  echo -e "\033[7;37mInserted blank space into unblocked pipe.\033[0m" 1>&5
 }
 
 read_queued_instruction() {

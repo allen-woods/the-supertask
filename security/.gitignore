@@ -1,5 +1,6 @@
 /tls/**
 !/tls/install_tls.sh
+!/tls/vault_v1_pki_config_ca_submit_ca_information.sh
 /pgp/**
 !/pgp/install_pgp.sh
 !/pgp/vault_operator_init_pgp_key_shares.sh

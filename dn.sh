@@ -20,6 +20,7 @@ project_dn() {
   # Define paths generated from inside `enc_util`.
   local host_pgp_path=$(pwd)/security/private_files/pgp
   local host_tls_path=$(pwd)/security/private_files/tls
+  local host_gnupg_path=$(pwd)/security/private_files/.gnupg
   # Define path generated from inside `truth_src`.
   local host_vault_path=$(pwd)/security/private_files/vault
 
@@ -30,8 +31,11 @@ project_dn() {
   [ -d $host_tls_path ] && rm -rf $host_tls_path
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 6\033[0m" && return 1
 
-  [ -d $host_vault_path ] && rm -rf $host_vault_path
+  [ -d $host_gnupg_path ] && rm -rf $host_gnupg_path
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 7\033[0m" && return 1
+
+  [ -d $host_vault_path ] && rm -rf $host_vault_path
+  [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 8\033[0m" && return 1
 
   echo -e "\033[7;32m\n                         \n Project Completely Down \n                         \033[0m"
 }

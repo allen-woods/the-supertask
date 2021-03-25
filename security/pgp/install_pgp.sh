@@ -26,9 +26,9 @@ pgp_generate_asc_key_data() {
     mkdir -p "${BATCH_PATH}" 1>&4
   fi
 
-  local KEYS_PATH=/pgp/keys
-  if [ ! -d "${KEYS_PATH}" ]; then
-    mkdir -p "${KEYS_PATH}" 1>&4
+  local PUB_KEYS_PATH=/pgp/keys/pub
+  if [ ! -d "${PUB_KEYS_PATH}" ]; then
+    mkdir -p "${PUB_KEYS_PATH}" 1>&4
   fi
 
   local ENC_PATH=/to_host/pgp/enc
@@ -50,6 +50,8 @@ pgp_generate_asc_key_data() {
   local PGP_WRAP_PAD_EPHEMERAL=
   local PGP_WRAP_PAD_PRIVATE=
   local PGP_WRAP_PAD_PUBLIC=
+
+  gpg-agent --daemon --pinentry-program pinentry-gtk
 
   while [ $ITER -le $MAX_ITER ]; do
     local BATCH_FILE=${BATCH_PATH}/.$(tr -cd a-f0-9 < /dev/urandom | fold -w32 | head -n1)
@@ -106,6 +108,7 @@ pgp_generate_asc_key_data() {
     
     # Wrap the ephemeral in the public key.
     mkfifo pgp_public_named_pipe
+    #
     ( echo "${PGP_WRAP_PAD_PUBLIC}" | base64 -d > pgp_public_named_pipe & )
     #
     local PGP_WRAP_PAD_EPHEMERAL_WRAPPED="$( \
@@ -128,26 +131,29 @@ pgp_generate_asc_key_data() {
     # Export the private key to /to_host/pgp.
     printf '%s\n' ${PGP_WRAP_PAD_PRIVATE} > ${PRIVATE_PATH}/pgp-key-${ITER_STR}.private.key
 
+    echo -e "\033[7;31m * \033[0;37m${PHRASE}\033[7;31m * \033[0m" # DEBUG
+
     # Use printf to pseudo-heredoc creation of PGP batch file.
     #
     # TODO: Remove "Thomas Tester" and related "test" entries in field / value pairs.
     #
     printf '%s\n' \
       "%echo Generating Key [ $ITER / $MAX_ITER ]" \
-      "Key-Type: RSA" \
+      "Key-Type: default" \
       "Key-Length: 4096" \
-      "Subkey-Type: RSA" \
+      "Subkey-Type: default" \
       "Subkey-Length: 4096" \
       "Passphrase: ${PHRASE}" \
       "Name-Real: ${name_real:-Thomas Tester}" \
       "Name-Email: ${name_email:-test@thesupertask.com}" \
       "Name-Comment: ${name_comment:-Auto-generated Key Used for Testing.}" \
-      "Expire-Date: 0" \
+      "Expire-Date: 1y" \
       "%commit" \
     "${DONE_MSG}" >> $BATCH_FILE
     gpg \
-      --verbose \
-      --batch \
+    --pinentry-mode loopback \
+    --verbose \
+    --batch \
     --gen-key $BATCH_FILE
     sleep 1s # .............. SLEEP
     rm -f $BATCH_FILE 1>&4
@@ -155,12 +161,15 @@ pgp_generate_asc_key_data() {
     # Capture the most recently generated revocation file.
     # We need to parse its hexadecimal filename to export the key as an ASC file.
     local REVOC_FILE="$(ls -t ${HOME}/.gnupg/openpgp-revocs.d | head -n1)"
+    local KEY_ID_HEX="$(basename ${REVOC_FILE} | cut -f1 -d '.')"
     gpg \
-      --export \
-      "$(basename ${REVOC_FILE} | cut -f1 -d '.')" | \
-    base64 > "${KEYS_PATH}/key_${ITER_STR}.asc"
+    --export \
+    ${KEY_ID_HEX} | \
+    base64 > "${PUB_KEYS_PATH}/key_${ITER_STR}.asc"
 
     ITER=$(($ITER + 1))
   done
+
+  pkill gpg-agent
   echo -e "\033[7;33mGenerated PGP Data\033[0m" 1>&5
 }
