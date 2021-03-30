@@ -48,20 +48,26 @@ add_openssl_instructions_to_queue() {
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
 openssl_apk_add_packages() {
-  apk --no-cache add \
+  local APK_FLAG=
+  [ $1 -eq 0 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--quiet --no-progress'
+  [ $1 -eq 2 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--verbose'
+  apk ${APK_FLAG} \
+  --no-cache add \
     busybox-static \
     apk-tools-static && \
-  apk.static add \
+  apk.static ${APK_FLAG} \
+  --no-cache add \
     build-base \
-    dumb-init \
     gnupg \
     linux-headers \
     outils-jot \
     perl \
     pinentry-gtk
-  # NOTE: this script only runs during docker build,
-  #       so we can't run `pretty` to echo nicely.
-  echo -e "\033[7;33mAdded Packages using APK\033[0m"
+
+  [ ! -z "${RUN_INSTALL_PRETTY_MSG}" ] && \
+  RUN_INSTALL_PRETTY_MSG='Added Packages Using apk.static' && \
+  RUN_INSTALL_PRETTY_FG="\033[1;37m" && \
+  RUN_INSTALL_PRETTY_BG="\033[43m"
 }
 openssl_create_home_build_dir() {
   [ ! -d $OPENSSL_HOME_BUILD_PATH ] && mkdir $OPENSSL_HOME_BUILD_PATH 1>&4
@@ -72,10 +78,11 @@ openssl_create_home_local_ssl_dir() {
   echo -e "\033[7;33mCreated Directory: ${OPENSSL_HOME_LOCAL_SSL_PATH}\033[0m" 1>&5
 }
 openssl_export_openssl_source_version_wget() {
-  export OPENSSL_SOURCE_VERSION="$(echo \
-    $(wget -c https://www.openssl.org/source/index.html -O -) | \
-    sed 's/^.*\"\(openssl[-]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[a-zA-Z]\{0,\}\).tar.gz\".*$/\1/g; s/^.* \([^ ]\{1,\}\)$/\1/g;' \
-  )" 1>&4
+  export OPENSSL_SOURCE_VERSION=$( \
+    wget -cq https://www.openssl.org/source/index.html -O - | \
+    tr -d '\n' | \
+    sed 's/^.*\"\(openssl[-]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[.]\{1\}[0-9]\{1,\}[a-zA-Z]\{0,\}\).tar.gz\".*$/\1/g' \
+  )
   echo -e "\033[7;33mParsed OpenSSL Version to Variable Using WGET and SED\033[0m" 1>&5
 }
 openssl_change_to_home_build_dir() {
@@ -120,7 +127,7 @@ openssl_make_clean_openssl_version_build() {
 }
 openssl_create_openssl_shell_script() {
   echo -e '#!/bin/sh \nenv LD_LIBRARY_PATH='"${OPENSSL_HOME_LOCAL_LIB_PATH} ${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl"' "$@"' > ${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl.sh
-  chmod 0755 ${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl.sh 1>&4
+  chmod 0700 ${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl.sh 1>&4
   chown root:root ${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl.sh 1>&4
   echo -e "\033[7;33mCreated Shell Script for Running OpenSSL\033[0m" 1>&5
 }
@@ -145,15 +152,19 @@ openssl_verify_openssl_version() {
   echo ""
 }
 openssl_remove_unnecessary_packages() {
-  apk.static del \
+  local APK_FLAG=
+  [ $1 -eq 0 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--quiet --no-progress'
+  [ $1 -eq 2 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--verbose'
+  apk.static ${CMD_FLAG} \
+  --no-cache del \
     build-base \
-    dumb-init \
     gnupg \
     linux-headers \
     outils-jot \
     perl \
     pinentry-gtk && \
-  apk del \
+  apk ${CMD_FLAG} \
+  --no-cache del \
     busybox-static \
     apk-tools-static
   echo -e "\033[7;33mRemoved Un-necessary Packages\033[0m"

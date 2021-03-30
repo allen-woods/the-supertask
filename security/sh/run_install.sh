@@ -1,12 +1,22 @@
 #!/bin/sh
 
 # Name: run_install
-# Desc: A method that executes a sequence of installation commands, as defined by the `update_instructions`
-#       method found in /etc/profile.d/install_lib.sh, in a manner that prevents race conditions.
+# Desc: A method that executes a sequence of installation commands, such that
+#       asynchronous code does not encounter race conditions and the granularity
+#       of accuracy is increased while debugging errors.
+#
+# Note: The commands that are executed for a given install process are defined within
+#       the `/etc/profile.d/install_<INSTALL_DESCRIPTION>.sh` shell script file; where
+#       <INSTALL_DESCRIPTION> is a string describing the thing to be installed,
+#       such as:
+#       install_openssl.sh  = openssl
+#       install_pgp.sh      = pgp
+#       install_tls.sh      = tls
 
 export INSTRUCT_PATH=/tmp/instructs
-export RUN_INSTALL_PRETTY_STATUS=
-export RUN_INSTALL_PRETTY_TYPE=
+export RUN_INSTALL_PRETTY_MSG='Initialized'
+export RUN_INSTALL_PRETTY_FG='\033[1;37m'
+export RUN_INSTALL_PRETTY_BG='\033[40m'
 
 run_install() {
   local INSTRUCTION_SET_LIST=
@@ -62,27 +72,27 @@ run_install() {
       sed 's/^.*install_\(.*\)\.sh$/\1/g' \
     )
 
-    local SKIP=$(. $INSTALL_SCRIPT && "check_skip_${DESCRIPTION}_install")
+    local SKIP=$(check_skip_${DESCRIPTION}_install)
 
     if [ "${SKIP}" == "SKIP" ]; then
       echo -e "\033[7;33mSKIPPING: \"${DESCRIPTION}\"; already installed.\033[0m"
       # NOTE: We cannot call return here or we will cancel all instruction sets beyond this condition.
     else
-      # # # # # 
-      create_instructions_queue $OUTPUT_MODE
+      # # # # # CRUD: Create
+      create_instructions_queue
       # # # # #
-      [ ! $? -eq 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && HARD_STOP=1 && return 1
+      [ ! $? -eq 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && HARD_STOP=1 && break
 
         $("add_${DESCRIPTION}_instructions_to_queue")
-        [ ! $? -eq 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && HARD_STOP=1 && return 1
+        [ ! $? -eq 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && HARD_STOP=1 && break
 
         [ $FIRST_RUN -eq 1 ] && export INSTALL_FUNC_NAME= || INSTALL_FUNC_NAME= # Prevent variable shadowing.
 
         while [ "${INSTALL_FUNC_NAME}" != "EOP" ]; do
-          # # # # #
+          # # # # # CRUD: Read
           read_queued_instruction
           # # # # #
-          [ ! $? -eq 0 ] && echo "ERROR: Call to \"read_queued_instruction\" failed." && HARD_STOP=1 && return 1
+          [ ! $? -eq 0 ] && echo "ERROR: Call to \"read_queued_instruction\" failed." && HARD_STOP=1 && break
 
           if [ ! -z "${INSTALL_FUNC_NAME}" ]; then
             [ "${INSTALL_FUNC_NAME}" == "EOP" ] && continue # Halt once we have reached the end of instructions queue.
@@ -97,16 +107,21 @@ run_install() {
               head -n1 \
             )
             [ ! -z "${PROC_ID}" ] && wait $PROC_ID || sleep 0.25s
-            [ ! $? -eq 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && HARD_STOP=1 && return 1
+            [ ! $? -eq 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && HARD_STOP=1 && break
+
+            pretty
+
           fi
         done
-      # # # # #
+        [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
+      # # # # # CRUD: Delete
       delete_instructions_queue
       # # # # #
-      [ ! $? -eq 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && return 1
+      [ ! $? -eq 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && break
     fi
     FIRST_RUN=$(($FIRST_RUN + 1)) # Prevent variable shadowing of INSTALL_FUNC_NAME on line 74.
   done
+  [ $HARD_STOP -eq 1 ] && return 1 # Something went really wrong, shut everything down.
 }
 
 # Instructions Queue CRUD Functions
@@ -120,7 +135,6 @@ create_instructions_queue() {
       exec 4>/dev/null  # stdout:   disabled  (Shell process)
       exec 5>/dev/null  # echo:     disabled  (Status command)
       exec 2>/dev/null  # stderr:   disabled
-      #set +v #          # verbose:  disabled
       ;;
     1)
       # status only * * * * * * * * * * * * * * * * * * * * * *
@@ -128,7 +142,6 @@ create_instructions_queue() {
       exec 4>/dev/null  # stdout:   disabled  (Shell process)
       exec 5>&1         # echo:     ENABLED   (Status command)
       exec 2>/dev/null  # stderr:   disabled
-      #set +v #          # verbose:  disabled
       ;;
     2)
       # verbose * * * * * * * * * * * * * * * * * * * * * * * *
@@ -136,7 +149,6 @@ create_instructions_queue() {
       exec 4>&1         # stdout:   ENABLED   (Shell process)
       exec 5>&1         # echo:     ENABLED   (Status command)
       exec 2>&1         # stderr:   ENABLED
-      #set -v #          # verbose:  ENABLED
       ;;
     *)
       # do nothing  * * * * * * * * * * * * * * * * * * * * * *
@@ -179,7 +191,6 @@ read_queued_instruction() {
 }
 
 delete_instructions_queue() {
-  #set +v # Cancel verbose mode
   exec 2>&1 # Restore stderr
   exec 3>&-
   exec 4>&-
