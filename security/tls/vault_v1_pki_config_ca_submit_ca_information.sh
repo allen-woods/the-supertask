@@ -7,11 +7,11 @@ vault_v1_pki_config_ca_submit_ca_information() {
   local TOKEN_FILE=
 
   # Not able to find the PEM path is a fatal error.
-  [ ! -d $PEM_PATH ] && echo -e "\033[7;31mFATAL ERROR: PEM path not found!\033[0m" && return 1
+  [ ! -d $PEM_PATH ] && pretty "PEM path not found!" --error && return 1
   # Not able to find the PEM file is a fatal error.
-  [ ! -f "${PEM_PATH}/${PEM_FILE}" ] && echo -e "\033[7;mFATAL ERROR: PEM file not found!\033[0m" && return 1
+  [ ! -f "${PEM_PATH}/${PEM_FILE}" ] && pretty "PEM file not found!" --error && return 1
   # Not able to find the token path is a fatal error.
-  [ ! -d $TOKEN_PATH ] && echo -e "\033[7;31mFATAL ERROR: Token path not found!\033[0m" && return 1
+  [ ! -d $TOKEN_PATH ] && pretty "Token path not found!" --error && return 1
 
   for FILE in $TOKEN_PATH/.*; do
     local TMP_FILE="$(basename ${FILE})"
@@ -21,7 +21,7 @@ vault_v1_pki_config_ca_submit_ca_information() {
   done
 
   # Not able to find the token file is a fatal error.
-  [ -z $TOKEN_FILE ] && echo -e "\033[7;31mFATAL ERROR: Token file not found!\033[0m" && return 1
+  [ -z $TOKEN_FILE ] && pretty "Token file not found!" --error && return 1
 
   gpg-agent --daemon --pinentry-program pinentry-gtk # DEBUG
   
@@ -40,8 +40,17 @@ vault_v1_pki_config_ca_submit_ca_information() {
 
   apk --no-cache add curl
 
-  echo -e "\033[7;31mAttempting to Decode Unseal 1 Using \033[7;37mpinentry-gtk\033[7;31m:\033[0m"
-  echo $(echo "not_the_right_password" | gpg --verbose --batch --pinentry-mode loopback --decrypt "$(${UNSEAL_1} | base64 -d)")
+  pretty "Attempting to Decode Unseal 1 Using \"pinentry-gtk\"..."
+  echo $( \
+    echo "not_the_right_password" | \
+    gpg --verbose \
+    --batch \
+    --pinentry-mode loopback \
+    --decrypt "$( \
+      ${UNSEAL_1} | \
+      base64 -d \
+    )" \
+  )
   
   pkill gpg-agent
   

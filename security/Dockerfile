@@ -1,31 +1,26 @@
-# # 1 - Compile entropy tests.
-# FROM alpine:3.10.5 AS builder
+# Name: supervault (TBD)
+# Desc: This container provides a PGP-hardened instance of HashiCorp Vault
+#       initialized to use TLS 1.3 certificates.
+#
+# Note: All private data that are mangaed and persisted outside of Vault in
+#       compliance with best practice documentation are encrypted using the
+#       id-aes256-wrap-pad algorithm.
 
-# WORKDIR /
-# VOLUME [ "persist_vault_private_files:/persist" ]
-# COPY --chown=root:root ["./pgp/install_pgp.sh",   "/etc/profile.d/"]
-# COPY --chown=root:root ["./tls/install_tls.sh",   "/etc/profile.d/"]
-# COPY --chown=root:root ["./tls/.admin",           "/root/"]
-# COPY --chown=root:root ["./run_install.sh",       "/etc/profile.d/"]
-# RUN ["/bin/sh", "-c", ". /etc/profile && \
-#   run_install --verbose \
-#   /etc/profile.d/install_pgp.sh \
-#   /etc/profile.d/install_tls.sh"]
+FROM vault:latest AS builder
 
-# FROM builder AS obfuscator
+# Run the OpenSSL installation.
+WORKDIR /
+COPY --chown=root:root ["./vault/config",                                 "/vault/config/"]
+COPY --chown=root:root ["./aes_wrap_enabled_openssl/install_openssl.sh",  "/etc/profile.d/"]
+COPY --chown=root:root ["./run_install.sh",                               "/etc/profile.d/"]
+RUN /bin/sh -c . /etc/profile/ && \
+  install_openssl && \
+  install_pgp && \
+  install_tls && \
+  initialize_vault
 
-# WORKDIR /
-# VOLUME [ "./manage_private_files:/to_host" ]
-# COPY --chown=root:root ["./migrate_files.sh",     "/etc/profile.d/"]
-# COPY --chown=root:root --from=builder /persist/ /persist/
-# COPY --chown=root:root --from=builder /pgp/ /pgp/
-# COPY --chown=root:root --from=builder /tls/ /tls/
-# RUN ["/bin/sh", "-c", ". /etc/profile && migrate_files"]
-
-FROM vault:1.5.6 AS supervault
+FROM vault:latest AS supervault
 
 WORKDIR /
 COPY --chown=root:root ./vault/config /vault/config/
-#COPY --chown=root:root --from=obfuscator /pgp/ /pgp/
-#COPY --chown=root:root --from=obfuscator /tls/ /tls/
 CMD ["server"]

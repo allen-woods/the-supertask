@@ -16,7 +16,7 @@ check_skip_openssl_install() {
     [ -d $OPENSSL_HOME_LOCAL_BIN_PATH ] && \
     [ -d $OPENSSL_HOME_LOCAL_SSL_PATH ] && \
     [ -f "${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl.sh" ]; then
-    echo "SKIP"
+    echo -n "SKIP"
   else
     echo -n "INSTALL"
   fi
@@ -40,6 +40,7 @@ add_openssl_instructions_to_queue() {
   openssl_create_openssl_shell_script \
   openssl_shrc_file_for_openssl_v111_env_var \
   openssl_verify_openssl_version \
+  openssl_remove_unnecessary_packages \
   EOP \
   ' ' 1>&3
 }
@@ -58,6 +59,8 @@ openssl_apk_add_packages() {
     outils-jot \
     perl \
     pinentry-gtk
+  # NOTE: this script only runs during docker build,
+  #       so we can't run `pretty` to echo nicely.
   echo -e "\033[7;33mAdded Packages using APK\033[0m"
 }
 openssl_create_home_build_dir() {
@@ -140,4 +143,18 @@ openssl_verify_openssl_version() {
   echo ""
   echo -ne "OPENSSL_V111 printed: \n${VERIFIED}"
   echo ""
+}
+openssl_remove_unnecessary_packages() {
+  apk.static del \
+    build-base \
+    dumb-init \
+    gnupg \
+    linux-headers \
+    outils-jot \
+    perl \
+    pinentry-gtk && \
+  apk del \
+    busybox-static \
+    apk-tools-static
+  echo -e "\033[7;33mRemoved Un-necessary Packages\033[0m"
 }

@@ -23,8 +23,8 @@ vault_operator_init_pgp_key_shares() {
 
   # Check for the presence of the required env var VAULT_ADDR.
   [ -z "$(echo ${VAULT_ADDR} | grep -o http://127.0.0.1)" ] && \
-  echo -e "\033[7;31mFATAL ERROR: VAULT_ADDR not Exported\033[0m" && return 1 ||
-  echo -e "\033[7;32mExport of VAULT_ADDR Confirmed\033[0m"
+  pretty "VAULT_ADDR not Exported" --error && return 1 ||
+  pretty "Export of VAULT_ADDR Confirmed"
 
   # The path where the welcome message will be stored.
   local EXPORT_PATH=/to_host/vault
@@ -45,6 +45,6 @@ vault_operator_init_pgp_key_shares() {
     -pgp-keys=$KEYS_ASC \
   )" > "${EXPORT_PATH}/.${EXPORT_FILE}"
   [ $? -gt 0 ] && \
-  echo -e "\033[7;31m SOMETHING NOPED... \033[0m" && return 1 || \
-  echo -e "\033[7;32m     SUCCESS!!      \033[0m"
+  pretty "SOMETHING NOPED..." --error && return 1 || \
+  pretty "SUCCESS!!"
 }

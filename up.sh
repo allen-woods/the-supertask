@@ -1,18 +1,18 @@
 #!/bin/sh
 
 project_up() {
+  set +v
   local ENC_UTIL_IMAGE_NAME=the-supertask_wrapper
+
+  . $(pwd)/security/pretty.sh
 
   cd ./security 
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 1\033[0m" && return 1
 
   # Only Build AES Wrap-Enabled OpenSSL if necessary.
   if [ -z "$(docker images | grep -o ${ENC_UTIL_IMAGE_NAME})" ]; then
-    echo -e "\033[0m\n"
-    echo -e "\033[7;31m                                                   "
-    echo -e "\033[7;31m Image ${ENC_UTIL_IMAGE_NAME} Needs to be Built :( "
-    echo -e "\033[7;31m                                                   "
-    echo -e "\033[0m\n"
+    pretty "Image \"${ENC_UTIL_IMAGE_NAME}\" Needs to be Built :("
+    
     # Build OpenSSL image.
     docker build --no-cache \
     --tag the-supertask_wrapper:latest \
@@ -22,11 +22,7 @@ project_up() {
     .
     [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 2\033[0m" && return 1
   else
-    echo -e "\033[0m\n"
-    echo -e "\033[7;32m                                                   "
-    echo -e "\033[7;32m   Image ${ENC_UTIL_IMAGE_NAME} Already Built :)   "
-    echo -e "\033[7;32m                                                   "
-    echo -e "\033[0m\n"
+    pretty "Image \"${ENC_UTIL_IMAGE_NAME}\" Ready to Go! :)"
   fi
 
   # Run instance of image.
@@ -41,6 +37,7 @@ project_up() {
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 3\033[0m" && return 1
 
   # Copy files into  container.
+  docker cp $(pwd)/pretty.sh enc_util:/etc/profile.d/
   docker cp $(pwd)/pgp/install_pgp.sh enc_util:/etc/profile.d/
   docker cp $(pwd)/tls/install_tls.sh enc_util:/etc/profile.d/
   docker cp $(pwd)/tls/.admin enc_util:/root/
@@ -70,6 +67,9 @@ project_up() {
   docker cp enc_util:/root/.gnupg/ $(pwd)/private_files/.gnupg/
   docker cp $(pwd)/private_files/.gnupg/ truth_src:/root/.gnupg/
 
+  # Copy the pretty utility function into Vault's container.
+  docker cp $(pwd)/pretty.sh truth_src:/etc/profile.d/
+
   # Copy the PGP key migration script into Vault's container.
   docker cp $(pwd)/pgp/vault_operator_init_pgp_key_shares.sh truth_src:/etc/profile.d/
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 8\033[0m" && return 1
@@ -98,7 +98,8 @@ project_up() {
   cd "${OLDPWD}"
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 13\033[0m" && return 1
 
-  docker exec -it truth_src /bin/sh
+  pretty "Entering OpenSSL Container \"enc_util\"."
+  docker exec -it enc_util /bin/sh
 }
 
 project_up

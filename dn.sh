@@ -1,6 +1,10 @@
 #!/bin/sh
 
 project_dn() {
+  set +v
+
+  . $(pwd)/security/pretty.sh
+
   # Bring down containers and volumes.
   docker-compose down --volumes
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 1\033[0m" && return 1
@@ -37,7 +41,7 @@ project_dn() {
   [ -d $host_vault_path ] && rm -rf $host_vault_path
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 8\033[0m" && return 1
 
-  echo -e "\033[7;32m\n                         \n Project Completely Down \n                         \033[0m"
+  pretty "Project is Down"
 }
 
 project_dn
