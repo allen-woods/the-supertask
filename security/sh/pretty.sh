@@ -183,8 +183,8 @@ pretty() {
     DIFF_STR="$(printf '%*s' "${DIFF_LEN}")"
     # Conditionally truncate based on presence of "-T|--test" flag.
     [ $IS_TEST -eq 1 ] && \
-    echo -e -n "${PRETTY_FG_COLOR_GLOBAL}${PRETTY_BG_COLOR_GLOBAL}${HDR}${TXT}${DIFF_STR}${RESET_COLORS}" || \
-    echo -e "${PRETTY_FG_COLOR_GLOBAL}${PRETTY_BG_COLOR_GLOBAL}${HDR}${TXT}${DIFF_STR}${RESET_COLORS}"
+    echo -e -n "${PRETTY_FG_COLOR_GLOBAL}${PRETTY_BG_COLOR_GLOBAL}${HDR}${PRETTY_DISPLAY_GLOBAL}${DIFF_STR}${RESET_COLORS}" || \
+    echo -e "${PRETTY_FG_COLOR_GLOBAL}${PRETTY_BG_COLOR_GLOBAL}${HDR}${PRETTY_DISPLAY_GLOBAL}${DIFF_STR}${RESET_COLORS}"
   fi
   # Reset all globals in advance of next call of `pretty`.
   PRETTY_FG_COLOR_GLOBAL=
