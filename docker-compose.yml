@@ -132,18 +132,18 @@ services:
         target: /vault/logs
         volume:
           nocopy: true
-      # Public PGP data.
-      - type: volume
-        source: persist_pgp
-        target: /pgp
-        volume:
-          nocopy: true
-      # Public TLS data.
-      - type: volume
-        source: persist_tls
-        target: /tls
-        volume:
-          nocopy: true
+      # # Public PGP data.
+      # - type: volume
+      #   source: persist_pgp
+      #   target: /pgp
+      #   volume:
+      #     nocopy: true
+      # # Public TLS data.
+      # - type: volume
+      #   source: persist_tls
+      #   target: /tls
+      #   volume:
+      #     nocopy: true
   # wrapper:
   #   container_name: enc_util
   #   build:
@@ -188,11 +188,5 @@ networks:
 volumes:
   persist_mongo:
   persist_redis:
-  persist_v111_build:
-    external: true
-  persist_pgp:
-    external: true
-  persist_tls:
-    external: true
   persist_vault_data:
   persist_vault_logs:

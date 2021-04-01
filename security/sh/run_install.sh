@@ -14,9 +14,6 @@
 #       install_tls.sh      = tls
 
 export INSTRUCT_PATH=/tmp/instructs
-export RUN_INSTALL_PRETTY_MSG='Initialized'
-export RUN_INSTALL_PRETTY_FG='\033[1;37m'
-export RUN_INSTALL_PRETTY_BG='\033[40m'
 
 run_install() {
   local INSTRUCTION_SET_LIST=
@@ -24,6 +21,21 @@ run_install() {
   local HARD_STOP=0
   local FIRST_RUN=1
   local PROC_ID=
+
+  # TODO:
+  # Use of file descriptors inside of Docker containers (specifically 4 and 5)
+  # are throwing errors. Due to this, as well as a security flaw surrounding
+  # file descriptors inside of containers, we need to sunset the use of file
+  # descriptors. Instead:
+  #
+  #   * Use $OUTPUT_MODE to tell install functions to use -q or -v equivalents.
+  #   * Assign RUN_INSTALL_PRETTY_<STR> values from inside install functions.
+  #   * Control whether messages are displayed within run_install.
+  #
+  # This represents a massive rewrite to a lot of functions, but will function
+  # as desired in the original design.
+  #
+  # Lesson to be learned here is: Don't Re-Invent the Wheel!
 
   # # Section 1 - Validation of Arguments - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   for OPT in "$@"; do # Iterate over every incoming argument.
@@ -96,8 +108,12 @@ run_install() {
 
           if [ ! -z "${INSTALL_FUNC_NAME}" ]; then
             [ "${INSTALL_FUNC_NAME}" == "EOP" ] && continue # Halt once we have reached the end of instructions queue.
-
-            $INSTALL_FUNC_NAME ${OUTPUT_MODE}
+            
+            # Only allow verbose mode to show command output.
+            [ $OUTPUT_MODE -eq 2 ] && \
+            $INSTALL_FUNC_NAME $OUTPUT_MODE || \
+            $INSTALL_FUNC_NAME $OUTPUT_MODE >/dev/null 2>&1
+            # Capture the PID to allow for `wait` command.
             PROC_ID=$( \
               ps -o pid,args | \
               grep -e ${INSTALL_FUNC_NAME} | \
@@ -108,9 +124,6 @@ run_install() {
             )
             [ ! -z "${PROC_ID}" ] && wait $PROC_ID || sleep 0.25s
             [ ! $? -eq 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && HARD_STOP=1 && break
-
-            pretty
-
           fi
         done
         [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
@@ -127,63 +140,63 @@ run_install() {
 # Instructions Queue CRUD Functions
 
 create_instructions_queue() {
-  local OPT=$1
-  case $OPT in
-    0)
-      # completely silent * * * * * * * * * * * * * * * * * * *
-      #
-      exec 4>/dev/null  # stdout:   disabled  (Shell process)
-      exec 5>/dev/null  # echo:     disabled  (Status command)
-      exec 2>/dev/null  # stderr:   disabled
-      ;;
-    1)
-      # status only * * * * * * * * * * * * * * * * * * * * * *
-      #
-      exec 4>/dev/null  # stdout:   disabled  (Shell process)
-      exec 5>&1         # echo:     ENABLED   (Status command)
-      exec 2>/dev/null  # stderr:   disabled
-      ;;
-    2)
-      # verbose * * * * * * * * * * * * * * * * * * * * * * * *
-      #
-      exec 4>&1         # stdout:   ENABLED   (Shell process)
-      exec 5>&1         # echo:     ENABLED   (Status command)
-      exec 2>&1         # stderr:   ENABLED
-      ;;
-    *)
-      # do nothing  * * * * * * * * * * * * * * * * * * * * * *
-      echo " " >/dev/null
-      ;;
-  esac
+  # local OPT=$1
+  # case $OPT in
+  #   0)
+  #     # completely silent * * * * * * * * * * * * * * * * * * *
+  #     #
+  #     exec 4>/dev/null  # stdout:   disabled  (Shell process)
+  #     exec 5>/dev/null  # echo:     disabled  (Status command)
+  #     exec 2>/dev/null  # stderr:   disabled
+  #     ;;
+  #   1)
+  #     # status only * * * * * * * * * * * * * * * * * * * * * *
+  #     #
+  #     exec 4>/dev/null  # stdout:   disabled  (Shell process)
+  #     exec 5>&1         # echo:     ENABLED   (Status command)
+  #     exec 2>/dev/null  # stderr:   disabled
+  #     ;;
+  #   2)
+  #     # verbose * * * * * * * * * * * * * * * * * * * * * * * *
+  #     #
+  #     exec 4>&1         # stdout:   ENABLED   (Shell process)
+  #     exec 5>&1         # echo:     ENABLED   (Status command)
+  #     exec 2>&1         # stderr:   ENABLED
+  #     ;;
+  #   *)
+  #     # do nothing  * * * * * * * * * * * * * * * * * * * * * *
+  #     echo " " >/dev/null
+  #     ;;
+  # esac
 
   # We can't run `pretty` inside of an image build process,
   # only during a docker exec -it or docker run -it command.
   # So, we approximate its function here with some hard-coded
   # echoes.
 
-  echo -e -n "\033[1;37m\033[45m INIT: Creating Pipe for Instructions                 " 1>&5
-  [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH 1>&4
+  echo -e -n "\033[1;37m\033[45m INIT: Creating Pipe for Instructions                 "
+  [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 1>&5
+  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Executing File Descriptor to Unblock Pipe      " 1>&5
-  exec 3<> $INSTRUCT_PATH 1>&4
+  echo -e -n "\033[1;37m\033[45m INIT: Executing File Descriptor to Unblock Pipe      "
+  exec 3<> $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 1>&5
+  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Unlinking the Unblocked Pipe                   " 1>&5
-  unlink $INSTRUCT_PATH 1>&4
+  echo -e -n "\033[1;37m\033[45m INIT: Unlinking the Unblocked Pipe                   "
+  unlink $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 1>&5
+  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Inserting Blank Space into Unblocked Pipe      " 1>&5
-  $(echo ' ' 1>&3) 1>&4
+  echo -e -n "\033[1;37m\033[45m INIT: Inserting Blank Space into Unblocked Pipe      "
+  $(echo ' ' 1>&3)
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 1>&5
+  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 }
 
 read_queued_instruction() {

@@ -1,10 +1,9 @@
 #!/bin/sh
 
 project_up() {
-  set +v
   local ENC_UTIL_IMAGE_NAME=the-supertask_wrapper
-
-  . $(pwd)/security/pretty.sh
+  
+  echo "$(tput lines) $(tput cols)" > ./security/misc/pseudo_tty
 
   cd ./security 
   [ ! $? -eq 0 ] && echo -e "\033[7;31mThere Was a Problem with Command 1\033[0m" && return 1

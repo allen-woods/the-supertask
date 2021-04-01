@@ -1,7 +1,6 @@
 #!/bin/sh
 
 project_dn() {
-  set +v
 
   . $(pwd)/security/pretty.sh
 
