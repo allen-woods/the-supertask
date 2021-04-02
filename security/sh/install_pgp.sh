@@ -37,7 +37,7 @@ pgp_apk_add_packages() {
     pinentry-gtk
   [ $? -eq 0 ] && \
   pretty --passed || \
-  pretty --failed 1>&5
+  pretty --failed
 }
 
 pgp_generate_asc_key_data() {
@@ -77,7 +77,7 @@ pgp_generate_asc_key_data() {
     # Generate length of passphrase for private key.
     local PRIVATE_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
     # Generate passphrase for private key.
-    local PRIVATE_KEY_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PRIVATE_KEY_PHRASE_LEN} | head -n1)
+    local PRIVATE_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PRIVATE_KEY_PHRASE_LEN} | head -n1)
     # Persist passphrase to file.
     echo "${PRIVATE_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase
 
@@ -94,7 +94,7 @@ pgp_generate_asc_key_data() {
     # Generate length of passphrase for public key.
     local PUBLIC_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
     # Generate passphrase for public key.
-    local PUBLIC_KEY_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PUBLIC_KEY_PHRASE_LEN} | head -n1)
+    local PUBLIC_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PUBLIC_KEY_PHRASE_LEN} | head -n1)
     # Persist passphrase to file.
     echo "${PUBLIC_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase
 
@@ -178,7 +178,7 @@ pgp_generate_asc_key_data() {
     sleep 1s # .............. SLEEP
 
     # Delete the batch file after use.
-    rm -f $BATCH_FILE 1>&4
+    rm -f $BATCH_FILE
 
     # Capture the most recently generated revocation file.
     # We need to parse its hexadecimal filename to export the key as an ASC file.
@@ -198,5 +198,5 @@ pgp_generate_asc_key_data() {
   # Shut down background process (no longer needed).
   pkill gpg-agent
   
-  pretty "Generated PGP Data" 1>&5
+  pretty "Generated PGP Data"
 }

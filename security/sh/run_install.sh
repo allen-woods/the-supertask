@@ -16,6 +16,7 @@
 export INSTRUCT_PATH=/tmp/instructs
 
 run_install() {
+  set -v
   local INSTRUCTION_SET_LIST=
   local OUTPUT_MODE=-1
   local HARD_STOP=0
@@ -93,10 +94,10 @@ run_install() {
       # # # # # CRUD: Create
       create_instructions_queue
       # # # # #
-      [ ! $? -eq 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && HARD_STOP=1 && break
+      [ $? -gt 0 ] && echo "ERROR: Call to \"create_instructions_queue ${OUTPUT_MODE}\" failed." && HARD_STOP=1 && break
 
         $("add_${DESCRIPTION}_instructions_to_queue")
-        [ ! $? -eq 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && HARD_STOP=1 && break
+        [ $? -gt 0 ] && echo "ERROR: Call to \"add_${DESCRIPTION}_instructions_to_queue\" failed." && HARD_STOP=1 && break
 
         [ $FIRST_RUN -eq 1 ] && export INSTALL_FUNC_NAME= || INSTALL_FUNC_NAME= # Prevent variable shadowing.
 
@@ -104,7 +105,7 @@ run_install() {
           # # # # # CRUD: Read
           read_queued_instruction
           # # # # #
-          [ ! $? -eq 0 ] && echo "ERROR: Call to \"read_queued_instruction\" failed." && HARD_STOP=1 && break
+          [ $? -gt 0 ] && echo "ERROR: Call to \"read_queued_instruction\" failed." && HARD_STOP=1 && break
 
           if [ ! -z "${INSTALL_FUNC_NAME}" ]; then
             [ "${INSTALL_FUNC_NAME}" == "EOP" ] && continue # Halt once we have reached the end of instructions queue.
@@ -123,76 +124,48 @@ run_install() {
               head -n1 \
             )
             [ ! -z "${PROC_ID}" ] && wait $PROC_ID || sleep 0.25s
-            [ ! $? -eq 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && HARD_STOP=1 && break
+            [ $? -gt 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && HARD_STOP=1 && break
           fi
         done
         [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
       # # # # # CRUD: Delete
       delete_instructions_queue
       # # # # #
-      [ ! $? -eq 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && break
+      [ $? -gt 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && break
     fi
     FIRST_RUN=$(($FIRST_RUN + 1)) # Prevent variable shadowing of INSTALL_FUNC_NAME on line 74.
   done
+  unset INSTRUCT_PATH
   [ $HARD_STOP -eq 1 ] && return 1 # Something went really wrong, shut everything down.
 }
 
 # Instructions Queue CRUD Functions
 
 create_instructions_queue() {
-  # local OPT=$1
-  # case $OPT in
-  #   0)
-  #     # completely silent * * * * * * * * * * * * * * * * * * *
-  #     #
-  #     exec 4>/dev/null  # stdout:   disabled  (Shell process)
-  #     exec 5>/dev/null  # echo:     disabled  (Status command)
-  #     exec 2>/dev/null  # stderr:   disabled
-  #     ;;
-  #   1)
-  #     # status only * * * * * * * * * * * * * * * * * * * * * *
-  #     #
-  #     exec 4>/dev/null  # stdout:   disabled  (Shell process)
-  #     exec 5>&1         # echo:     ENABLED   (Status command)
-  #     exec 2>/dev/null  # stderr:   disabled
-  #     ;;
-  #   2)
-  #     # verbose * * * * * * * * * * * * * * * * * * * * * * * *
-  #     #
-  #     exec 4>&1         # stdout:   ENABLED   (Shell process)
-  #     exec 5>&1         # echo:     ENABLED   (Status command)
-  #     exec 2>&1         # stderr:   ENABLED
-  #     ;;
-  #   *)
-  #     # do nothing  * * * * * * * * * * * * * * * * * * * * * *
-  #     echo " " >/dev/null
-  #     ;;
-  # esac
-
   # We can't run `pretty` inside of an image build process,
   # only during a docker exec -it or docker run -it command.
   # So, we approximate its function here with some hard-coded
   # echoes.
 
-  echo -e -n "\033[1;37m\033[45m INIT: Creating Pipe for Instructions                 "
+  echo -e -n "\033[1;37m\033[45m INIT: Creating Pipe for Instructions             "
   [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
   echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Executing File Descriptor to Unblock Pipe      "
+  echo -e -n "\033[1;37m\033[45m INIT: Executing File Descriptor to Unblock Pipe  "
   exec 3<> $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
   echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Unlinking the Unblocked Pipe                   "
+  echo -e -n "\033[1;37m\033[45m INIT: Unlinking the Unblocked Pipe               "
   unlink $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
   echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Inserting Blank Space into Unblocked Pipe      "
+  echo -e -n "\033[1;37m\033[45m INIT: Inserting Blank Space into Unblocked Pipe  "
   $(echo ' ' 1>&3)
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
@@ -204,10 +177,6 @@ read_queued_instruction() {
 }
 
 delete_instructions_queue() {
-  exec 2>&1 # Restore stderr
   exec 3>&-
-  exec 4>&-
-  exec 5>&-
   [ -d $INSTRUCT_PATH ] && rm -f $INSTRUCT_PATH
-  unset INSTRUCT_PATH
 }
