@@ -39,7 +39,6 @@ add_openssl_instructions_to_queue() {
   openssl_make_install_openssl_version_build \
   openssl_create_openssl_shell_script \
   openssl_shrc_file_for_openssl_v111_env_var \
-  openssl_verify_openssl_version \
   openssl_remove_unnecessary_packages \
   EOP \
   ' ' 1>&3
@@ -130,22 +129,22 @@ openssl_shrc_file_for_openssl_v111_env_var() {
   echo "export OPENSSL_V111=${OPENSSL_HOME_LOCAL_BIN_PATH}/openssl.sh" > "${OPENSSL_HOME_PATH}/.shrc"
   
 }
-openssl_verify_openssl_version() {
-  local OUTPUT_MSG="Verified OpenSSL Version"
-  . ${OPENSSL_HOME_PATH}/.shrc
-  local VERIFIED="$($OPENSSL_V111 version 2>&1)"
-  # TODO: Uncomment and implement this block of code to conditionally report errors, if any.
-  # local RETURN_ONE=0
-  # if [ -z "${VERIFIED}" ] || [ "$(echo "${VERIFIED}" | sed 's/^.*\(not found\)$/\1/g')" == "not found" ]; then
-  #   OUTPUT_MSG="ERROR: Unable to Verify OpenSSL Version"
-  #   RETURN_ONE=1
-  # fi
-  # echo -e  "\033[7;33m${OUTPUT_MSG}\033[0m"
-  # [ $RETURN_ONE -eq 1 ] && return 1 # Tell further instructions to abort, the failure of this one is critical.
-  echo ""
-  echo -ne "OPENSSL_V111 printed: \n${VERIFIED}"
-  echo ""
-}
+# openssl_verify_openssl_version() {
+#   local OUTPUT_MSG="Verified OpenSSL Version"
+#   . ${OPENSSL_HOME_PATH}/.shrc
+#   local VERIFIED="$($OPENSSL_V111 version 2>&1)"
+#   # TODO: Uncomment and implement this block of code to conditionally report errors, if any.
+#   # local RETURN_ONE=0
+#   # if [ -z "${VERIFIED}" ] || [ "$(echo "${VERIFIED}" | sed 's/^.*\(not found\)$/\1/g')" == "not found" ]; then
+#   #   OUTPUT_MSG="ERROR: Unable to Verify OpenSSL Version"
+#   #   RETURN_ONE=1
+#   # fi
+#   # echo -e  "\033[7;33m${OUTPUT_MSG}\033[0m"
+#   # [ $RETURN_ONE -eq 1 ] && return 1 # Tell further instructions to abort, the failure of this one is critical.
+#   echo ""
+#   echo -ne "OPENSSL_V111 printed: \n${VERIFIED}"
+#   echo ""
+# }
 openssl_remove_unnecessary_packages() {
   local APK_FLAG=
   [ $1 -eq 0 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--quiet --no-progress'
