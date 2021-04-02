@@ -27,7 +27,6 @@ add_pgp_instructions_to_queue() {
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
 pgp_apk_add_packages() {
-  pretty "Adding Packages Using APK..."
   apk add \
     busybox-static \
     apk-tools-static && \
@@ -35,9 +34,6 @@ pgp_apk_add_packages() {
     gnupg \
     outils-jot \
     pinentry-gtk
-  [ $? -eq 0 ] && \
-  pretty --passed || \
-  pretty --failed
 }
 
 pgp_generate_asc_key_data() {
