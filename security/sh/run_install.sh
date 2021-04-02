@@ -77,6 +77,7 @@ run_install() {
   done
 
   # # Section 2 - Execution of Instructions - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
   for INSTALL_SCRIPT in $INSTRUCTION_SET_LIST; do
     local DESCRIPTION=$( \
       echo $INSTALL_SCRIPT | \
@@ -99,6 +100,8 @@ run_install() {
 
         [ $FIRST_RUN -eq 1 ] && export INSTALL_FUNC_NAME= || INSTALL_FUNC_NAME= # Prevent variable shadowing.
 
+        local CMD_LINE_NUM=1
+
         while [ "${INSTALL_FUNC_NAME}" != "EOP" ]; do
           # # # # # CRUD: Read
           read_queued_instruction
@@ -110,14 +113,13 @@ run_install() {
             
             if [ $OUTPUT_MODE -gt 0 ]; then
               PRETTY_DISPLAY_GLOBAL="${INSTALL_FUNC_NAME}"
-              if [ $FIRST_RUN -eq 1 ]; then
-                PRETTY_FG_COLOR_GLOBAL="\033[1;37m"
+              PRETTY_FG_COLOR_GLOBAL="\033[1;97m"
+              if [ $CMD_LINE_NUM -eq 2 ]; then
                 PRETTY_BG_COLOR_GLOBAL="\033[43m"
-              else
-                PRETTY_FG_COLOR_GLOBAL="\033[1;33m"
-                [ $(($FIRST_RUN % 2)) -eq 0 ] && \
-                PRETTY_BG_COLOR_GLOBAL="\033[45m" || \
-                PRETTY_BG_COLOR_GLOBAL="\033[46m"
+              elif [ $CMD_LINE_NUM -gt 2 ]; then
+                [ $(($CMD_LINE_NUM % 2)) -eq 1 ] && \
+                PRETTY_BG_COLOR_GLOBAL="\033[46m" || \
+                PRETTY_BG_COLOR_GLOBAL="\033[44m"
               fi
               pretty --test
             fi
@@ -153,6 +155,7 @@ run_install() {
             #   head -n1 \
             # )
           fi
+          CMD_LINE_NUM=$(($CMD_LINE_NUM + 1))
         done
         [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
       # # # # # CRUD: Delete
@@ -176,25 +179,25 @@ create_instructions_queue() {
   # So, we approximate its function here with some hard-coded
   # echoes.
 
-  echo -e -n "\033[1;37m\033[46m INIT: Creating Pipe for Instructions             "
+  echo -e -n "\033[0;30m\033[47m INIT: Creating Pipe for Instructions             "
   [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
   echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 
-  echo -e -n "\033[1;37m\033[46m INIT: Executing File Descriptor to Unblock Pipe  "
+  echo -e -n "\033[0;30m\033[47m INIT: Executing File Descriptor to Unblock Pipe  "
   exec 3<> $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
   echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 
-  echo -e -n "\033[1;37m\033[46m INIT: Unlinking the Unblocked Pipe               "
+  echo -e -n "\033[0;30m\033[47m INIT: Unlinking the Unblocked Pipe               "
   unlink $INSTRUCT_PATH
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
   echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 
-  echo -e -n "\033[1;37m\033[46m INIT: Inserting Blank Space into Unblocked Pipe  "
+  echo -e -n "\033[0;30m\033[47m INIT: Inserting Blank Space into Unblocked Pipe  "
   $(echo ' ' 1>&3)
   [ $? -eq 0 ] && \
   echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \

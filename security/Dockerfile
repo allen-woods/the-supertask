@@ -17,7 +17,7 @@ COPY --chown=root:root [ "./sh/install_openssl.sh", "/etc/profile.d/" ]
 COPY --chown=root:root [ "./sh/install_pgp.sh",     "/etc/profile.d/" ]
 COPY --chown=root:root [ "./sh/install_tls.sh",     "/etc/profile.d/" ]
 
-RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --status \
+RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose \
   /etc/profile.d/install_openssl.sh \
   /etc/profile.d/install_pgp.sh \
   /etc/profile.d/install_tls.sh" ]

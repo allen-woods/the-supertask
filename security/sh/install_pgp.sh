@@ -197,6 +197,4 @@ pgp_generate_asc_key_data() {
 
   # Shut down background process (no longer needed).
   pkill gpg-agent
-  
-  pretty "Generated PGP Data"
 }
