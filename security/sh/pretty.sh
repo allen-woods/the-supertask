@@ -151,9 +151,17 @@ pretty() {
     local TMP_TXT=
     for TMP_WORD in $PRETTY_DISPLAY_GLOBAL; do
     # ...We need to iterate over the words one at a time before printing to terminal.
+      local WORD_LEN=${#TMP_WORD}
+
+      if [ $WORD_LEN -ge $MAX_LEN ]; then
+        local DOT_STR="... "
+        local WORD_MAX=$(($MAX_LEN - ${#DOT_STR}))
+        TMP_WORD="${TMP_WORD:0:$WORD_MAX}${DOT_STR}"
+      fi
+
       if [ -z "${TMP_TXT}" ]; then
-      # Initialize TMP_TXT with the first word.
-        TMP_TXT="${TMP_WORD}"    
+        # Initialize TMP_TXT with the first word.
+        TMP_TXT="${TMP_WORD}"
       else
         if [ $((${#TMP_TXT} + ${#TMP_WORD})) -gt $MAX_LEN ]; then
         # If adding TMP_WORD to TMP_TXT will exceed available space...

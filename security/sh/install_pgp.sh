@@ -104,7 +104,7 @@ pgp_generate_asc_key_data() {
     -in ${PGP_DST_PATH}/id-aes256-wrap-pad-private-key-${ITER_STR}.pem \
     -outform PEM \
     -out ${PGP_DST_PATH}/id-aes256-wrap-pad-public-key-${ITER_STR}.pem \
-    -pass file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
+    -passout file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
     -algorithm RSA \
     -pkeyopt rsa_keygen_bits:4096
 

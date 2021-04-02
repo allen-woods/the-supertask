@@ -16,12 +16,10 @@
 export INSTRUCT_PATH=/tmp/instructs
 
 run_install() {
-  set -v
   local INSTRUCTION_SET_LIST=
   local OUTPUT_MODE=-1
   local HARD_STOP=0
   local FIRST_RUN=1
-  local PROC_ID=
 
   # TODO:
   # Use of file descriptors inside of Docker containers (specifically 4 and 5)
@@ -110,28 +108,59 @@ run_install() {
           if [ ! -z "${INSTALL_FUNC_NAME}" ]; then
             [ "${INSTALL_FUNC_NAME}" == "EOP" ] && continue # Halt once we have reached the end of instructions queue.
             
+            if [ $OUTPUT_MODE -gt 0 ]; then
+              PRETTY_DISPLAY_GLOBAL="${INSTALL_FUNC_NAME}"
+              if [ $FIRST_RUN -eq 1 ]; then
+                PRETTY_FG_COLOR_GLOBAL="\033[1;37m"
+                PRETTY_BG_COLOR_GLOBAL="\033[43m"
+              else
+                PRETTY_FG_COLOR_GLOBAL="\033[1;33m"
+                [ $(($FIRST_RUN % 2)) -eq 0 ] && \
+                PRETTY_BG_COLOR_GLOBAL="\033[45m" || \
+                PRETTY_BG_COLOR_GLOBAL="\033[46m"
+              fi
+              pretty --test
+            fi
+
+            local EXTRACT_PASS_FAIL=
             # Only allow verbose mode to show command output.
-            [ $OUTPUT_MODE -eq 2 ] && \
-            $INSTALL_FUNC_NAME $OUTPUT_MODE || \
-            $INSTALL_FUNC_NAME $OUTPUT_MODE >/dev/null 2>&1
-            # Capture the PID to allow for `wait` command.
-            PROC_ID=$( \
-              ps -o pid,args | \
-              grep -e ${INSTALL_FUNC_NAME} | \
-              grep -v "grep" | \
-              awk '{print $1}' | \
-              sed 's/PID//' | \
-              head -n1 \
-            )
-            [ ! -z "${PROC_ID}" ] && wait $PROC_ID || sleep 0.25s
-            [ $? -gt 0 ] && echo -e "\033[7;33mERROR:\033[7;31m Call to \"${INSTALL_FUNC_NAME}\" or \"wait ${PROC_ID}\" failed.\033[0m" && HARD_STOP=1 && break
+            if [ $OUTPUT_MODE -eq 2 ]; then
+              $INSTALL_FUNC_NAME $OUTPUT_MODE && EXTRACT_PASS_FAIL=$?
+            else
+              $INSTALL_FUNC_NAME $OUTPUT_MODE >/dev/null 2>&1 && EXTRACT_PASS_FAIL=$?
+            fi
+
+            sleep 0.25s
+            if [ $EXTRACT_PASS_FAIL -eq 0 ]; then
+              [ $OUTPUT_MODE -gt 0 ] && pretty --passed
+            else
+              [ $OUTPUT_MODE -gt 0 ] && pretty --failed
+              HARD_STOP=1
+              break
+            fi
+
+            # This code could be used to capture the PID to allow for `wait` command.
+            # PID capture requires INSTALL_FUNC_NAME to be run as a background process.
+            # Because running instructions in the background causes critical failure,
+            # this code is preserved here as a comment for completeness.
+            #
+            # PROC_ID=$( \
+            #   ps -o pid,args | \
+            #   grep -e ${INSTALL_FUNC_NAME} | \
+            #   grep -v "grep" | \
+            #   awk '{print $1}' | \
+            #   sed 's/PID//' | \
+            #   head -n1 \
+            # )
           fi
         done
         [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
       # # # # # CRUD: Delete
       delete_instructions_queue
       # # # # #
-      [ $? -gt 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && break
+
+      # [ $? -gt 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && break
+
     fi
     FIRST_RUN=$(($FIRST_RUN + 1)) # Prevent variable shadowing of INSTALL_FUNC_NAME on line 74.
   done
@@ -147,29 +176,29 @@ create_instructions_queue() {
   # So, we approximate its function here with some hard-coded
   # echoes.
 
-  echo -e -n "\033[1;37m\033[45m INIT: Creating Pipe for Instructions             "
+  echo -e -n "\033[1;37m\033[46m INIT: Creating Pipe for Instructions             "
   [ ! -d $INSTRUCT_PATH ] && mkfifo $INSTRUCT_PATH
   [ $? -eq 0 ] && \
-  echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
+  echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
+  echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Executing File Descriptor to Unblock Pipe  "
+  echo -e -n "\033[1;37m\033[46m INIT: Executing File Descriptor to Unblock Pipe  "
   exec 3<> $INSTRUCT_PATH
   [ $? -eq 0 ] && \
-  echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
+  echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
+  echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Unlinking the Unblocked Pipe               "
+  echo -e -n "\033[1;37m\033[46m INIT: Unlinking the Unblocked Pipe               "
   unlink $INSTRUCT_PATH
   [ $? -eq 0 ] && \
-  echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
+  echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
+  echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 
-  echo -e -n "\033[1;37m\033[45m INIT: Inserting Blank Space into Unblocked Pipe  "
+  echo -e -n "\033[1;37m\033[46m INIT: Inserting Blank Space into Unblocked Pipe  "
   $(echo ' ' 1>&3)
   [ $? -eq 0 ] && \
-  echo -e "\033[1;37m\033[42m PASSED! \033[0m" || \
-  echo -e "\033[1;37m\033[41m FAILED. \033[0m" 
+  echo -e "\033[1;37m\033[42m PASSED!  \033[0m" || \
+  echo -e "\033[1;37m\033[41m FAILED.  \033[0m" 
 }
 
 read_queued_instruction() {
@@ -177,6 +206,12 @@ read_queued_instruction() {
 }
 
 delete_instructions_queue() {
+  # echo -e "\033[1;30m\033[47m Removing File Descriptor 3 \033[0m"
+  sleep 0.25s
   exec 3>&-
-  [ -d $INSTRUCT_PATH ] && rm -f $INSTRUCT_PATH
+  sleep 0.25s
+  # echo -e "\033[1;30m\033[47m Forcefully Removing Directory \"${INSTRUCT_PATH}\" \033[0m"
+  [ -d $INSTRUCT_PATH ] && rm -f "${INSTRUCT_PATH}"
+
+  # echo -e "\033[1;30m\033[47m Instruction Queue Removed \033[0m"
 }

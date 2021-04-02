@@ -51,7 +51,6 @@ openssl_apk_add_packages() {
   local APK_FLAG=
   [ $1 -eq 0 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--quiet --no-progress'
   [ $1 -eq 2 ] && [ -z "${APK_FLAG}" ] && APK_FLAG='--verbose'
-  pretty "Adding Packages Using apk.static" --fg="\033[1;37m" --bg="\033[43m" --test
   apk ${APK_FLAG} \
   --no-cache add \
     busybox-static \
@@ -64,7 +63,6 @@ openssl_apk_add_packages() {
     outils-jot \
     perl \
     pinentry-gtk
-  pretty --passed
 }
 openssl_create_home_build_dir() {
   [ ! -d $OPENSSL_HOME_BUILD_PATH ] && mkdir $OPENSSL_HOME_BUILD_PATH
