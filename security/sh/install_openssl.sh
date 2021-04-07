@@ -39,7 +39,6 @@ add_openssl_instructions_to_queue() {
   openssl_make_install_openssl_version_build \
   openssl_create_openssl_shell_script \
   openssl_shrc_file_for_openssl_v111_env_var \
-  openssl_remove_unnecessary_packages \
   EOP \
   ' ' 1>&3
 }

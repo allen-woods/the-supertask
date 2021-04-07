@@ -37,14 +37,18 @@ pgp_apk_add_packages() {
 }
 
 pgp_generate_asc_key_data() {
-  # Default value is 4, but can be adjusted using $1 argument.
-  local MAX_ITER=${1:-4}
+  local MAX_ITER=4
   local ITER=1
 
+  export OPENSSL_V111=$HOME/local/bin/openssl.sh
+
   # Create a directory dedicated to the raw files.
-  local PGP_SRC_PATH=$HOME/pgp_raw_files && [ ! -d "${PGP_SRC_PATH}" ] && mkdir -m 0700 $PGP_SRC_PATH
+  local PGP_SRC_PATH=$HOME/pgp_raw_files
+  mkdir -pm 0700 $PGP_SRC_PATH
+  
   # Create a directory dedicated to the encrypted (wrapped) files.
-  local PGP_DST_PATH=$HOME/pgp_enc_files && [ ! -d "${PGP_DST_PATH}" ] && mkdir -m 0700 $PGP_DST_PATH
+  local PGP_DST_PATH=$HOME/pgp_enc_files
+  mkdir -pm 0700 $PGP_DST_PATH
 
   # Run a background process that corrects pinentry failures in GnuPG.
   gpg-agent --daemon --pinentry-program pinentry-gtk
@@ -70,39 +74,47 @@ pgp_generate_asc_key_data() {
 
     # * * * * *
 
-    # Generate length of passphrase for private key.
-    local PRIVATE_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
-    # Generate passphrase for private key.
-    local PRIVATE_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PRIVATE_KEY_PHRASE_LEN} | head -n1)
-    # Persist passphrase to file.
-    echo "${PRIVATE_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase
+    # NOTE:
+    #       Commented code below is provided here for completeness only.
+    #       The use of passphrases with RSA keypairs involved in key wrap
+    #       algorithms presents an additional layer of complexity for
+    #       encrypting data-at-rest.
+    #
+    #       We omit these passphrases here to reduce that complexity on
+    #       purpose.
+
+    # # Generate length of passphrase for private key.
+    # local PRIVATE_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
+    # # Generate passphrase for private key.
+    # local PRIVATE_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PRIVATE_KEY_PHRASE_LEN} | head -n1)
+    # # Persist passphrase to file.
+    # echo "${PRIVATE_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase
 
     # Generate private key.
     $OPENSSL_V111 genpkey \
     -out ${PGP_DST_PATH}/id-aes256-wrap-pad-private-key-${ITER_STR}.pem \
     -outform PEM \
-    -pass ${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase \
     -algorithm RSA \
     -pkeyopt rsa_keygen_bits:4096
+    # -pass file:${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase \
 
     # * * * * *
 
-    # Generate length of passphrase for public key.
-    local PUBLIC_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
-    # Generate passphrase for public key.
-    local PUBLIC_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PUBLIC_KEY_PHRASE_LEN} | head -n1)
-    # Persist passphrase to file.
-    echo "${PUBLIC_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase
+    # # Generate length of passphrase for public key.
+    # local PUBLIC_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
+    # # Generate passphrase for public key.
+    # local PUBLIC_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PUBLIC_KEY_PHRASE_LEN} | head -n1)
+    # # Persist passphrase to file.
+    # echo "${PUBLIC_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase
 
     # Generate public key.
     $OPENSSL_V111 rsa \
     -inform PEM \
     -in ${PGP_DST_PATH}/id-aes256-wrap-pad-private-key-${ITER_STR}.pem \
     -outform PEM \
-    -out ${PGP_DST_PATH}/id-aes256-wrap-pad-public-key-${ITER_STR}.pem \
-    -passout file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
-    -algorithm RSA \
-    -pkeyopt rsa_keygen_bits:4096
+    -pubout \
+    -out ${PGP_DST_PATH}/id-aes256-wrap-pad-public-key-${ITER_STR}.pem
+    # -passout file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
 
     # * * * * *
 
@@ -133,10 +145,11 @@ pgp_generate_asc_key_data() {
     -in ${PGP_SRC_PATH}/ephemeral-aes-${ITER_STR}.bin \
     -out ${PGP_DST_PATH}/ephemeral-aes-${ITER_STR}.wrapped \
     -pubin \
-    -inkey ${PGP_DST_PATH}/id-aes256-wrap-pad-private-key-${ITER_STR}.pem \
+    -inkey ${PGP_DST_PATH}/id-aes256-wrap-pad-public-key-${ITER_STR}.pem \
     -pkeyopt rsa_padding_mode:oaep \
     -pkeyopt rsa_oaep_md:sha1 \
     -pkeyopt rsa_mgf1_md:sha1
+    # -passin file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
 
     # * * * * *
 
