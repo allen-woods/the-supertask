@@ -104,7 +104,7 @@ services:
     build:
       context: ./security
       dockerfile: ./Dockerfile
-      target: supervault
+      target: vault-builder
     # depends_on:
     #   - wrapper
     restart: always
