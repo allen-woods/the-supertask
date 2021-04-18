@@ -241,6 +241,7 @@ pgp_generate_key_data_init_and_unseal_vault() {
     [ $ITER -eq $MAX_ITER ] && DONE_MSG="%echo Done!"
 
     # Generate the batch for this specific PGP key.
+    # TODO: Remove tester email and real name.
     printf '%s\n' \
       "%echo Generating Key [ $ITER / $MAX_ITER ]" \
       "Key-Type: RSA" \
