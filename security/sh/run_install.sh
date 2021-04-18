@@ -143,6 +143,7 @@ run_install() {
 
             # This code could be used to capture the PID to allow for `wait` command.
             # PID capture requires INSTALL_FUNC_NAME to be run as a background process.
+            #
             # Because running instructions in the background causes critical failure,
             # this code is preserved here as a comment for completeness.
             #

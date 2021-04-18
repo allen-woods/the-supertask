@@ -23,8 +23,7 @@ add_pgp_instructions_to_queue() {
   pgp_start_gpg_agent_as_daemon \
   pgp_insure_vault_addr_exported \
   pgp_run_vault_server_as_background_process \
-  pgp_generate_asc_key_data \
-  pgp_pkill_gpg_agent_daemon \
+  pgp_generate_key_data_init_and_unseal_vault \
   EOP \
   ' ' 1>&3
 }
@@ -38,62 +37,102 @@ pgp_apk_add_packages() {
   apk.static add \
     curl \
     gnupg \
+    jq \
     outils-jot \
-    pinentry-gtk \
     vim
 }
 pgp_create_home_directories() {
+  # Where data encrypted with id-aes256-wrap-pad will be stored.
   local HOME_WRAPPED_PATH=$HOME/.wrapped
+  [ ! -d "${HOME_WRAPPED_PATH}" ] && \
+    mkdir -pm 0700 "${HOME_WRAPPED_PATH}" && \
+    chown root:root "${HOME_WRAPPED_PATH}"
+
+  # Where response data from `vault init` used to unseal Vault will be stored.
   local HOME_UNSEAL_PATH=$HOME/.unseal
+  [ ! -d "${HOME_UNSEAL_PATH}" ] && \
+    mkdir -pm 0700 "${HOME_UNSEAL_PATH}" && \
+    chown root:root "${HOME_UNSEAL_PATH}"
+
+  # Where unencrypted data will be stored.
   local HOME_RAW_PATH=$HOME/.raw
-  [ ! -d "${HOME_WRAPPED_PATH}" ] && mkdir -pm 0700 "${HOME_WRAPPED_PATH}"
-  [ ! -d "${HOME_UNSEAL_PATH}" ] && mkdir -pm 0700 "${HOME_UNSEAL_PATH}"
-  [ ! -d "${HOME_RAW_PATH}" ] && mkdir -pm 0700 "${HOME_RAW_PATH}"
+  [ ! -d "${HOME_RAW_PATH}" ] && \
+    mkdir -pm 0700 "${HOME_RAW_PATH}" && \
+    chown root:root "${HOME_RAW_PATH}"
+
+  # Where encrypted data will be stored.
+  local HOME_ENC_PATH=$HOME/.enc
+  [ ! -d "${HOME_ENC_PATH}" ] && \
+    mkdir -pm 0700 "${HOME_ENC_PATH}" && \
+    chown root:root "${HOME_ENC_PATH}"
 }
 pgp_start_gpg_agent_as_daemon() {
-  gpg-agent --daemon --pinentry-program pinentry-gtk
+  gpg-agent --daemon
 }
 pgp_insure_vault_addr_exported() {
   [ -z "${VAULT_ADDR}" ] && export VAULT_ADDR="http://127.0.0.1:8200"
 }
 pgp_run_vault_server_as_background_process() {
   ( \
-    /usr/bin/dumb-init /bin/sh /usr/local/bin/docker-entrypoint.sh server & \
+    /usr/bin/dumb-init \
+    /bin/sh \
+    /usr/local/bin/docker-entrypoint.sh \
+    server & \
   ) >/dev/null 2>&1
 }
-pgp_generate_asc_key_data() {
+pgp_generate_key_data_init_and_unseal_vault() {
   # The starting iteration to generate is always 1.
   local ITER=${ITER:-1}
   # Default max number of keys to generate is 4.
   local MAX_ITER=${MAX_ITER:-4}
-  # NOTE: In order to adjust MAX_ITER, you must hard-code it. Use of $1 argument always results in the incoming value of `2`.
+  # If a second argument exists and is an integer, defer to this user-specified value.
+  [ ! -z "${2}" ] && [ -z "$( echo -n "${2}" | sed 's/[0-9]\{1,\}//g' )"] && MAX_ITER=$2
 
   # These are paths to PGP keys required by the `vault operator init` CLI command.
   local ROOT_TOKEN_PGP_KEY_ASC_FILE=
   local PGP_KEYS_COMMA_DELIMITED_ASC_FILES=
   
+
+  # export OPENSSL_V111=$HOME/local/bin/openssl.sh
+
+  # # Create a directory dedicated to the raw files.
+  # local PGP_SRC_PATH=$HOME/pgp_raw_files
+  # mkdir -pm 0700 $PGP_SRC_PATH
+  
+  # # Create a directory dedicated to the encrypted (wrapped) files.
+  # local PGP_DST_PATH=$HOME/pgp_enc_files
+  # mkdir -pm 0700 $PGP_DST_PATH
+
   # This value is used inside the loop(s) below to assign path strings to the above file paths.
   local n=0
-
-  # export OPENSSL_V111=$HOME/local/bin/openssl.sh # OpenSSL Might Not Be Needed.
-
-  # Create a directory dedicated to the raw files.
-  local PGP_SRC_PATH=$HOME/pgp_raw_files
-  mkdir -pm 0700 $PGP_SRC_PATH
-  
-  # Create a directory dedicated to the encrypted (wrapped) files.
-  local PGP_DST_PATH=$HOME/pgp_enc_files
-  mkdir -pm 0700 $PGP_DST_PATH
-
+  # JSON: Start building the payload string used to communicate with $(VAULT_ADDR}/v1/sys/init endpoint.
+  local JSON_SYS_INIT_PAYLOAD="{"
 
   # Iterate through the PGP keys in the batch.
   while [ $ITER -le $MAX_ITER ]; do
-    local BATCH_FILE=${BATCH_PATH}/.$(tr -cd a-f0-9 < /dev/random | fold -w32 | head -n1)
-    local PHRASE_LEN=$(jot -w %i -r 1 20 99)
-    local PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PHRASE_LEN} | head -n1)
-    local ITER_STR=$(printf '%0'"${#MAX_ITER}"'d' ${ITER})
-    local DONE_MSG=${DONE_MSG:-"%echo Key Details Complete."}
-    [ $ITER -eq $MAX_ITER ] && DONE_MSG="%echo Done!"
+    # Initialize a variable whose value contains a dynamic string whose padded
+    # leading zeros are derived from the character length of $MAX_ITER.
+    local ITER_STR=$( \
+      printf '%0'"${#MAX_ITER}"'d' ${ITER} \
+    )
+    # Generate random hexadecimal filename with length of 32 characters.
+    local BATCH_FILE=${BATCH_PATH}/.$( \
+      tr -cd a-f0-9 < /dev/random | \
+      fold -w32 | \
+      head -n 1 \
+    )
+
+    # Generate random integer in the range (20, 99).
+    local PHRASE_LEN=$( \
+      jot -w %i -r 1 20 99 \
+    )
+
+    # Generate random passphrase with random length of ${PHRASE_LEN}.
+    local PHRASE=$( \
+      tr -cd [[:alnum:][:punct:]] < /dev/random | \
+      fold -w${PHRASE_LEN} | \
+      head -n 1 \
+    )
 
     # # Generate the payload AES file.
     # $OPENSSL_V111 rand -out ${PGP_SRC_PATH}/payload-aes-${ITER_STR}.bin 32
@@ -156,7 +195,7 @@ pgp_generate_asc_key_data() {
     # # * * * * *
 
     # Persist passphrase of PGP key to file.
-    echo "${PHRASE}" > $HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw
+    echo -n "${PHRASE}" > $HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw
 
     # # Encrypt the PGP key's passphrase file using the payload.
     # $OPENSSL_V111 enc \
@@ -198,6 +237,9 @@ pgp_generate_asc_key_data() {
     # # This *.bin file can be safely distributed, but be careful with the
     # # corresponding private key!
 
+    local DONE_MSG=${DONE_MSG:-"%echo Key Details Complete."}
+    [ $ITER -eq $MAX_ITER ] && DONE_MSG="%echo Done!"
+
     # Generate the batch for this specific PGP key.
     printf '%s\n' \
       "%echo Generating Key [ $ITER / $MAX_ITER ]" \
@@ -215,7 +257,6 @@ pgp_generate_asc_key_data() {
 
     # Generate the PGP key by running the batch file.
     gpg \
-    --pinentry-mode loopback \
     --verbose \
     --batch \
     --gen-key $BATCH_FILE
@@ -225,15 +266,27 @@ pgp_generate_asc_key_data() {
 
     # Capture the most recently generated revocation file.
     # We need to parse its hexadecimal filename to export the key as an ASC file.
-    local MOST_RECENT_REVOC_CERT=$( ls -t ${HOME}/.gnupg/openpgp-revocs.d | head -n1 )
-    local PGP_GENERATED_KEY_ID_HEX=$( basename ${MOST_RECENT_REVOC_CERT} | cut -f1 -d '.' )
+    local PGP_GENERATED_KEY_ID_HEX=$( \
+      ls -t ${HOME}/.gnupg/openpgp-revocs.d | \
+      head -n 1 | \
+      cut -f 1 -d '.' \
+    )
+
     local PGP_EXPORTED_ASC_KEY_FILE="${PGP_DST_PATH}/key_${ITER_STR}.asc"
 
     # Export the key in base64 encoded *.asc format (what Vault consumes).
+    # Use tr to get rid of all newlines.
     gpg \
-    --export \
+    --verbose \
+    --pinentry-mode loopback \
+    --passphrase "$( \
+      cat $HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw | \
+      tr -d '\n' \
+    )" \
+    --export-secret-keys \
     ${PGP_GENERATED_KEY_ID_HEX} | \
-    base64 > ${PGP_EXPORTED_ASC_KEY_FILE}
+    base64 | \
+    tr -d '\n' > ${PGP_EXPORTED_ASC_KEY_FILE}
 
     # Increment the value of `n`.
     # IMPORTANT:  We must increment in advance to prevent overrun of
@@ -242,36 +295,118 @@ pgp_generate_asc_key_data() {
     n=$(($n + 1))
 
     if [ $n -eq 1 ]; then
-      [ -z "${ROOT_TOKEN_PGP_KEY_ASC_FILE}" ] && ROOT_TOKEN_PGP_KEY_ASC_FILE="${PGP_EXPORTED_ASC_KEY_FILE}"
+      # Latch in the exported key data (root token key).
+      [ -z "${ROOT_TOKEN_PGP_KEY_ASC_FILE}" ] && \
+      ROOT_TOKEN_PGP_KEY_ASC_FILE="${PGP_EXPORTED_ASC_KEY_FILE}"
+
+      # JSON: Append the root token encryption key to payload string.
+      JSON_SYS_INIT_PAYLOAD="${JSON_SYS_INIT_PAYLOAD}\"root_token_pgp_key\":\"$( \
+        cat ${PGP_EXPORTED_ASC_KEY_FILE} | \
+        tr -d '\n' \
+      )\",\"pgp_keys\":["
+
     elif [ $n -gt 1 ]; then
+      # Latch in the exported key data (unseal key shares).
       [ -z "${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" ] && \
       PGP_KEYS_COMMA_DELIMITED_ASC_FILES="${PGP_EXPORTED_ASC_KEY_FILE}" || \
       PGP_KEYS_COMMA_DELIMITED_ASC_FILES="${PGP_KEYS_COMMA_DELIMITED_ASC_FILES},${PGP_EXPORTED_ASC_KEY_FILE}"
+
+      # Conditionally insert commas, except for final asc key.
+      local COMMA_STR=${COMMA_STR:-","}
+      [ $ITER -eq $MAX_ITER ] && COMMA_STR=
+
+      # JSON: Append the base64 encoded contents of each asc key to payload string.
+      JSON_SYS_INIT_PAYLOAD="${JSON_SYS_INIT_PAYLOAD}\"$( cat ${PGP_EXPORTED_ASC_KEY_FILE} | tr -d '\n' )\"${COMMA_STR}"
     fi
 
     # Increment forward to the next key.
     ITER=$(($ITER + 1))
   done
 
-  echo -e "\033[1;37m\033[41m Listing Secret Keys...\033[0m"
-  gpg --list-secret-keys
-  echo -e "\033[1;37m\033[41m Listing Public Keys...\033[0m"
-  gpg --list-public-keys
-  
-  printf '%s\n' "$( \
-    vault operator init \
-    -key-shares=$((n -1)) \
-    -key-threshold=$((n - 2)) \
-    -root-token-pgp-key=${ROOT_TOKEN_PGP_KEY_ASC_FILE} \
-    -pgp-keys=${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} \
-  )" > $HOME/.unseal/init.txt
+  # JSON: Append our secret shares to payload string (synonymous with key-shares),
+  #       and append our secret threshold to payload string (synonymous with key-threshold).
+  JSON_SYS_INIT_PAYLOAD="${JSON_SYS_INIT_PAYLOAD}],\"secret_shares\":$(($n - 1)),\"secret_threshold\":$(($n - 2))}"
 
-  echo -e "\033[0;32m\033[40m$( cat -n $HOME/.unseal/init.txt )\033[0m"
+  # JSON: Send our payload string to the ${VAULT_ADDR}/v1/sys/init endpoint.
+  curl \
+    --request PUT \
+    --data "${JSON_SYS_INIT_PAYLOAD}" \
+    ${VAULT_ADDR}/v1/sys/init | \
+    jq > /response.txt
 
-  local UNSEAL_1_BASE64=$( sed '1q; s/^Unseal Key 1: \(.*\)$/\1/g;' $HOME/.unseal/init.txt )
-  echo -e "\033[1;37m\033[41m Attempting Decode of Unseal Key 1...\033[0m"
-  echo "${UNSEAL_1_BASE64}" | xxd -r -ps | gpg -d
-  # --passphrase $( sed '1q' $HOME/.raw/pgp-key-2-asc-passphrase.raw )
+  local SYS_INIT_KEYS_LINE=-1
+  local UNSEAL_RESPONSE=
+  local INITIAL_ROOT_TOKEN=
+
+  n=0 # Reset value of 'n'.
+
+  while IFS= read SYS_UNSEAL_LINE; do
+    n=$(($n + 1))
+
+    if [ ! -z "$( echo "${SYS_UNSEAL_LINE}" | grep -o '"keys":' )" ]; then
+      # Record the line number where the 'keys' field is located.
+      [ $SYS_INIT_KEYS_LINE -eq -1 ] && SYS_INIT_KEYS_LINE=$n
+
+    elif [ ! -z "$( echo "${SYS_UNSEAL_LINE}" | grep -o '],' )" ]; then
+      # Delete the line number.
+      [ $SYS_INIT_KEYS_LINE -gt -1 ] && SYS_INIT_KEYS_LINE=-1
+
+    elif [ ! -z "$( echo "${SYS_UNSEAL_LINE}" | grep -o '"root_token":' )" ]; then
+      # Decrypt the initial root token.
+      INITIAL_ROOT_TOKEN="$( \
+        echo "${SYS_UNSEAL_LINE}" | \
+        sed "s/^.*\"root_token\":.*\"\([^ ]\{4,\}\)\".*$/\1/g" | \
+        base64 -d | \
+        gpg \
+        --pinentry-mode loopback \
+        --decrypt \
+        --passphrase "$( \
+          sed '1q' < ${HOME}/.raw/pgp-key-1-asc-passphrase.raw | \
+          tr -d '\n' \
+        )" | tr -d '\n' \
+      )"
+
+    else
+      if [ $SYS_INIT_KEYS_LINE -gt -1 ]; then
+        # Decrypt keys.
+
+        local UNSEAL_KEY_NUM=$(($n + 1 - $SYS_INIT_KEYS_LINE))
+        if [ $UNSEAL_KEY_NUM -le $MAX_ITER ]; then
+          local UNSEAL_KEY_STR="$( \
+            echo "${SYS_UNSEAL_LINE}" | \
+            sed "s/^.*\"\([a-f0-9]\{2,\}\)\"[,]\{0,1\}.*$/\1/g;" | \
+            xxd -r -ps | \
+            gpg \
+            --pinentry-mode loopback \
+            --decrypt \
+            --passphrase "$( \
+              sed '1q' < ${HOME}/.raw/pgp-key-${UNSEAL_KEY_NUM}-asc-passphrase.raw | \
+              tr -d '\n' \
+            )" | tr -d '\n' \
+          )"
+          local JSON_SYS_UNSEAL_PAYLOAD="{\"key\":\"${UNSEAL_KEY_STR}\"}"
+          UNSEAL_RESPONSE="$( \
+            curl \
+            --request PUT \
+            --data "${JSON_SYS_UNSEAL_PAYLOAD}" \
+            ${VAULT_ADDR}/v1/sys/unseal | \
+            tr -d '\n' \
+          )"
+
+        else
+          echo -e "\033[1;31m\033[47m Number of Key Shares Exceeded! \033[0m"
+        fi
+      fi
+      if [ ! -z "$( echo ${UNSEAL_RESPONSE} | grep -o '0,' )" ] && \
+      [ ! -z "${INITIAL_ROOT_TOKEN}" ]; then
+        # Display our results once Vault is unsealed and the initial root token has been decrypted.
+        echo -e "\033[0;37m\033[43m$( echo "${UNSEAL_RESPONSE}" | jq )\033[0m"
+        echo -e "\033[1;33m\033[40mThe Initial Root Token is:\033[0;33m\033[40m\n${INITIAL_ROOT_TOKEN}\033[0m\n"
+        break
+
+      fi
+    fi
+  done < response.txt
 }
 pgp_pkill_gpg_agent_daemon() {
   pkill gpg-agent
