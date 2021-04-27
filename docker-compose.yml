@@ -1,6 +1,20 @@
 version: '3'
 
 services:
+  caddy:
+    container_name: caddy_svc
+    build:
+      context: ./caddy
+      dockerfile: ./Dockerfile
+    restart: always
+    ports:
+      - target: 443
+        published: 443
+        protocol: tls
+        mode: host
+    networks:
+      - frontend
+
   # Our golang GraphQL server that sends gRPC requests.
   api:
     container_name: api_svc

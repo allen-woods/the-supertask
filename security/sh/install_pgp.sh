@@ -43,25 +43,25 @@ pgp_apk_add_packages() {
 }
 pgp_create_home_directories() {
   # Where data encrypted with id-aes256-wrap-pad will be stored.
-  local HOME_WRAPPED_PATH=$HOME/.wrapped
+  local HOME_WRAPPED_PATH=${HOME_WRAPPED_PATH:-$HOME/.wrapped}
   [ ! -d "${HOME_WRAPPED_PATH}" ] && \
     mkdir -pm 0700 "${HOME_WRAPPED_PATH}" && \
     chown root:root "${HOME_WRAPPED_PATH}"
 
   # Where response data from `vault init` used to unseal Vault will be stored.
-  local HOME_UNSEAL_PATH=$HOME/.unseal
+  local HOME_UNSEAL_PATH=${HOME_UNSEAL_PATH:-$HOME/.unseal}
   [ ! -d "${HOME_UNSEAL_PATH}" ] && \
     mkdir -pm 0700 "${HOME_UNSEAL_PATH}" && \
     chown root:root "${HOME_UNSEAL_PATH}"
 
   # Where unencrypted data will be stored.
-  local HOME_RAW_PATH=$HOME/.raw
+  local HOME_RAW_PATH=${HOME_RAW_PATH:-$HOME/.raw}
   [ ! -d "${HOME_RAW_PATH}" ] && \
     mkdir -pm 0700 "${HOME_RAW_PATH}" && \
     chown root:root "${HOME_RAW_PATH}"
 
   # Where encrypted data will be stored.
-  local HOME_ENC_PATH=$HOME/.enc
+  local HOME_ENC_PATH=${HOME_ENC_PATH:-$HOME/.enc}
   [ ! -d "${HOME_ENC_PATH}" ] && \
     mkdir -pm 0700 "${HOME_ENC_PATH}" && \
     chown root:root "${HOME_ENC_PATH}"
