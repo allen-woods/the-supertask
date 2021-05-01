@@ -7,18 +7,18 @@
 #       id-aes256-wrap-pad algorithm as implemented by a patched compile of
 #       OpenSSL.
 
-FROM vault:latest AS vault-builder
+FROM alpine:3.13.5 AS vault-builder
 
 WORKDIR /
-COPY --chown=root:root [ "./vault/config",          "/vault/config/" ]
-COPY --chown=root:root [ "./tls/.admin",            "/root/"]
+# COPY --chown=root:root [ "./vault/config",          "/vault/config/" ]
+# COPY --chown=root:root [ "./tls/.admin",            "/root/"]
 COPY --chown=root:root [ "./sh/pretty.sh",          "/etc/profile.d/" ]
 COPY --chown=root:root [ "./sh/run_install.sh",     "/etc/profile.d/" ]
-# COPY --chown=root:root [ "./sh/install_openssl.sh", "/etc/profile.d/" ]
-COPY --chown=root:root [ "./sh/install_pgp.sh",     "/etc/profile.d/" ]
+COPY --chown=root:root [ "./sh/install_openssl.sh", "/etc/profile.d/" ]
+# COPY --chown=root:root [ "./sh/install_pgp.sh",     "/etc/profile.d/" ]
 # COPY --chown=root:root [ "./sh/install_tls.sh",     "/etc/profile.d/" ]
 
-RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_pgp.sh" ]
+RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_openssl.sh" ]
 
 FROM vault:latest AS supervault
 

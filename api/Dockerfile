@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM golang:1.16.3-alpine3.13
 
 # Set the working directory to where the code is copied.
 # WORKDIR /

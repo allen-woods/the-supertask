@@ -21,22 +21,8 @@ run_install() {
   local HARD_STOP=0
   local FIRST_RUN=1
 
-  # TODO:
-  # Use of file descriptors inside of Docker containers (specifically 4 and 5)
-  # are throwing errors. Due to this, as well as a security flaw surrounding
-  # file descriptors inside of containers, we need to sunset the use of file
-  # descriptors. Instead:
-  #
-  #   * Use $OUTPUT_MODE to tell install functions to use -q or -v equivalents.
-  #   * Assign RUN_INSTALL_PRETTY_<STR> values from inside install functions.
-  #   * Control whether messages are displayed within run_install.
-  #
-  # This represents a massive rewrite to a lot of functions, but will function
-  # as desired in the original design.
-  #
-  # Lesson to be learned here is: Don't Re-Invent the Wheel!
-
   # # Section 1 - Validation of Arguments - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
   for OPT in "$@"; do # Iterate over every incoming argument.
     case $OPT in      # Check the value of each argument.
       -Q|--quiet)     # Silent running flag found.
@@ -144,35 +130,31 @@ run_install() {
             # This code could be used to capture the PID to allow for `wait` command.
             # PID capture requires INSTALL_FUNC_NAME to be run as a background process.
             #
-            # Because running instructions in the background causes critical failure,
-            # this code is preserved here as a comment for completeness.
+            # Because running instructions in the background causes critical failure
+            # of this script, the following code is preserved here as a comment for 
+            # completeness.
             #
             # PROC_ID=$( \
             #   ps -o pid,args | \
-            #   grep -e ${INSTALL_FUNC_NAME} | \
-            #   grep -v "grep" | \
-            #   awk '{print $1}' | \
-            #   sed 's/PID//' | \
-            #   head -n1 \
+            #   awk "/${INSTALL_FUNC_NAME}/ { print $1 }" \
             # )
+
           fi
           CMD_LINE_NUM=$(($CMD_LINE_NUM + 1))
         done
-        [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
       # # # # # CRUD: Delete
       delete_instructions_queue
       # # # # #
 
-      # [ $? -gt 0 ] && echo "ERROR: Call to \"delete_instructions_queue\" failed." && HARD_STOP=1 && break
+      [ $HARD_STOP -eq 1 ] && break; # Halt iterations completely after critical error.
 
     fi
     FIRST_RUN=$(($FIRST_RUN + 1)) # Prevent variable shadowing of INSTALL_FUNC_NAME on line 74.
   done
   unset INSTRUCT_PATH
-  [ $HARD_STOP -eq 1 ] && return 1 # Something went really wrong, shut everything down.
 }
 
-# Instructions Queue CRUD Functions
+# # Section 3 - Instructions Queue CRUD Functions - - - - - - - - - - - - - - - - - - - - - - - - -
 
 create_instructions_queue() {
   # We can't run `pretty` inside of an image build process,

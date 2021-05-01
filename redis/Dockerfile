@@ -1,4 +1,4 @@
-FROM redis:alpine
+FROM redis:6.2.2-alpine3.13
 
 # Set working directory to the root of the container.
 # WORKDIR /
