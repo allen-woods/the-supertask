@@ -6,3 +6,5 @@
 !/pgp/vault_operator_init_pgp_key_shares.sh
 /private_files/**
 !/private_files/.gitkeep
+/credentials/**
+!/credentials/.gitkeep

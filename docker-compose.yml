@@ -7,6 +7,7 @@ services:
     build:
       context: ./api
       dockerfile: ./Dockerfile
+    image: the-supertask-api:tag
     depends_on:
       - redis
       - user
@@ -18,7 +19,6 @@ services:
         mode: host
     networks:
       - backend
-
   # The MongoDB instance that holds our databases.
   mongo:
     container_name: mongo_svc
@@ -37,6 +37,7 @@ services:
     build:
       context: ./mongo
       dockerfile: ./Dockerfile
+    image: the-supertask-mongo:tag
     depends_on:
       - truth
     restart: unless-stopped
@@ -53,13 +54,13 @@ services:
         target: /data/db
         volume:
           nocopy: true
-
   # The Redis instance that holds our user IDs (UUID v4).
   redis:
     container_name: redis_svc
     build:
       context: ./redis
       dockerfile: ./Dockerfile
+    image: the-supertask-redis:tag
     depends_on:
       - truth
     restart: unless-stopped
@@ -84,12 +85,12 @@ services:
         target: /data
         volume:
           nocopy: true
-
   user:
     container_name: user_svc
     build:
       context: ./services/user
       dockerfile: ./Dockerfile
+    image: the-supertask-user:tag
     depends_on:
       - mongo
     restart: unless-stopped
@@ -104,9 +105,8 @@ services:
     build:
       context: ./security
       dockerfile: ./Dockerfile
-      target: vault-builder
-    # depends_on:
-    #   - wrapper
+      target: supervault
+    image: the-supertask-vault:tag
     restart: always
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
@@ -132,55 +132,9 @@ services:
         target: /vault/logs
         volume:
           nocopy: true
-      # # Public PGP data.
-      # - type: volume
-      #   source: persist_pgp
-      #   target: /pgp
-      #   volume:
-      #     nocopy: true
-      # # Public TLS data.
-      # - type: volume
-      #   source: persist_tls
-      #   target: /tls
-      #   volume:
-      #     nocopy: true
-  # wrapper:
-  #   container_name: enc_util
-  #   build:
-  #     context: ./security
-  #     dockerfile: ./aes_wrap_enabled_openssl/Dockerfile
-  #     target: wrap-enabled
-  #   restart: unless-stopped
-  #   # ports:
-  #   #   - '80'
-  #   # expose:
-  #   #   - '80'
-  #   # networks:
-  #   #   - backend
-  #   volumes:
-  #     # Private data that does not belong in a volume.
-  #     - type: bind
-  #       source: ./security/private_files
-  #       target: /to_host
-  #     # AES wrap-enabled build
-  #     - type: volume
-  #       source: persist_v111_build
-  #       target: /root
-  #       volume:
-  #         nocopy: true
-  #     # Public PGP data.
-  #     - type: volume
-  #       source: persist_pgp
-  #       target: /pgp
-  #       volume:
-  #         nocopy: false
-  #     # Public TLS data.
-  #     - type: volume
-  #       source: persist_tls
-  #       target: /tls
-  #       volume:
-  #         nocopy: false
-
+      - type: volume
+        source: persist_init_data
+        target: /init/data
 networks:
   # frontend:
   backend:
@@ -190,3 +144,4 @@ volumes:
   persist_redis:
   persist_vault_data:
   persist_vault_logs:
+  persist_init_data:
