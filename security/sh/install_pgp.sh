@@ -19,6 +19,7 @@ check_skip_pgp_install() {
 add_pgp_instructions_to_queue() {
   printf '%s\n' \
     pgp_apk_add_packages \
+    pgp_export_musl_locpath \
     pgp_start_agent_as_daemon \
     pgp_insure_vault_addr_exported \
     pgp_run_vault_server_as_background_process \
@@ -30,15 +31,50 @@ add_pgp_instructions_to_queue() {
 # * * * END STANDARDIZED METHODS  * * * * * * * * * * * * * * *
 
 pgp_apk_add_packages() {
-  # IMPORTANT: Place static tools at the start of the list.
+  # IMPORTANT: Place static tools at the start of the list. <---
   apk_loader $1 \
     busybox-static>1.32.1-r6 \
     apk-tools-static>2.12.5-r0 \
+    cmake>3.18.4-r1 \
     curl>7.76.1-r0 \
+    gcc>10.2.1_pre1-r3 \
+    gettext-dev>0.20.2-r2 \
     gnupg>2.2.27-r0 \
     jq>1.6-r1 \
+    libintl>0.20.2-r2 \
+    make>4.3-r0 \
+    musl-dev>1.2.2-r0 \
     outils-jot>0.9-r0 \
     vim>8.2.2320-r0
+    # apk --no-cache add zsh>5.8-r1 curl>7.76.1-r0 wget>1.21.1-r1 git>2.30.2-r0
+}
+pgp_export_musl_locpath() {
+  export MUSL_LOCPATH=/usr/share/i18n/locales/musl
+}
+pgp_wget_musl_locales_master() {
+  wget -c https://gitlab.com/rilian-la-te/musl-locales/-/archive/master/musl-locales-master.zip
+}
+pgp_unzip_musl_locales_master() {
+  unzip musl-locales-master.zip
+}
+pgp_change_to_musl_locales_master_dir() {
+  cd musl-locales-master
+}
+pgp_run_cmake() {
+  cmake -DLOCALE_PROFILE=OFF -D CMAKE_INSTALL_PREFIX:PATH=/usr .
+}
+pgp_run_make() {
+  make
+}
+pgp_run_make_install() {
+  make install
+}
+pgp_change_to_previous_dir() {
+  cd ..
+}
+pgp_del_musl_locales_master_src() {
+  rm -r musl-locales-master
+  rm -f musl-locales-master.zip
 }
 pgp_create_dir() {
   [ ! -d $HOME/.gnupg ] && mkdir $HOME/.gnupg
@@ -77,17 +113,19 @@ pgp_create_conf() {
   's2k-count 65011712' > $HOME/.gnupg/gpg.conf
 }
 pgp_launch_agent() {
+  # Run gpg-agent daemon with gpg.conf settings
   gpgconf --launch gpg-agent
 }
 pgp_insure_vault_addr_exported() {
   [ -z "${VAULT_ADDR}" ] && export VAULT_ADDR="http://127.0.0.1:8200"
 }
 pgp_run_vault_server_as_background_process() {
-  (
+  # The below subshell mimics entrypoint of vault Docker image.
+  ( \
     /usr/bin/dumb-init \
       /bin/sh \
       /usr/local/bin/docker-entrypoint.sh \
-      server &
+      server & \
   ) >/dev/null 2>&1
 }
 pgp_generate_key_data_init_and_unseal_vault() {
@@ -96,19 +134,10 @@ pgp_generate_key_data_init_and_unseal_vault() {
   # If a second argument exists and is an integer, defer to this user-specified value.
   [ ! -z "${2}" ] && [ -z "$(echo -n "${2}" | sed 's/[0-9]\{1,\}//g')" ] && MAX_ITER=$2
 
-  # export OPENSSL_V111=$HOME/local/bin/openssl.sh
-
-  # # Create a directory dedicated to the raw files.
-  # local PGP_SRC_PATH=$HOME/pgp_raw_files
-  # mkdir -pm 0700 $PGP_SRC_PATH
-
-  # # Create a directory dedicated to the encrypted (wrapped) files.
-  # local PGP_DST_PATH=$HOME/pgp_enc_files
-  # mkdir -pm 0700 $PGP_DST_PATH
-
-  # This value is used inside the loop(s) below to assign path strings to the above file paths.
+  # TODO: Find out if we need this or not.
   local n=0
-  # JSON: Start building the payload string used to communicate with $(VAULT_ADDR}/v1/sys/init endpoint.
+
+  # Start building the payload string used to communicate with $(VAULT_ADDR}/v1/sys/init endpoint.
   local VAULT_API_V1_SYS_INIT_JSON="{"
 
   # Iterate through the PGP keys in the batch.
@@ -119,41 +148,102 @@ pgp_generate_key_data_init_and_unseal_vault() {
       printf '%0'"${#MAX_ITER}"'d' ${ITER}
     )
     # Generate random hexadecimal filename with length of 32 characters.
-    local BATCH_FILE=${BATCH_PATH}/.$(
-      tr -cd a-f0-9 </dev/random |
-        fold -w 32 |
-        head -n 1
+    local PGP_BATCH_FILE=${PGP_BATCH_PATH}/.$( \
+      tr -cd a-f0-9 </dev/random | \
+      fold -w 32 | \
+      head -n 1 \
     )
     # Generate random integer (20 to 99)
-    local PHRASE_LEN=$(
-      jot -w %i -r 1 20 99
+    local PGP_PHRASE_LEN=$( \
+      jot -w %i -r 1 20 99 \
     )
     # Generate random string with length ${PHRASE_LEN}
-    local PHRASE=$(
-      tr -cd [[:alnum:][:punct:]] </dev/random |
-        fold -w ${PHRASE_LEN} |
-        head -n 1
+    local PGP_PHRASE=$( \
+      tr -cd [[:alnum:][:punct:]] </dev/random | \
+      fold -w ${PGP_PHRASE_LEN} | \
+      head -n 1 \
     )
     # Parse the real name and email from line ${ITER} in the credentials file
-    local REAL_EMAIL_NAME="$( \
+    local PGP_REAL_EMAIL_NAME="$( \
       sed "${ITER}q;d" /var/tmp/credentials \
     )"
 
+    local PGP_DONE_MSG=
+    [ $ITER -eq $MAX_ITER ] && \
+    PGP_DONE_MSG="%echo Key Generation: COMPLETE!" || \
+    PGP_DONE_MSG="%echo Key ${ITER_STR}: Details Complete."
+
+    # Generate the batch for this specific nth PGP key.
+    printf '%s\n' \
+      "%echo Generating Key [ $ITER / $MAX_ITER ]" \
+      "Key-Type: RSA" \
+      "Key-Length: 4096" \
+      "Key-Usage: cert" \
+      "Subkey-Type: RSA" \
+      "Subkey-Length: 4096" \
+      "Subkey-Usage: encrypt" \
+      "Passphrase: ${PGP_PHRASE}" \
+      "Name-Real: $( echo -n "${PGP_REAL_EMAIL_NAME}" | cut -d ',' -f 1 )" \
+      "Name-Email: $( echo -n "${PGP_REAL_EMAIL_NAME}" | cut -d ',' -f 2 )" \
+      "Expire-Date: 0" \
+      "%commit" \
+      "${PGP_DONE_MSG}" >$PGP_BATCH_FILE
+
+    # Generate the PGP key by running the batch file.
+    gpg \
+      --expert \
+      --verbose \
+      --batch \
+      --gen-key $PGP_BATCH_FILE
+
+    # Delete the batch file after use.
+    rm -f $PGP_BATCH_FILE
+
+    # Capture the most recently generated revocation file.
+    # We need to parse its hexadecimal filename to export the key as an ASC file.
+    local PGP_GENERATED_KEY_ID_HEX=$( \
+      ls -t ${HOME}/.gnupg/openpgp-revocs.d | \
+      head -n 1 | \
+      cut -f 1 -d '.' \
+    )
+
+    local PGP_EXPORTED_ASC_KEY_FILE="${PGP_DST_PATH}/key_${ITER_STR}.asc"
+
+    # Export the key in base64 encoded *.asc format (what Vault consumes).
+    # Use tr to get rid of all newlines.
+    gpg \
+      --verbose \
+      --pinentry-mode loopback \
+      --passphrase "$( \
+        cat $HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw | \
+        tr -d '\n' \
+      )" \
+      --export-secret-keys \
+      ${PGP_GENERATED_KEY_ID_HEX} | \
+      base64 | \
+      tr -d '\n' > ${PGP_EXPORTED_ASC_KEY_FILE} \
+
+    # The 32-byte binary word used as an encryption key for wrapped data at rest.
     local PAYLOAD_AES=$( \
       aes-wrap rand 32 \
     )
+    # The 32-byte hex string (-K raw key value) used to encrypt data.
     local PAYLOAD_HEX=$( \
       echo -n ${PAYLOAD_AES} | \
       hexdump -v -e '/1 "%02X"' \
     )
+    # The 32-byte binary word used as an encryption key for wrapped payload.
     local EPHEMERAL_AES=$( \
       aes-wrap rand 32 \
     )
+    # The 32-byte hex string (-K raw key value) used to encrypt payload.
     local EPHEMERAL_HEX=$( \
       echo -n ${EPHEMERAL_AES} | \
       hexdump -v -e '/1 "%02X"' \
     )
+    # The pseudorandom length of the private key's passphrase.
     local PRIV_KEY_PHRASE_LEN=$( jot -w %i -r 1 32 64 )
+    # The pseudorandom string 
     local PRIV_KEY_PHRASE=$( \
       tr -cd [[:alnum:][:punct:]] < /dev/random | \
       fold -w ${PRIV_KEY_PHRASE_LEN} | \
@@ -220,166 +310,14 @@ pgp_generate_key_data_init_and_unseal_vault() {
         -pubin \
         -passin stdin \
         -pkeyopt rsa_padding_mode:oaep \
-        -pkeyopt rsa_oaep_md:sha1 \
+        -pkeyopt rsa_oaep_md:sha256 \
         -pkeyopt rsa_mgf1_md:sha1 | \
       tr -d '\n' \
     )"
-
-    # # Generate the payload AES file.
-    # $OPENSSL_V111 rand -out ${PGP_SRC_PATH}/payload-aes-${ITER_STR}.bin 32
-    # # Store hex string of payload.
-    # local PAYLOAD_HEX=$(hexdump -v -e '/1 "%02X"' < ${PGP_SRC_PATH}/payload-aes-${ITER_STR}.bin)
-
-    # # Generate the ephemeral AES file.
-    # $OPENSSL_V111 rand -out ${PGP_SRC_PATH}/ephemeral-aes-${ITER_STR}.bin 32
-    # # Store hex string of ephemeral.
-    # local EPHEMERAL_HEX=$(hexdump -v -e '/1 "%02X"' < ${PGP_SRC_PATH}/ephemeral-aes-${ITER_STR}.bin)
-
-    # # * * * * *
-
-    # # NOTE:
-    # #       Commented code below is provided here for completeness only.
-    # #       The use of passphrases with RSA keypairs involved in key wrap
-    # #       algorithms presents an additional layer of complexity for
-    # #       encrypting data-at-rest.
-    # #
-    # #       We omit these passphrases here to reduce that complexity on
-    # #       purpose.
-
-    # # Uncomment code block below for passphrase support.
-    # # # Generate length of passphrase for private key.
-    # # local PRIVATE_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
-    # # # Generate passphrase for private key.
-    # # local PRIVATE_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PRIVATE_KEY_PHRASE_LEN} | head -n1)
-    # # # Persist passphrase to file.
-    # # echo "${PRIVATE_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase
-
-    # # Generate private key.
-    # $OPENSSL_V111 genpkey \
-    # -out ${PGP_DST_PATH}/id-aes256-wrap-pad-private-key-${ITER_STR}.pem \
-    # -outform PEM \
-    # -algorithm RSA \
-    # -pkeyopt rsa_keygen_bits:4096
-    # # Place next line below "-algorithm RSA" above and uncomment for passphrase support.
-    # # -pass file:${PGP_SRC_PATH}/private-key-${ITER_STR}-passphrase \
-
-    # # * * * * *
-
-    # # Uncomment code block below for passphrase support.
-    # # # Generate length of passphrase for public key.
-    # # local PUBLIC_KEY_PHRASE_LEN=$(jot -w %i -r 1 32 64)
-    # # # Generate passphrase for public key.
-    # # local PUBLIC_KEY_PASS_PHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PUBLIC_KEY_PHRASE_LEN} | head -n1)
-    # # # Persist passphrase to file.
-    # # echo "${PUBLIC_KEY_PASS_PHRASE}" > ${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase
-
-    # # Generate public key.
-    # $OPENSSL_V111 rsa \
-    # -inform PEM \
-    # -in ${PGP_DST_PATH}/id-aes256-wrap-pad-private-key-${ITER_STR}.pem \
-    # -outform PEM \
-    # -pubout \
-    # -out ${PGP_DST_PATH}/id-aes256-wrap-pad-public-key-${ITER_STR}.pem
-    # # Place next line below "-pubout \" above and uncomment for passphrase support.
-    # # -passout file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
-
-    # # * * * * *
-
-    # Persist passphrase of PGP key to file.
-    echo -n "${PHRASE}" >$HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw
-
-    # # Encrypt the PGP key's passphrase file using the payload.
-    # $OPENSSL_V111 enc \
-    # -id-aes256-wrap-pad \
-    # -K $PAYLOAD_HEX \
-    # -iv A65959A6 \
-    # -in ${PGP_SRC_PATH}/pgp-key-${ITER_STR}-asc-passphrase.raw \
-    # -out ${PGP_DST_PATH}/pgp-key-${ITER_STR}-asc-passphrase.wrapped
-
-    # # * * * * *
-
-    # # Wrap the payload in the ephemeral.
-    # $OPENSSL_V111 enc \
-    # -id-aes256-wrap-pad \
-    # -K $EPHEMERAL_HEX \
-    # -iv A65959A6 \
-    # -in ${PGP_SRC_PATH}/payload-aes-${ITER_STR}.bin \
-    # -out ${PGP_DST_PATH}/payload-aes-${ITER_STR}.wrapped \
-
-    # # Wrap the ephemeral in the public key.
-    # $OPENSSL_V111 pkeyutl \
-    # -encrypt \
-    # -in ${PGP_SRC_PATH}/ephemeral-aes-${ITER_STR}.bin \
-    # -out ${PGP_DST_PATH}/ephemeral-aes-${ITER_STR}.wrapped \
-    # -pubin \
-    # -inkey ${PGP_DST_PATH}/id-aes256-wrap-pad-public-key-${ITER_STR}.pem \
-    # -pkeyopt rsa_padding_mode:oaep \
-    # -pkeyopt rsa_oaep_md:sha1 \
-    # -pkeyopt rsa_mgf1_md:sha1
-    # # Place next line below "-pubin \" above and uncomment for passphrase support.
-    # # -passin file:${PGP_SRC_PATH}/public-key-${ITER_STR}-passphrase \
-
-    # # * * * * *
-
-    # # Concatenate the wrapped ephemeral and payload into one main file.
-    # cat \
-    # ${PGP_DST_PATH}/ephemeral-aes-${ITER_STR}.wrapped \
-    # ${PGP_DST_PATH}/payload-aes-${ITER_STR}.wrapped > ${PGP_DST_PATH}/rsa-aes-wrapped-${ITER_STR}.bin
-    # # This *.bin file can be safely distributed, but be careful with the
-    # # corresponding private key!
-
-    local DONE_MSG=${DONE_MSG:-"%echo Key Details Complete."}
-    [ $ITER -eq $MAX_ITER ] && DONE_MSG="%echo Key Generation: COMPLETE!"
-
-    # Generate the batch for this specific PGP key.
     printf '%s\n' \
-      "%echo Generating Key [ $ITER / $MAX_ITER ]" \
-      "Key-Type: RSA" \
-      "Key-Length: 4096" \
-      "Key-Usage: cert" \
-      "Subkey-Type: RSA" \
-      "Subkey-Length: 4096" \
-      "Subkey-Usage: encrypt" \
-      "Passphrase: ${PHRASE}" \
-      "Name-Real: $( echo -n "${REAL_EMAIL_NAME}" | cut -d ',' -f 1 )" \
-      "Name-Email: $( echo -n "${REAL_EMAIL_NAME}" | cut -d ',' -f 2 )" \
-      "Expire-Date: 0" \
-      "%commit" \
-      "${DONE_MSG}" >$BATCH_FILE
-
-    # Generate the PGP key by running the batch file.
-    gpg \
-      --expert \
-      --verbose \
-      --batch \
-      --gen-key $BATCH_FILE
-
-    # Delete the batch file after use.
-    rm -f $BATCH_FILE
-
-    # Capture the most recently generated revocation file.
-    # We need to parse its hexadecimal filename to export the key as an ASC file.
-    local PGP_GENERATED_KEY_ID_HEX=$(
-      ls -t ${HOME}/.gnupg/openpgp-revocs.d |
-        head -n 1 |
-        cut -f 1 -d '.'
-    )
-
-    local PGP_EXPORTED_ASC_KEY_FILE="${PGP_DST_PATH}/key_${ITER_STR}.asc"
-
-    # Export the key in base64 encoded *.asc format (what Vault consumes).
-    # Use tr to get rid of all newlines.
-    gpg \
-      --verbose \
-      --pinentry-mode loopback \
-      --passphrase "$(
-        cat $HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw |
-          tr -d '\n'
-      )" \
-      --export-secret-keys \
-      ${PGP_GENERATED_KEY_ID_HEX} |
-      base64 |
-      tr -d '\n' >${PGP_EXPORTED_ASC_KEY_FILE}
+    "${EPHEMERAL_WRAPPED}" \
+    "${PAYLOAD_WRAPPED}" \
+    "${DATA_WRAPPED}" > appropriately_named_rsa_aes_wrapped_file.bin
 
     # Increment the value of `n`.
     # IMPORTANT:  We must increment in advance to prevent overrun of
