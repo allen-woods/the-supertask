@@ -89,6 +89,42 @@ utf8_char() (
   esac
 )
 
+gen_utf8_passphrase() (
+  PHRASE_I=1
+  PHRASE_LEN=$1
+  PHRASE=
+
+  CHAR_FILE=$HOME/.aes_rsa_utf8_support/character_set/char_file.utf8
+
+  [ ! -f $CHAR_FILE ] && \
+  echo "ERROR: Please run \"utf8_make_char_file\" before proceeding." && \
+  return 1
+
+  [ ! -z "$( ( jot ) 2>&1 | grep -o "not found" )" ] && \
+  apk update && \
+  apk --no-cache add outils-jot=0.9-r0
+
+  # Create a random passphrase.
+  while [ $PHRASE_I -le $PHRASE_LEN ]; do
+    # Line selection.
+    LINE_MAX=$( wc -l $CHAR_FILE | awk '{ print $1 }' )
+    LINE_RND=$( jot -w %i -r 1 1 $(($LINE_MAX + 1)) )
+    LINE_TXT="$( sed "${LINE_RND}q;d" $CHAR_FILE )"
+    # Character selection.
+    CHAR_MAX=${#LINE_TXT}
+    CHAR_RND=$( jot -w %i -r 1 1 $CHAR_MAX )
+    CHAR_TXT=$( echo $LINE_TXT | sed 's|.|&\ |g' | cut -d ' ' -f $CHAR_RND )
+    # Place character into generated passphrase.
+    [ -z "${PHRASE}" ] && PHRASE="${CHAR_TXT}" || PHRASE="${PHRASE}${CHAR_TXT}"
+    # Increment
+    PHRASE_I=$(($PHRASE_I + 1))
+  done
+  
+  if [ ! -z "${PHRASE}" ]; then
+    echo -e "${PHRASE}"
+  fi
+)
+
 utf8_make_char_file() (
   UTF8_START=33
   UTF8_I=33
@@ -133,6 +169,11 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 0 ] && [ $UTF8_I -le 879 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 127 && $UTF8_I -le 159 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
 
       # Allow Non-Breaking Space to Override Image Comparison.
       [ $UTF8_I -eq 160 ] && UTF8_COMPARE=0
@@ -795,6 +836,11 @@ utf8_make_char_file() (
     #   # Confirmed Missing
     #   UTF8_FONT=Noto-Sans-Private-Use-Area-Regular
     # fi
+    if [[ $UTF8_I -ge 55296 && $UTF8_I -le 63743 ]]; then
+      # Prevent "no glyph" leaks:
+      UTF8_COMPARE=0
+      UTF8_PRINT=0
+    fi
     if [ $UTF8_I -ge 63744 ] && [ $UTF8_I -le 64255 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-CJK-JP
@@ -842,6 +888,16 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 65856 ] && [ $UTF8_I -le 66047 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Symbols2-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 65860 && $UTF8_I -le 65861 ]] || \
+      [[ $UTF8_I -ge 65910 && $UTF8_I -le 65912 ]] || \
+      [ $UTF8_I -eq 65923 ] || \
+      [[ $UTF8_I -ge 65927 && $UTF8_I -le 65929 ]] || \
+      [[ $UTF8_I -ge 65931 && $UTF8_I -le 65934 ]] || \
+      [[ $UTF8_I -ge 65952 && $UTF8_I -le 66045 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 66176 ] && [ $UTF8_I -le 66207 ]; then
       # Ok
@@ -986,6 +1042,11 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 69216 ] && [ $UTF8_I -le 69247 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Symbols2-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 69216 && $UTF8_I -le 69246 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     # if [ $UTF8_I -ge 69248 ] && [ $UTF8_I -le 69311 ]; then
     #   # Confirmed Missing
@@ -1034,6 +1095,11 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 70112 ] && [ $UTF8_I -le 70143 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Sinhala-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 70113 && $UTF8_I -le 70132 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 70144 ] && [ $UTF8_I -le 70223 ]; then
       # Ok
@@ -1146,6 +1212,11 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 82944 ] && [ $UTF8_I -le 83583 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Anatolian-Hieroglyphs-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 82944 && $UTF8_I -le 83526 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 92160 ] && [ $UTF8_I -le 92735 ]; then
       # Ok
@@ -1222,10 +1293,27 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 119040 ] && [ $UTF8_I -le 119295 ]; then
       # Ok
       UTF8_FONT=Noto-Music-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 119049 && $UTF8_I -le 119055 ]] || \
+      [[ $UTF8_I -ge 119059 && $UTF8_I -le 119069 ]] || \
+      [[ $UTF8_I -ge 119071 && $UTF8_I -le 119072 ]] || \
+      [[ $UTF8_I -ge 119075 && $UTF8_I -le 119081 ]] || \
+      [[ $UTF8_I -ge 119084 && $UTF8_I -le 119185 ]] || \
+      [[ $UTF8_I -ge 119188 && $UTF8_I -le 119205 ]] || \
+      [[ $UTF8_I -ge 119209 && $UTF8_I -le 119238 ]] || \
+      [[ $UTF8_I -ge 119247 && $UTF8_I -le 119295 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 119296 ] && [ $UTF8_I -le 119375 ]; then
       # Guess
       UTF8_FONT=Noto-Music-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 119296 && $UTF8_I -le 119365 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     # if [ $UTF8_I -ge 119520 ] && [ $UTF8_I -le 119551 ]; then
     #   # Confirmed Missing
@@ -1279,21 +1367,73 @@ utf8_make_char_file() (
       # Ok
       UTF8_FONT=Noto-Sans-Symbols2-Regular
     fi
-    # if [ $UTF8_I -ge 127136 ] && [ $UTF8_I -le 127231 ]; then
-    #   # Confirmed Missing
-    #   UTF8_FONT=Noto-Sans-Playing-Cards-Regular
-    # fi
+    if [ $UTF8_I -ge 127136 ] && [ $UTF8_I -le 127231 ]; then
+      # Confirmed Missing
+      # UTF8_FONT=Noto-Sans-Playing-Cards-Regular
+
+      # Prevent "no glyph" leaks:
+      if [ $UTF8_I -eq 127167 ] || \
+      [[ $UTF8_I -ge 127200 && $UTF8_I -le 127221 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
+    fi
     if [ $UTF8_I -ge 127232 ] && [ $UTF8_I -le 127487 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Symbols-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 127274 && $UTF8_I -le 127278 ]] || \
+      [[ $UTF8_I -ge 127306 && $UTF8_I -le 127310 ]] || \
+      [[ $UTF8_I -ge 127370 && $UTF8_I -le 127373 ]] || \
+      [[ $UTF8_I -ge 127376 && $UTF8_I -le 127487 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 127488 ] && [ $UTF8_I -le 127743 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-CJK-TC
+      # Prevent "no glyph" leaks:
+      if [ $UTF8_I -eq 127488 ] || \
+      [[ $UTF8_I -ge 127507 && $UTF8_I -le 127508 ]] || \
+      [ $UTF8_I -eq 127547 ]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 127744 ] && [ $UTF8_I -le 128511 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Symbols2-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 127778 && $UTF8_I -le 127779 ]] || \
+      [ $UTF8_I -eq 127893 ] || \
+      [ $UTF8_I -eq 127896 ] || \
+      [[ $UTF8_I -ge 127900 && $UTF8_I -le 127901 ]] || \
+      [[ $UTF8_I -ge 127985 && $UTF8_I -le 127986 ]] || \
+      [ $UTF8_I -eq 127990 ] || \
+      [ $UTF8_I -eq 128254 ] || \
+      [[ $UTF8_I -ge 128318 && $UTF8_I -le 128325 ]] || \
+      [[ $UTF8_I -ge 128360 && $UTF8_I -le 128366 ]] || \
+      [[ $UTF8_I -ge 128369 && $UTF8_I -le 128370 ]] || \
+      [[ $UTF8_I -ge 128379 && $UTF8_I -le 128390 ]] || \
+      [[ $UTF8_I -ge 128392 && $UTF8_I -le 128393 ]] || \
+      [[ $UTF8_I -ge 128398 && $UTF8_I -le 128399 ]] || \
+      [[ $UTF8_I -ge 128401 && $UTF8_I -le 128419 ]] || \
+      [[ $UTF8_I -ge 128422 && $UTF8_I -le 128423 ]] || \
+      [[ $UTF8_I -ge 128425 && $UTF8_I -le 128432 ]] || \
+      [[ $UTF8_I -ge 128435 && $UTF8_I -le 128443 ]] || \
+      [[ $UTF8_I -ge 128445 && $UTF8_I -le 128449 ]] || \
+      [[ $UTF8_I -ge 128453 && $UTF8_I -le 128464 ]] || \
+      [[ $UTF8_I -ge 128468 && $UTF8_I -le 128475 ]] || \
+      [[ $UTF8_I -ge 128479 && $UTF8_I -le 128480 ]] || \
+      [ $UTF8_I -eq 128482 ] || \
+      [[ $UTF8_I -ge 128484 && $UTF8_I -le 128487 ]] || \
+      [[ $UTF8_I -ge 128489 && $UTF8_I -le 128494 ]] || \
+      [[ $UTF8_I -ge 128496 && $UTF8_I -le 128498 ]] || \
+      [[ $UTF8_I -ge 128500 && $UTF8_I -le 128505 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 128512 ] && [ $UTF8_I -le 128591 ]; then
       # Ok
@@ -1306,6 +1446,14 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 128640 ] && [ $UTF8_I -le 128767 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Symbols2-Regular
+      # Prevent "no glyph" leaks:
+      if [[ $UTF8_I -ge 128710 && $UTF8_I -le 128714 ]] || \
+      [[ $UTF8_I -ge 128742 && $UTF8_I -le 128744 ]] || \
+      [ $UTF8_I -eq 128746 ] || \
+      [[ $UTF8_I -ge 128753 && $UTF8_I -le 128754 ]]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
     if [ $UTF8_I -ge 128768 ] && [ $UTF8_I -le 128895 ]; then
       # Ok
@@ -1346,15 +1494,34 @@ utf8_make_char_file() (
     if [ $UTF8_I -ge 177984 ] && [ $UTF8_I -le 178207 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Mono-CJK-TC
+      # Prevent "no glyph" leaks:
+      if [ $UTF8_I -eq 178167 ]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
     fi
-    # if [ $UTF8_I -ge 178208 ] && [ $UTF8_I -le 183983 ]; then
-    #   # Confirmed Missing
-    #   UTF8_FONT=Noto-Sans-CJK-Unified-Ideographs-Extension-E-Regular
-    # fi
-    # if [ $UTF8_I -ge 183984 ] && [ $UTF8_I -le 191471 ]; then
-    #   # Confirmed Missing
-    #   UTF8_FONT=Noto-Sans-CJK-Unified-Ideographs-Extension-F-Regular
-    # fi
+    if [ $UTF8_I -ge 178208 ] && [ $UTF8_I -le 183983 ]; then
+      # Confirmed Missing
+      # UTF8_FONT=Noto-Sans-CJK-Unified-Ideographs-Extension-E-Regular
+
+      # Prevent "no glyph" leaks:
+      if [ $UTF8_I -eq 180501 ] || \
+      [ $UTF8_I -eq 181126 ] || \
+      [ $UTF8_I -eq 182227 ]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
+    fi
+    if [ $UTF8_I -ge 183984 ] && [ $UTF8_I -le 191471 ]; then
+      # Confirmed Missing
+      # UTF8_FONT=Noto-Sans-CJK-Unified-Ideographs-Extension-F-Regular
+
+      # Prevent "no glyph" leaks:
+      if [ $UTF8_I -eq 188436 ]; then
+        UTF8_COMPARE=0
+        UTF8_PRINT=0
+      fi
+    fi
     if [ $UTF8_I -ge 194560 ] && [ $UTF8_I -le 195103 ]; then
       # Ok
       UTF8_FONT=Noto-Sans-Mono-CJK-TC
@@ -1422,6 +1589,11 @@ utf8_make_char_file() (
       fi
     fi
 
+    if [ -z "${CHAR_I}" ] && [ $UTF8_PRINT -eq 1 ]; then
+      # Prevent "no glyph" leaks:
+      UTF8_PRINT=0
+    fi
+
     if [ $UTF8_PRINT -eq 1 ]; then
       if [ $CHAR_COUNT -eq 255 ]; then
         printf '%s\n' "${CHAR_I}" >> $HOME/.aes_rsa_utf8_support/character_set/char_file.utf8
@@ -1434,7 +1606,7 @@ utf8_make_char_file() (
       [ $(($UTF8_I % 8)) -eq 0 ] && UTF8_NL=" " || UTF8_NL=" -n "
 
       # Give the operator feedback while they wait.
-      echo -e${UTF8_NL}"\033[1;33m\033[40m $( printf '%06d' "${UTF8_I}" ) \033[0m: ${CHAR_I}  \033[0;37m\033[47m \033[0m"
+      echo -e${UTF8_NL}"\033[0;34m\033[40m $( printf '%06d' "${UTF8_I}" ) \033[1;33m\033[40m: ${CHAR_I}  \033[0;37m\033[47m \033[0m"
     fi
     # # D E B U G ----------------------------------------------------------------------------------------------------------------------------------------------------------------
     # echo -en "\033[0;30m\033[41m DEBUG: \033[1;37m\033[42m char='${CHAR_I}' \033[0;30m\033[43m code=${UTF8_I} \033[0;30m\033[47m ifs={${IS_UNPRINTABLE}, ${IS_UNKNOWN}} \033[0m"

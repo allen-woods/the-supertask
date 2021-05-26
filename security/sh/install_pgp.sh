@@ -33,20 +33,20 @@ add_pgp_instructions_to_queue() {
 pgp_apk_add_packages() {
   # IMPORTANT: Place static tools at the start of the list. <---
   apk_loader $1 \
-    busybox-static>1.32.1-r6 \
-    apk-tools-static>2.12.5-r0 \
-    cmake>3.18.4-r1 \
-    curl>7.76.1-r0 \
-    font-fira-mono-nerd>2.1.0-r5 \
-    gcc>10.2.1_pre1-r3 \
-    gettext-dev>0.20.2-r2 \
-    gnupg>2.2.27-r0 \
-    jq>1.6-r1 \
-    libintl>0.20.2-r2 \
-    make>4.3-r0 \
-    musl-dev>1.2.2-r0 \
-    outils-jot>0.9-r0 \
-    vim>8.2.2320-r0
+    busybox-static=1.32.1-r6 \
+    apk-tools-static=2.12.5-r0 \
+    cmake=3.18.4-r1 \
+    curl=7.76.1-r0 \
+    font-fira-mono-nerd=2.1.0-r5 \
+    gcc=10.2.1_pre1-r3 \
+    gettext-dev=0.20.2-r2 \
+    gnupg=2.2.27-r0 \
+    jq=1.6-r1 \
+    libintl=0.20.2-r2 \
+    make=4.3-r0 \
+    musl-dev=1.2.2-r0 \
+    outils-jot=0.9-r0 \
+    vim=8.2.2320-r0
     # apk --no-cache add zsh>5.8-r1 curl>7.76.1-r0 wget>1.21.1-r1 git>2.30.2-r0
 }
 
