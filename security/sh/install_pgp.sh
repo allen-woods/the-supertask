@@ -37,6 +37,7 @@ pgp_apk_add_packages() {
     apk-tools-static>2.12.5-r0 \
     cmake>3.18.4-r1 \
     curl>7.76.1-r0 \
+    font-fira-mono-nerd>2.1.0-r5 \
     gcc>10.2.1_pre1-r3 \
     gettext-dev>0.20.2-r2 \
     gnupg>2.2.27-r0 \
@@ -48,6 +49,12 @@ pgp_apk_add_packages() {
     vim>8.2.2320-r0
     # apk --no-cache add zsh>5.8-r1 curl>7.76.1-r0 wget>1.21.1-r1 git>2.30.2-r0
 }
+
+# This font might help simplify everything in combo with imagemagick.
+#
+# https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf
+#
+#
 pgp_export_musl_locpath() {
   export MUSL_LOCPATH=/usr/share/i18n/locales/musl
 }
@@ -69,12 +76,41 @@ pgp_run_make() {
 pgp_run_make_install() {
   make install
 }
-pgp_change_to_previous_dir() {
-  cd ..
+pgp_change_to_slash_dir() {
+  cd /
 }
-pgp_del_musl_locales_master_src() {
-  rm -r musl-locales-master
+pgp_del_musl_locales_master_zip() {
   rm -f musl-locales-master.zip
+}
+pgp_patch_profile() {
+  sed -i '1i export LC_ALL=en_US.UTF-8' /etc/profile
+  sed -i '2i export LANG=en_US.UTF-8' /etc/profile
+  sed -i '3i export LANGUAGE=en_US.UTF-8' /etc/profile
+}
+pgp_create_fontconfig_dir() {
+  [ ! -d $HOME/.config ] && mkdir -p $HOME/.config/fontconfig
+}
+pgp_change_to_fontconfig_dir() {
+  cd $HOME/.config/fontconfig
+}
+pgp_write_fonts_conf() {
+  printf '%s\n' \
+    '<?xml version="1.0"?>' \
+    '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
+    '<!-- $XDG_CONFIG_HOME/fontconfig/fonts.conf for per-user font configuration -->' \
+    '<fontconfig>' \
+    '<match>' \
+    '  <test name="lang" compare="eq">' \
+    '    <string>en_US.UTF-8</string>' \
+    '  </test>' \
+    '  <test name="family">' \
+    '    <string>monospace</string>' \
+    '  </test>' \
+    '  <edit name="family" mode="prepend">' \
+    '    <string>FiraMono Nerd Font Mono</string>' \
+    '  </edit>' \
+    '</match>' \
+    '</fontconfig>' > fonts.conf
 }
 pgp_create_dir() {
   [ ! -d $HOME/.gnupg ] && mkdir $HOME/.gnupg

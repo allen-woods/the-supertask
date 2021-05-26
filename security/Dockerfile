@@ -7,11 +7,19 @@
 #       id-aes256-wrap-pad algorithm as implemented by a patched compile of
 #       OpenSSL.
 
+# Proposed Steps:
+#   DieHarder Test Suite.
+#   Compile OpenSSL.
+#   Run UTF-8 scan.
+#   PGP data.
+#   TLS data.
+#   Unseal Vault.
+#   Configure Vault.
 FROM vault:1.7.1 AS init-src
 
 WORKDIR /
 COPY --chown=root:root [ "./vault/config",          "/vault/config/" ]
-COPY --chown=root:root [ "./tls/.admin",            "/root/"]
+COPY --chown=root:root [ "./tls/.admin",            "/root/" ]
 COPY --chown=root:root [ "./sh/apk_loader.sh",      "/etc/profile.d/" ]
 COPY --chown=root:root [ "./sh/pretty.sh",          "/etc/profile.d/" ]
 COPY --chown=root:root [ "./sh/utf8_char.sh",       "/etc/profile.d/" ]
