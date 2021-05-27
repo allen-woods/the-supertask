@@ -90,7 +90,7 @@ openssl_download_source_version () {
   local WGET_FLAGS=
   [ $1 -eq 0 ] && [ -z "${WGET_FLAGS}" ] && WGET_FLAGS='-q'
   [ $1 -eq 2 ] && [ -z "${WGET_FLAGS}" ] && WGET_FLAGS='-S'
-  # Check health of index link.
+  # Check health of archive link.
   local LINK_ALIVE=$( \
     wget --spider $WGET_FLAGS https://openssl.org/source/${OPENSSL_SOURCE_VERSION}.tar.gz \
   )
