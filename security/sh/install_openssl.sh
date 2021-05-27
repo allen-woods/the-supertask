@@ -49,12 +49,12 @@ add_openssl_instructions_to_queue () {
 openssl_apk_add_packages () {
   # IMPORTANT: Place static tools at the start of the list.
   apk_loader $1 \
-    busybox-static>1.32.1-r6 \
-    apk-tools-static>2.12.5-r0 \
-    build-base>0.5-r2 \
-    linux-headers>5.7.8-r0 \
-    perl>5.32.0-r0 \
-    zlib-dev>1.2.11-r3
+    busybox-static=1.32.1-r6 \
+    apk-tools-static=2.12.5-r0 \
+    build-base=0.5-r2 \
+    linux-headers=5.7.8-r0 \
+    perl=5.32.0-r0 \
+    zlib-dev=1.2.11-r3
 }
 openssl_create_build_dir () {
   [ ! -d $HOME/src ] && \

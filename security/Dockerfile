@@ -15,8 +15,24 @@
 #   TLS data.
 #   Unseal Vault.
 #   Configure Vault.
-FROM vault:1.7.1 AS init-src
+FROM alpine:3.13.5 AS test-suite
+WORKDIR /
+COPY --chown=root:root [ "./sh/apk_loader.sh",        "/etc/profile.d/" ]
+COPY --chown=root:root [ "./sh/pretty.sh",            "/etc/profile.d/" ]
+COPY --chown=root:root [ "./sh/run_install.sh",       "/etc/profile.d/" ]
+COPY --chown=root:root [ "./sh/install_dieharder.sh", "/etc/profile.d/" ]
+RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_dieharder.sh" ]
 
+FROM alpine:3.13.5 AS aes-wrap
+WORKDIR /
+
+FROM alpine:3.13.5 AS utf8-support
+WORKDIR /
+
+FROM vault:1.7.1 AS vault-init
+WORKDIR /
+
+FROM vault:1.7.1 AS vault-instance
 WORKDIR /
 COPY --chown=root:root [ "./vault/config",          "/vault/config/" ]
 COPY --chown=root:root [ "./tls/.admin",            "/root/" ]
