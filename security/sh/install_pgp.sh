@@ -20,6 +20,7 @@ add_pgp_instructions_to_queue () (
   printf '%s\n' \
     pgp_apk_add_packages \
     pgp_create_dir \
+    pgp_apply_safe_permissions_to_dir \
     pgp_create_conf \
     pgp_launch_agent \
     pgp_insure_vault_addr_exported \
@@ -36,7 +37,7 @@ pgp_apk_add_packages () (
   apk_loader $1 \
     busybox-static=1.32.1-r6 \
     apk-tools-static=2.12.5-r0 \
-    curl=7.76.1-r0 \
+    curl=7.77.0-r0 \
     gnupg=2.2.27-r0 \
     jq=1.6-r1 \
     outils-jot=0.9-r0 \
@@ -45,6 +46,9 @@ pgp_apk_add_packages () (
 
 pgp_create_dir () (
   [ ! -d $HOME/.gnupg ] && mkdir $HOME/.gnupg
+)
+pgp_apply_safe_permissions_to_dir () (
+  chmod 0700 $HOME/.gnupg
 )
 pgp_create_conf () (
   printf '%s\n' \
@@ -152,7 +156,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
       "Name-Email: $( echo -n "${PGP_REAL_EMAIL_NAME}" | cut -d ',' -f 2 )" \
       "Expire-Date: 0" \
       "%commit" \
-      "${PGP_DONE_MSG}" > $PGP_BATCH_FILE
+      "${PGP_DONE_MSG}" > /pgp_batch_file # $PGP_BATCH_FILE
 
     # Generate the PGP key by running the batch file.
     gpg \
@@ -164,55 +168,75 @@ pgp_generate_key_data_init_and_unseal_vault () (
     # Delete the batch file after use.
     rm -f $PGP_BATCH_FILE
 
-    # Capture the most recently generated revocation file.
-    # We need to parse its hexadecimal filename to export the key as an ASC file.
+    # Capture the base name of most recently generated revocation file.
     PGP_GENERATED_KEY_ID_HEX=$( \
       ls -t ${HOME}/.gnupg/openpgp-revocs.d | \
       head -n 1 | \
       cut -f 1 -d '.' \
     )
 
-    PGP_EXPORTED_ASC_KEY_FILE="${PGP_DST_PATH}/key_${ITER_STR}.asc"
+    # Parse out the fingerprint of the above key's subkey.
+    PGP_ENC_SUB_KEY_ID_HEX=$( \
+      gpg \
+      --list-keys \
+      --with-fingerprint | \
+      tr '\n' ' ' | tr -d ' ' | \
+      sed "s|[^ ]\{0,\}pubrsa4096/0x${PGP_GENERATED_KEY_ID_HEX:24:16}[^ ]\{1,\}subrsa4096/0x[^ ]\{1,\}Keyfingerprint=\([0-9A-F]\{40\}\)|\1|g"
+    )
 
-    # Export the key in base64 encoded *.asc format (what Vault consumes).
+    # Export the subkey in base64 encoded *.asc format (what Vault consumes).
     # Use tr to get rid of all newlines.
-    gpg \
+    PGP_BASE64_ONE_LINE_ASC_DATA="$( \
+      gpg \
       --verbose \
       --pinentry-mode loopback \
-      --passphrase "$( \
-        cat $HOME/.raw/pgp-key-${ITER_STR}-asc-passphrase.raw | \
-        tr -d '\n' \
-      )" \
-      --export-secret-keys \
-      ${PGP_GENERATED_KEY_ID_HEX} | \
+      --passphrase "${PGP_PHRASE}" \
+      --export \
+      ${PGP_ENC_SUB_KEY_ID_HEX} | \
       base64 | \
-      tr -d '\n' > ${PGP_EXPORTED_ASC_KEY_FILE} \
-
-    # The 32-byte binary word used as an encryption key for wrapped data at rest.
+      tr -d '\n' \
+    )"
+    
+    # Payload:
+    # This is the password protected 32 byte word used to wrap data-at-rest.
+    PAYLOAD_PHRASE_LEN=$( \
+      jot -w %i -r 1 32 64 \
+    )
+    PAYLOAD_PHRASE=$( \
+      utf8_passphrase $PAYLOAD_PHRASE_LEN \
+    )
     PAYLOAD_AES=$( \
       aes-wrap rand 32 \
     )
-    # The 32-byte hex string (-K raw key value) used to encrypt data.
+    # This is PAYLOAD_HEX in upper-case hex format (what aes-wrap/openssl consumes).
     PAYLOAD_HEX=$( \
       echo -n ${PAYLOAD_AES} | \
       hexdump -v -e '/1 "%02X"' \
     )
-    # The 32-byte binary word used as an encryption key for wrapped payload.
+    
+    # Ephemeral:
+    # This is the password protected 32 byte word used to wrap payload.
+    EPHEMERAL_PHRASE_LEN=$( \
+      jot -w %i -r 1 32 64 \
+    )
+    EPHEMERAL_PHRASE=$( \
+      utf8_passphrase $EPHEMERAL_PHRASE_LEN \
+    )
     EPHEMERAL_AES=$( \
       aes-wrap rand 32 \
     )
-    # The 32-byte hex string (-K raw key value) used to encrypt payload.
+    # This is EPHEMERAL_HEX in upper-case hex format (what aes-wrap/openssl consumes).
     EPHEMERAL_HEX=$( \
       echo -n ${EPHEMERAL_AES} | \
       hexdump -v -e '/1 "%02X"' \
     )
-    # The pseudorandom length of the private key's passphrase.
-    PRIV_KEY_PHRASE_LEN=$( jot -w %i -r 1 32 64 )
-    # The pseudorandom string 
+
+    # Private Key:
+    PRIV_KEY_PHRASE_LEN=$( \
+      jot -w %i -r 1 32 64 \
+    )
     PRIV_KEY_PHRASE=$( \
-      tr -cd [[:alnum:][:punct:]] < /dev/random | \
-      fold -w ${PRIV_KEY_PHRASE_LEN} | \
-      head -n 1 \
+      utf8_passphrase $PRIV_KEY_PHRASE_LEN \
     )
     PRIV_KEY="$( \
       echo -n ${PRIV_KEY_PHRASE} | \
@@ -224,12 +248,18 @@ pgp_generate_key_data_init_and_unseal_vault () (
         -aes256 | \
       tr -d '\n' \
     )"
-    PUB_KEY_PHRASE_LEN=$( jot -w %i -r 1 32 64 )
-    PUB_KEY_PHRASE=$( \
-      tr -cd [[:alnum:][:punct:]] < /dev/random | \
-      fold -w ${PUB_KEY_PHRASE_LEN} | \
-      head -n 1 \
+
+    # Public Key:
+    # This is the password protected public key used to wrap ephemeral.
+    PUB_KEY_PHRASE_LEN=$( \
+      jot -w %i -r 1 32 64 \
     )
+    PUB_KEY_PHRASE=$( \
+      utf8_passphrase $PUB_KEY_PHRASE_LEN \
+    )
+    #
+    # Here there be dragons! (are multiple arguments passed this way?)
+    #
     PUB_KEY="$( \
       echo -n "${PRIV_KEY}" "${PRIV_KEY_PHRASE}" "${PUB_KEY_PHRASE}" | \
       aes-wrap rsa \
