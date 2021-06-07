@@ -39,7 +39,7 @@ encode_data_at_rest () (
   )"
 
   # Scale value for floating point precision.
-  SC=15
+  SC=16
 
   # Placeholder for the final binary word.
   BINARY_WORD=$( \
@@ -223,7 +223,7 @@ encode_data_at_rest () (
   while [[ $BIT_N -ge 3 && $BIT_N -le $(( ${#BINARY_WORD} - 4 )) ]]; do
     # We have detected an empty bit in BINARY_WORD.
     if [ "${BINARY_WORD:$BIT_N:1}" = "." ]; then
-      # Insert middle bit, preserve adjacent data.
+      # Insert middle bit, presenrve adjacent data.
       BINARY_WORD="${BINARY_WORD:0:$BIT_N}${PHRASE:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
       # Increment number of writes.
       WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
@@ -236,19 +236,19 @@ encode_data_at_rest () (
 
   # Convert BINARY_WORD to octal.
   # NOTE: Without this step, the presence of a pattern in the data could be easily identified.
-  while [[ $BIT_N -ge 0 && $BIT_N -lt $(( ${#BINARY_WORD} - 8 )) ]]; do
+  while [[ $BIT_N -ge 0 && $BIT_N -le $(( ${#BINARY_WORD} - 8 )) ]]; do
     CHAR_NUM=$( echo -n "ibase=2; obase=8; ${BINARY_WORD:$BIT_N:8}" | bc )
     [ -z "${OCTAL_WORD}" ] && \
-    OCTAL_WORD=$( echo -en "\\${CHAR_NUM}" ) || \
+    OCTAL_WORD="$( echo -en "\\${CHAR_NUM}" )" || \
     OCTAL_WORD="${OCTAL_WORD}$( echo -en "\\${CHAR_NUM}" )"
     BIT_N=$(( $BIT_N + 8 ))
   done
 
   # Convert OCTAL_WORD to base64.
-  B64_STRING=$( echo -n $OCTAL_WORD | base64 | tr -d ' ' )
+  B64_STRING="$( echo -n $OCTAL_WORD | base64 | tr -d ' ' )"
 
   # Convert B64_STRING to hex.
-  OUTPUT_HEX=$( echo -n $B64_STRING | hexdump -ve '/1 "%02X"' )
+  OUTPUT_HEX="$( echo -n $B64_STRING | hexdump -ve '/1 "%02X"' )"
 
   printf '%s\n' "${OUTPUT_HEX}"
 )
