@@ -46,190 +46,88 @@ encode_data_at_rest () (
     printf "%0$(( ${#DATA_WRAP_LEN} + ${#PHRASE_LEN} + ${#DATA_WRAP} + ${#PHRASE} ))s" "." | \
     tr " " "." \
   )
-
-  # Initialize variables that drive incrementation.
-  # Assign values required by A.
-  BIT_N=0; DOT_COUNT=0; WRITE_COUNT=0;
-
-  # Processing of 64-bit word DATA_WRAP_LEN.
-  LEN_A1=$(( ${#BINARY_WORD} - 1 ))
-  LEN_A2=$(( ${#DATA_WRAP_LEN} - 1 ))
-  FLOAT_A=$( echo -n "scale=${SC}; ${LEN_A1} / ${LEN_A2}" | bc )
-  MULT_A=0
-  LAST_A=
-  THIS_A=
-  DIFF_A=
-  while [[ $BIT_N -ge 0 && $BIT_N -le $LEN_A1 ]]; do
-    # We have detected an empty bit in BINARY_WORD.
-    if [ "${BINARY_WORD:$BIT_N:1}" = "." ]; then
-      # This is the first dot, write it without incrementing DOT_COUNT.
-      if [ $WRITE_COUNT -eq 0 ]; then
-        BINARY_WORD="${DATA_WRAP_LEN:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-        WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
-        MULT_A=$(( $MULT_A + 1 ))
-        LAST_A=-1
-        THIS_A=$( \
-          echo -n "scale=${SC}; ${MULT_A} * ${FLOAT_A}" | \
-          bc | \
-          sed 's|^\([0-9]\{1,\}\)\.[0-9]\{1,\}$|\1|g' \
-        )
-        if [ ! -z "${LAST_A}" ] && [ ! -z "${THIS_A}" ]; then
-          DIFF_A=$(( $THIS_A - $LAST_A - 1 ))
-        fi
-      else
-        if [ $BIT_N -eq $LEN_A1 ]; then
-          BINARY_WORD="${BINARY_WORD:0:$BIT_N}${DATA_WRAP_LEN:$WRITE_COUNT:1}"
-        else
-          if [ $DOT_COUNT -eq $DIFF_A ]; then
-            BINARY_WORD="${BINARY_WORD:0:$BIT_N}${DATA_WRAP_LEN:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-            WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
-            MULT_A=$(( $MULT_A + 1 ))
-            LAST_A=$THIS_A
-            THIS_A=$( \
-              echo -n "scale=${SC}; ${MULT_A} * ${FLOAT_A}" | \
-              bc | \
-              sed 's|^\([0-9]\{1,\}\)\.[0-9]\{1,\}$|\1|g' \
-            )
-            if [ ! -z "${LAST_A}" ] && [ ! -z "${THIS_A}" ]; then
-              DIFF_A=$(( $THIS_A - $LAST_A - 1))
-            fi
-            DOT_COUNT=0
-          else
-            DOT_COUNT=$(( $DOT_COUNT + 1 ))
-          fi
-        fi
-      fi
-    fi
-    # Increment bit position.
-    BIT_N=$(( $BIT_N + 1 ))
-  done
-
-  # Assign values required by B.
-  BIT_N=$(( ${#BINARY_WORD} - 2 )); DOT_COUNT=0; WRITE_COUNT=0;
-
-  # Processing of 8-bit word PHRASE_LEN.
-  LEN_B1=$(( ${#PHRASE_LEN} + ${#DATA_WRAP} + ${#PHRASE} - 1 ))
-  LEN_B2=$(( ${#PHRASE_LEN} - 1 ))
-  FLOAT_B=$( echo -n "scale=${SC}; ${LEN_B1} / ${LEN_B2}" | bc )
-  MULT_B=0
-  LAST_B=
-  THIS_B=
-  DIFF_B=
-  while [[ $BIT_N -ge 1 && $BIT_N -le $(( ${#BINARY_WORD} - 2 )) ]]; do
-    # We have detected an empty bit in BINARY_WORD.
-    if [ "${BINARY_WORD:$BIT_N:1}" = "." ]; then
-      # This is the first dot, write it without incrementing DOT_COUNT.
-      if [ $WRITE_COUNT -eq 0 ]; then
-        BINARY_WORD="${BINARY_WORD:0:$BIT_N}${PHRASE_LEN:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-        WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
-        MULT_B=$(( $MULT_B + 1 ))
-        LAST_B=-1
-        THIS_B=$( \
-          echo -n "scale=${SC}; ${MULT_B} * ${FLOAT_B}" | \
-          bc | \
-          sed 's|^\([0-9]\{1,\}\)\.[0-9]\{1,\}$|\1|g' \
-        )
-        if [ ! -z "${LAST_B}" ] && [ ! -z "${THIS_B}" ]; then
-          DIFF_B=$(( $THIS_B - $LAST_B - 1 ))
-        fi
-      else
-        if [ $BIT_N -eq 1 ]; then
-          BINARY_WORD="${BINARY_WORD:0:$BIT_N}${PHRASE_LEN:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-        else
-          if [ $DOT_COUNT -eq $DIFF_B ]; then
-            BINARY_WORD="${BINARY_WORD:0:$BIT_N}${PHRASE_LEN:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-            WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
-            MULT_B=$(( $MULT_B + 1 ))
-            LAST_B=$THIS_B
-            THIS_B=$( \
-              echo -n "scale=${SC}; ${MULT_B} * ${FLOAT_B}" | \
-              bc | \
-              sed 's|^\([0-9]\{1,\}\)\.[0-9]\{1,\}$|\1|g' \
-            )
-            if [ ! -z "${LAST_B}" ] && [ ! -z "${THIS_B}" ]; then
-              DIFF_B=$(( $THIS_B - $LAST_B - 1 ))
-            fi
-            DOT_COUNT=0
-          else
-            DOT_COUNT=$(( $DOT_COUNT + 1 ))
-          fi
-        fi
-      fi
-    fi
-    # Increment bit position.
-    BIT_N=$(( $BIT_N - 1 ))
-  done
-
-  # Assign values required by C.
-  BIT_N=2; DOT_COUNT=0; WRITE_COUNT=0
-
-  # Processing of "I" bits-long word DATA_WRAP.
-  LEN_C1=$(( ${#DATA_WRAP} + ${#PHRASE} - 1 ))
-  LEN_C2=$(( ${#DATA_WRAP} - 1 ))
-  FLOAT_C=$( echo -n "scale=${SC}; ${LEN_C1} / ${LEN_C2}" | bc )
-  MULT_C=0
-  LAST_C=
-  THIS_C=
-  DIFF_C=
-  while [[ $BIT_N -ge 2 && $BIT_N -le $(( ${#BINARY_WORD} - 3 )) ]]; do
-    # We have detected an empty bit in BINARY_WORD.
-    if [ "${BINARY_WORD:$BIT_N:1}" = "." ]; then
-      # This is the first dot, write it without incrementing DOT_COUNT.
-      if [ $WRITE_COUNT -eq 0 ]; then
-        BINARY_WORD="${BINARY_WORD:0:$BIT_N}${DATA_WRAP:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-        WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
-        MULT_C=$(( $MULT_C + 1 ))
-        LAST_C=-1
-        THIS_C=$( \
-          echo -n "scale=${SC}; ${MULT_C} * ${FLOAT_C}" | \
-          bc | \
-          sed 's|^\([0-9]\{1,\}\)\.[0-9]\{1,\}$|\1|g' \
-        )
-        if [ ! -z "${LAST_C}" ] && [ ! -z "${THIS_C}" ]; then
-          DIFF_C=$(( $THIS_C - $LAST_C - 1 ))
-        fi
-      else
-        if [ $BIT_N -eq $(( ${#BINARY_WORD} -3 )) ]; then
-          BINARY_WORD="${BINARY_WORD:0:$BIT_N}${DATA_WRAP:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-        else
-          if [ $DOT_COUNT -eq $DIFF_C ]; then
-            BINARY_WORD="${BINARY_WORD:0:$BIT_N}${DATA_WRAP:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-            WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
-            MULT_C=$(( $MULT_C + 1 ))
-            LAST_C=$THIS_C
-            THIS_C=$( \
-              echo -n "scale=${SC}; ${MULT_C} * ${FLOAT_C}" | \
-              bc | \
-              sed 's|^\([0-9]\{1,\}\)\.[0-9]\{1,\}$|\1|g' \
-            )
-            if [ ! -z "${LAST_C}" ] && [ ! -z "${THIS_C}" ]; then
-              DIFF_C=$(( $THIS_C - $LAST_C - 1 ))
-            fi
-            DOT_COUNT=0
-          else
-            DOT_COUNT=$(( $DOT_COUNT + 1 ))
-          fi
-        fi
-      fi
-    fi
-    # Increment bit position.
-    BIT_N=$(( $BIT_N + 1 ))
-  done
   
-  # Assign values required by D.
-  BIT_N=$(( ${#BINARY_WORD} - 4 )); WRITE_COUNT=0;
-
-  # Processing of "J" bits-long word PHRASE.
-  while [[ $BIT_N -ge 3 && $BIT_N -le $(( ${#BINARY_WORD} - 4 )) ]]; do
-    # We have detected an empty bit in BINARY_WORD.
-    if [ "${BINARY_WORD:$BIT_N:1}" = "." ]; then
-      # Insert middle bit, presenrve adjacent data.
-      BINARY_WORD="${BINARY_WORD:0:$BIT_N}${PHRASE:$WRITE_COUNT:1}${BINARY_WORD:$(( $BIT_N + 1 ))}"
-      # Increment number of writes.
-      WRITE_COUNT=$(( $WRITE_COUNT + 1 ))
+  I=0; J=0; K=$(( ${#DATA_WRAP_LEN} - 1 ));
+  # Place bits of data-to-wrap / wrapped-data encoded length into BINARY_WORD.
+  while [[ $I -ge $J && $I -le $K ]]; do
+    N=$( echo -n "scale=${SC}; ( ( ( ${#BINARY_WORD} - 2 ) / $K ) * ${I} ) + 0" | bc )
+    N=$( printf '%.0f' "${N}" )
+    if [ "${BINARY_WORD:$N:1}" = '.' ]; then
+      if [ $N -eq $J ]; then
+        BINARY_WORD="${DATA_WRAP_LEN:$I:1}${BINARY_WORD:$(( $N + 1 ))}"
+      else
+        BINARY_WORD="${BINARY_WORD:0:$N}${DATA_WRAP_LEN:$I:1}${BINARY_WORD:$(( $N + 1 ))}"
+      fi
     fi
-    # Decrement bit position.
-    BIT_N=$(( $BIT_N - 1 ))
+    I=$(( $I + 1 ))
+  done
+
+  I=0; J=0; K=$(( ${#PHRASE_LEN} - 1 ));
+  # Place bits of passphrase encoded length into BINARY_WORD. (Reversed)
+  while [[ $I -ge $J && $I -le $K ]]; do
+    N=$( echo -n "scale=${SC}; ( ( ( ${#BINARY_WORD} - 2 ) / $K ) * ${I} ) + 1" | bc )
+    N=$( printf '%.0f' "${N}" )
+    if [ "${BINARY_WORD:$N:1}" = "." ]; then
+      if [ $N -eq $J ]; then
+        BINARY_WORD="${PHRASE_LEN:$(( $K - $I )):1}${BINARY_WORD:$(( $N + 1 ))}"
+      elif [ $N -eq $(( ( ${#BINARY_WORD} - 2 ) + 1 )) ]; then
+        BINARY_WORD="${BINARY_WORD:0:$N}${PHRASE_LEN:$(( $K - $I )):1}"
+      else
+        BINARY_WORD="${BINARY_WORD:0:$N}${PHRASE_LEN:$(( $K - $I )):1}${BINARY_WORD:$(( $N + 1 ))}"
+      fi
+    fi
+    I=$(( $I + 1 ))
+  done
+
+  # Placeholder for sensitive data binary word.
+  DATA_WORD=$( \
+    printf "%0$(( ${#DATA_WRAP} + ${#PHRASE} ))s" "." | \
+    tr " " "." \
+  )
+
+  I=0; J=0; K=$(( ${#DATA_WRAP} - 1 ));
+  # Place bits of data-to-wrap / wrapped-data string into DATA_WORD.
+  while [[ $I -ge $J && $I -le $K ]]; do
+    N=$( echo -n "scale=${SC}; ( ( ( ${#DATA_WORD} - 1 ) / $K ) * ${I} ) + 0" | bc )
+    N=$( printf '%.0f' "${N}" )
+    if [ "${DATA_WORD:$N:1}" = "." ]; then
+      if [ $N -eq $J ]; then
+        DATA_WORD="${DATA_WRAP:$I:1}${DATA_WORD:$(( $N + 1 ))}"
+      elif [ $N -eq $K ]; then
+        DATA_WORD="${DATA_WORD:0:$N}${DATA_WRAP:$I:1}"
+      else
+        DATA_WORD="${DATA_WORD:0:$N}${DATA_WRAP:$I:1}${DATA_WORD:$(( $N + 1 ))}"
+      fi
+    fi
+    I=$(( $I + 1 ))
+  done
+
+  I=0; J=0; K=$(( ${#DATA_WORD} - 1 )); L=$(( ${#PHRASE} - 1 ));
+  # Place bits of passphrase string into DATA_WORD. (Reversed)
+  while [[ $I -ge $J && $I -le $K ]]; do
+    if [ "${DATA_WORD:$I:1}" = "." ]; then
+      if [ $I -eq $J ]; then
+        DATA_WORD="${PHRASE:$L:1}${DATA_WORD:$(( $I + 1 ))}"
+        [ $L -gt 0 ] && L=$(( $L - 1 ))
+      elif [ $I -eq $K ]; then
+        DATA_WORD="${DATA_WORD:0:$I}${PHRASE:$L:1}"
+        [ $L -gt 0 ] && L=$(( $L - 1 ))
+      else
+        DATA_WORD="${DATA_WORD:0:$I}${PHRASE:$L:1}${DATA_WORD:$(( $I + 1 ))}"
+        [ $L -gt 0 ] && L=$(( $L - 1 ))
+      fi
+    fi
+    I=$(( $I + 1 ))
+  done
+
+  I=0; J=0; K=$(( ${#BINARY_WORD} - 1 )); L=0;
+  # Merge DATA_WORD with BINARY_WORD.
+  while [[ $I -ge $J && $I -le $K ]]; do
+    if [ "${BINARY_WORD:$I:1}" = "." ]; then
+      BINARY_WORD="${BINARY_WORD:0:$I}${DATA_WORD:$L:1}${BINARY_WORD:$(( $I + 1 ))}"
+      [ $L -lt $(( ${#DATA_WORD} - 1 )) ] && L=$(( $L + 1 ))
+    fi
+    I=$(( $I + 1 ))
   done
 
   BIT_N=0
