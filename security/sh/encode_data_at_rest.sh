@@ -5,32 +5,36 @@ encode_data_at_rest () (
     echo "ERROR: Please provide data-to-wrap / wrapped-data string and passphrase string as arguments."
     return 1
   fi
+  # Original text of argument one (data/wrapper).
+  DATA_WRAP_STR="${1}"
   # Binary-encoded contents of first argument (data/wrapper).
-  DATA_WRAP="$( \
-    echo -n "${1}" | \
+  DATA_WRAP_BIN="$( \
+    echo -n "${DATA_WRAP_STR}" | \
     xxd -b -c 1 | \
-    tr -d '\n' | \
-    sed 's|[0-9a-f]\{8\}[:]\{1\}[ ]\{1\}||g; s|[ ]\{2\}[^ ]\{1\}| |g; s|[ ]\{1\}||g;' \
+    awk '{ print $2 }' | \
+    tr -d '\n' \
   )"
-  # Binary-encoded length of DATA_WRAP (64-bit word).
-  DATA_WRAP_LEN="$( \
-    echo "obase=2; ${#DATA_WRAP}" | bc | \
+  # Binary-encoded length of DATA_WRAP_BIN (64-bit word).
+  DATA_WRAP_LEN_WORD="$( \
+    echo -n "obase=2; ${#DATA_WRAP_STR}" | bc | \
     awk \
     '{
       "printf \"%064s\" " $ARGV[1] "| tr \" \" \"0\"" | getline(nl);
       print(nl)
     }' \
   )"
+  # Original text of argument two (passphrase).
+  PHRASE_STR="${2}"
   # Binary-encoded contents of second argument (passphrase).
-  PHRASE="$( \
-    echo -n "${2}" | \
+  PHRASE_BIN="$( \
+    echo -n "${PHRASE_STR}" | \
     xxd -b -c 1 | \
-    tr -d '\n' | \
-    sed 's|[0-9a-f]\{8\}[:]\{1\}[ ]\{1\}||g; s|[ ]\{2\}[^ ]\{1\}| |g; s|[ ]\{1\}||g;' \
+    awk '{ print $2 }' | \
+    tr -d '\n' \
   )"
   # Binary-encoded length of PHRASE (8-bit word).
-  PHRASE_LEN="$( \
-    echo "obase=2; ${#PHRASE}" | bc | \
+  PHRASE_LEN_WORD="$( \
+    echo -n "obase=2; ${#PHRASE_STR}" | bc | \
     awk \
     '{
       "printf \"%08s\" " $ARGV[1] "| tr \" \" \"0\"" | getline(nl);
@@ -43,37 +47,37 @@ encode_data_at_rest () (
 
   # Placeholder for the final binary word.
   BINARY_WORD=$( \
-    printf "%0$(( ${#DATA_WRAP_LEN} + ${#PHRASE_LEN} + ${#DATA_WRAP} + ${#PHRASE} ))s" "." | \
+    printf "%0$(( ${#DATA_WRAP_LEN_WORD} + ${#PHRASE_LEN_WORD} + ${#DATA_WRAP_BIN} + ${#PHRASE_BIN} ))s" "." | \
     tr " " "." \
   )
   
-  I=0; J=0; K=$(( ${#DATA_WRAP_LEN} - 1 ));
+  I=0; J=0; K=$(( ${#DATA_WRAP_LEN_WORD} - 1 ));
   # Place bits of data-to-wrap / wrapped-data encoded length into BINARY_WORD.
   while [[ $I -ge $J && $I -le $K ]]; do
     N=$( echo -n "scale=${SC}; ( ( ( ${#BINARY_WORD} - 2 ) / $K ) * ${I} ) + 0" | bc )
     N=$( printf '%.0f' "${N}" )
     if [ "${BINARY_WORD:$N:1}" = '.' ]; then
       if [ $N -eq $J ]; then
-        BINARY_WORD="${DATA_WRAP_LEN:$I:1}${BINARY_WORD:$(( $N + 1 ))}"
+        BINARY_WORD="${DATA_WRAP_LEN_WORD:$I:1}${BINARY_WORD:$(( $N + 1 ))}"
       else
-        BINARY_WORD="${BINARY_WORD:0:$N}${DATA_WRAP_LEN:$I:1}${BINARY_WORD:$(( $N + 1 ))}"
+        BINARY_WORD="${BINARY_WORD:0:$N}${DATA_WRAP_LEN_WORD:$I:1}${BINARY_WORD:$(( $N + 1 ))}"
       fi
     fi
     I=$(( $I + 1 ))
   done
 
-  I=0; J=0; K=$(( ${#PHRASE_LEN} - 1 ));
+  I=0; J=0; K=$(( ${#PHRASE_LEN_WORD} - 1 ));
   # Place bits of passphrase encoded length into BINARY_WORD. (Reversed)
   while [[ $I -ge $J && $I -le $K ]]; do
     N=$( echo -n "scale=${SC}; ( ( ( ${#BINARY_WORD} - 2 ) / $K ) * ${I} ) + 1" | bc )
     N=$( printf '%.0f' "${N}" )
     if [ "${BINARY_WORD:$N:1}" = "." ]; then
       if [ $N -eq $J ]; then
-        BINARY_WORD="${PHRASE_LEN:$(( $K - $I )):1}${BINARY_WORD:$(( $N + 1 ))}"
+        BINARY_WORD="${PHRASE_LEN_WORD:$(( $K - $I )):1}${BINARY_WORD:$(( $N + 1 ))}"
       elif [ $N -eq $(( ( ${#BINARY_WORD} - 2 ) + 1 )) ]; then
-        BINARY_WORD="${BINARY_WORD:0:$N}${PHRASE_LEN:$(( $K - $I )):1}"
+        BINARY_WORD="${BINARY_WORD:0:$N}${PHRASE_LEN_WORD:$(( $K - $I )):1}"
       else
-        BINARY_WORD="${BINARY_WORD:0:$N}${PHRASE_LEN:$(( $K - $I )):1}${BINARY_WORD:$(( $N + 1 ))}"
+        BINARY_WORD="${BINARY_WORD:0:$N}${PHRASE_LEN_WORD:$(( $K - $I )):1}${BINARY_WORD:$(( $N + 1 ))}"
       fi
     fi
     I=$(( $I + 1 ))
@@ -81,39 +85,40 @@ encode_data_at_rest () (
 
   # Placeholder for sensitive data binary word.
   DATA_WORD=$( \
-    printf "%0$(( ${#DATA_WRAP} + ${#PHRASE} ))s" "." | \
-    tr " " "." \
+    printf "%0$(( ${#DATA_WRAP_BIN} + ${#PHRASE_BIN} ))s" "." | \
+    tr " " "." | \
+    tr -d '\n'
   )
 
-  I=0; J=0; K=$(( ${#DATA_WRAP} - 1 ));
+  I=0; J=0; K=$(( ${#DATA_WRAP_BIN} - 1 ));
   # Place bits of data-to-wrap / wrapped-data string into DATA_WORD.
   while [[ $I -ge $J && $I -le $K ]]; do
     N=$( echo -n "scale=${SC}; ( ( ( ${#DATA_WORD} - 1 ) / $K ) * ${I} ) + 0" | bc )
     N=$( printf '%.0f' "${N}" )
     if [ "${DATA_WORD:$N:1}" = "." ]; then
       if [ $N -eq $J ]; then
-        DATA_WORD="${DATA_WRAP:$I:1}${DATA_WORD:$(( $N + 1 ))}"
+        DATA_WORD="${DATA_WRAP_BIN:$I:1}${DATA_WORD:$(( $N + 1 ))}"
       elif [ $N -eq $K ]; then
-        DATA_WORD="${DATA_WORD:0:$N}${DATA_WRAP:$I:1}"
+        DATA_WORD="${DATA_WORD:0:$N}${DATA_WRAP_BIN:$I:1}"
       else
-        DATA_WORD="${DATA_WORD:0:$N}${DATA_WRAP:$I:1}${DATA_WORD:$(( $N + 1 ))}"
+        DATA_WORD="${DATA_WORD:0:$N}${DATA_WRAP_BIN:$I:1}${DATA_WORD:$(( $N + 1 ))}"
       fi
     fi
     I=$(( $I + 1 ))
   done
 
-  I=0; J=0; K=$(( ${#DATA_WORD} - 1 )); L=$(( ${#PHRASE} - 1 ));
+  I=0; J=0; K=$(( ${#DATA_WORD} - 1 )); L=$(( ${#PHRASE_BIN} - 1 ));
   # Place bits of passphrase string into DATA_WORD. (Reversed)
   while [[ $I -ge $J && $I -le $K ]]; do
     if [ "${DATA_WORD:$I:1}" = "." ]; then
       if [ $I -eq $J ]; then
-        DATA_WORD="${PHRASE:$L:1}${DATA_WORD:$(( $I + 1 ))}"
+        DATA_WORD="${PHRASE_BIN:$L:1}${DATA_WORD:$(( $I + 1 ))}"
         [ $L -gt 0 ] && L=$(( $L - 1 ))
       elif [ $I -eq $K ]; then
-        DATA_WORD="${DATA_WORD:0:$I}${PHRASE:$L:1}"
+        DATA_WORD="${DATA_WORD:0:$I}${PHRASE_BIN:$L:1}"
         [ $L -gt 0 ] && L=$(( $L - 1 ))
       else
-        DATA_WORD="${DATA_WORD:0:$I}${PHRASE:$L:1}${DATA_WORD:$(( $I + 1 ))}"
+        DATA_WORD="${DATA_WORD:0:$I}${PHRASE_BIN:$L:1}${DATA_WORD:$(( $I + 1 ))}"
         [ $L -gt 0 ] && L=$(( $L - 1 ))
       fi
     fi
@@ -131,22 +136,22 @@ encode_data_at_rest () (
   done
 
   BIT_N=0
-
-  # Convert BINARY_WORD to octal.
-  # NOTE: Without this step, the presence of a pattern in the data could be easily identified.
+  OUTPUT_HEX=
+  
+  # Convert BINARY_WORD to hex.
+  # NOTE: Other means of interpreting the binary will cause mutation of
+  #       data based on format and/or locale.
   while [[ $BIT_N -ge 0 && $BIT_N -le $(( ${#BINARY_WORD} - 8 )) ]]; do
-    CHAR_NUM=$( echo -n "ibase=2; obase=8; ${BINARY_WORD:$BIT_N:8}" | bc )
-    [ -z "${OCTAL_WORD}" ] && \
-    OCTAL_WORD="$( echo -en "\\${CHAR_NUM}" )" || \
-    OCTAL_WORD="${OCTAL_WORD}$( echo -en "\\${CHAR_NUM}" )"
+    HEX_BYTE=$( \
+      printf '%02X' "$( \
+        echo -n "ibase=2; ${BINARY_WORD:$BIT_N:8}" | bc \
+      )" \
+    )
+    OUTPUT_HEX="$( \
+      echo -en "${OUTPUT_HEX}${HEX_BYTE}"
+    )"
     BIT_N=$(( $BIT_N + 8 ))
   done
-
-  # Convert OCTAL_WORD to base64.
-  B64_STRING="$( echo -n $OCTAL_WORD | base64 | tr -d ' ' )"
-
-  # Convert B64_STRING to hex.
-  OUTPUT_HEX="$( echo -n $B64_STRING | hexdump -ve '/1 "%02X"' )"
 
   printf '%s\n' "${OUTPUT_HEX}"
 )
