@@ -184,6 +184,8 @@ pgp_generate_key_data_init_and_unseal_vault () (
       sed "s|[^ ]\{0,\}pubrsa4096/0x${PGP_GENERATED_KEY_ID_HEX:24:16}[^ ]\{1,\}subrsa4096/0x[^ ]\{1,\}Keyfingerprint=\([0-9A-F]\{40\}\)|\1|g"
     )
 
+    # Here we need to add the image to the key before exporting.
+
     # Export the subkey in base64 encoded *.asc format (what Vault consumes).
     # Use tr to get rid of all newlines.
     PGP_BASE64_ONE_LINE_ASC_DATA="$( \
@@ -196,6 +198,23 @@ pgp_generate_key_data_init_and_unseal_vault () (
       base64 | \
       tr -d '\n' \
     )"
+    PGP_ENTROPY_LEN=$( \
+      jot -w %i -r 1 32 64 \
+    )
+    PGP_ENTROPY_STRING=$( \
+      utf8_passphrase $PGP_ENTROPY_LEN \
+    )
+    DATA_TO_WRAP=$( \
+      encode_data_at_rest \
+      "${PGP_BASE64_ONE_LINE_ASC_DATA}" \
+      "${PGP_ENTROPY_STRING}" \
+    )
+
+    # Persistence of data-at-rest will be as follows:
+    # * All items for a given service will be in a single file.
+    # * Items will be in the given order Ephemeral*, Payload*, Data*.
+    # * Each item will be a wrapped string returned by encode_data_at_rest.
+    # * Each encoded string will contain the wrapper -K value, followed by its passphrase, in raw format.
     
     # Payload:
     # This is the password protected 32 byte word used to wrap data-at-rest.
@@ -213,6 +232,11 @@ pgp_generate_key_data_init_and_unseal_vault () (
       echo -n ${PAYLOAD_AES} | \
       hexdump -v -e '/1 "%02X"' \
     )
+    PAYLOAD_TO_WRAP=$( \
+      encode_data_at_rest \
+      "${PAYLOAD_AES}" \
+      "${PAYLOAD_PHRASE}" \
+    )
     
     # Ephemeral:
     # This is the password protected 32 byte word used to wrap payload.
@@ -229,6 +253,11 @@ pgp_generate_key_data_init_and_unseal_vault () (
     EPHEMERAL_HEX=$( \
       echo -n ${EPHEMERAL_AES} | \
       hexdump -v -e '/1 "%02X"' \
+    )
+    EPHEMERAL_TO_WRAP=$( \
+      encode_data_at_rest \
+      "${EPHEMERAL_AES}" \
+      "${EPHEMERAL_PHRASE}" \
     )
 
     # Private Key:
@@ -274,7 +303,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
     )"
     # Encrypted data-at-rest remains in a networked volume
     DATA_WRAPPED="$( \
-      echo -n "${this_should_be_the_exported_pgp_key}" "${PAYLOAD_PHRASE}" | \
+      echo -n "${DATA_TO_WRAP}" "${PAYLOAD_PHRASE}" | \
       aes-wrap enc \
         -id-aes256-wrap-pad \
         -pass stdin \
