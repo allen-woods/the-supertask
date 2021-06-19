@@ -37,8 +37,10 @@ pgp_apk_add_packages () (
   apk_loader $1 \
     busybox-static=1.32.1-r6 \
     apk-tools-static=2.12.5-r0 \
+    coreutils=8.32-r2 \
     curl=7.77.0-r0 \
     gnupg=2.2.27-r0 \
+    imagemagick=7.0.11.13-r0 \
     jq=1.6-r1 \
     outils-jot=0.9-r0 \
     vim=8.2.2320-r0
@@ -105,6 +107,13 @@ pgp_generate_key_data_init_and_unseal_vault () (
   # If a second argument exists and is an integer, defer to this user-specified value.
   [ ! -z "${2}" ] && [ -z "$(echo -n "${2}" | sed 's/[0-9]\{1,\}//g')" ] && MAX_ITER=$2
 
+  # Create the temporary directory where ephemeral batch files are stored.
+  PGP_BATCH_PATH=/tmp/pgp
+  [ ! -d $PGP_BATCH_PATH ] && mkdir $PGP_BATCH_PATH
+
+  # Create a string for holding PGP Key passphrases for use inside this function only.
+  PGP_FUNC_SCOPE_ONLY_PHRASES=
+
   # Initialize variable to be incremented.
   n=0
 
@@ -125,9 +134,9 @@ pgp_generate_key_data_init_and_unseal_vault () (
       fold -w 32 | \
       head -n 1 \
     )
-    # Generate random integer (20 to 99)
+    # Generate random integer (20 to 255)
     PGP_PHRASE_LEN=$( \
-      jot -w %i -r 1 20 99 \
+      jot -w %i -r 1 20 255 \
     )
     # Generate random string with length ${PHRASE_LEN}
     PGP_PHRASE=$( \
@@ -137,6 +146,13 @@ pgp_generate_key_data_init_and_unseal_vault () (
     PGP_REAL_EMAIL_NAME="$( \
       sed "${ITER}q;d" /var/tmp/credentials \
     )"
+
+    PGP_REAL_NAME_SLUG=$( \
+      echo -n "${PGP_REAL_EMAIL_NAME}" | \
+      cut -d ',' -f 1 | \
+      tr '[:upper:]' '[:lower:]' | \
+      sed 's|[ ]\{1\}|-\g' \
+    )
 
     [ $ITER -eq $MAX_ITER ] && \
     PGP_DONE_MSG="%echo Key Generation: COMPLETE!" || \
@@ -156,7 +172,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
       "Name-Email: $( echo -n "${PGP_REAL_EMAIL_NAME}" | cut -d ',' -f 2 )" \
       "Expire-Date: 0" \
       "%commit" \
-      "${PGP_DONE_MSG}" > /pgp_batch_file # $PGP_BATCH_FILE
+      "${PGP_DONE_MSG}" > $PGP_BATCH_FILE
 
     # Generate the PGP key by running the batch file.
     gpg \
@@ -167,6 +183,26 @@ pgp_generate_key_data_init_and_unseal_vault () (
 
     # Delete the batch file after use.
     rm -f $PGP_BATCH_FILE
+
+    # Create an entropy image for the PGP key.
+    ENTROPY_IMAGE_PATH=$( \
+      get_earthcam_entropy_image \
+      $(( ( $ITER - 1 ) * 3 )) \
+      "${PGP_REAL_NAME_SLUG}" \
+    )
+
+    # Add the entropy image to our generated key:
+    ( \
+      echo "addphoto"; \
+      echo "${ENTROPY_IMAGE_PATH}"; \
+      echo "y"; \
+      echo "${PGP_PHRASE}"; \
+      echo "save"; \
+    ) | gpg \
+      --command-fd=0 \
+      --status-fd=1 \
+      --pinentry-mode=loopback \
+      --edit-key "$( echo -n "${PGP_REAL_EMAIL_NAME}" | cut -d ',' -f 2 )"
 
     # Capture the base name of most recently generated revocation file.
     PGP_GENERATED_KEY_ID_HEX=$( \
@@ -184,8 +220,6 @@ pgp_generate_key_data_init_and_unseal_vault () (
       sed "s|[^ ]\{0,\}pubrsa4096/0x${PGP_GENERATED_KEY_ID_HEX:24:16}[^ ]\{1,\}subrsa4096/0x[^ ]\{1,\}Keyfingerprint=\([0-9A-F]\{40\}\)|\1|g"
     )
 
-    # Here we need to add the image to the key before exporting.
-
     # Export the subkey in base64 encoded *.asc format (what Vault consumes).
     # Use tr to get rid of all newlines.
     PGP_BASE64_ONE_LINE_ASC_DATA="$( \
@@ -199,7 +233,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
       tr -d '\n' \
     )"
     PGP_ENTROPY_LEN=$( \
-      jot -w %i -r 1 32 64 \
+      jot -w %i -r 1 32 255 \
     )
     PGP_ENTROPY_STRING=$( \
       utf8_passphrase $PGP_ENTROPY_LEN \
@@ -210,11 +244,10 @@ pgp_generate_key_data_init_and_unseal_vault () (
       "${PGP_ENTROPY_STRING}" \
     )
 
-    # Persistence of data-at-rest will be as follows:
-    # * All items for a given service will be in a single file.
-    # * Items will be in the given order Ephemeral*, Payload*, Data*.
-    # * Each item will be a wrapped string returned by encode_data_at_rest.
-    # * Each encoded string will contain the wrapper -K value, followed by its passphrase, in raw format.
+    # Place each PGP key's passphrase into our function scoped string.
+    [ -z "${PGP_FUNC_SCOPE_ONLY_PHRASES}" ] && \
+    PGP_FUNC_SCOPE_ONLY_PHRASES="${PGP_PHRASE}" || \
+    PGP_FUNC_SCOPE_ONLY_PHRASES="${PGP_FUNC_SCOPE_ONLY_PHRASES} ${PGP_PHRASE}"
     
     # Payload:
     # This is the password protected 32 byte word used to wrap data-at-rest.
@@ -281,34 +314,31 @@ pgp_generate_key_data_init_and_unseal_vault () (
     # Public Key:
     # This is the password protected public key used to wrap ephemeral.
     PUB_KEY_PHRASE_LEN=$( \
-      jot -w %i -r 1 32 64 \
+      jot -w %i -r 1 32 255 \
     )
     PUB_KEY_PHRASE=$( \
       utf8_passphrase $PUB_KEY_PHRASE_LEN \
     )
-    #
-    # Here there be dragons! (are multiple arguments passed this way?)
-    #
     PUB_KEY="$( \
-      echo -n "${PRIV_KEY}" "${PRIV_KEY_PHRASE}" "${PUB_KEY_PHRASE}" | \
+      echo -n "${PRIV_KEY}" | \
       aes-wrap rsa \
         -inform PEM \
-        -passin stdin \
+        -passin "${PRIV_KEY_PHRASE}" \
         -outform PEM \
         -pubout \
-        -passout stdin \
+        -passout "${PUB_KEY_PHRASE}" \
         -check \
         -aes256 | \
       tr -d '\n' \
     )"
     # Encrypted data-at-rest remains in a networked volume
     DATA_WRAPPED="$( \
-      echo -n "${DATA_TO_WRAP}" "${PAYLOAD_PHRASE}" | \
+      echo -n "${DATA_TO_WRAP}" | \
       aes-wrap enc \
         -id-aes256-wrap-pad \
-        -pass stdin \
+        -pass "${PAYLOAD_PHRASE}" \
         -e \
-        -K $PAYLOAD_HEX \
+        -K "${PAYLOAD_HEX}" \
         -iv A65959A6 \
         -md sha512 \
         -iter 250000 | \
@@ -316,32 +346,44 @@ pgp_generate_key_data_init_and_unseal_vault () (
     )"
     # Wrapped decryption keys are concatenated into a file that is not persisted on the network
     PAYLOAD_WRAPPED="$( \
-      echo -n "${this_should_be_the_exported_pgp_key}" "${EPHEMERAL_PHRASE}" | \
+      echo -n "${PAYLOAD_TO_WRAP}}" | \
       aes-wrap enc \
         -id-aes256-wrap-pad \
-        -pass stdin \
+        -pass "${EPHEMERAL_PHRASE}" \
         -e \
-        -K $EPHEMERAL_HEX \
+        -K "${EPHEMERAL_HEX}" \
         -iv A65959A6 \
         -md sha512 \
         -iter 250000 | \
       tr -d '\n' \
     )"
     EPHEMERAL_WRAPPED="$( \
-      echo -n "${PUB_KEY}" "${PUB_KEY_PHRASE}" | \
+      echo -n "${EPHEMERAL_TO_WRAP}" | \
       aes-wrap pkeyutl \
         -encrypt \
         -pubin \
-        -passin stdin \
+        -inkey "${PUB_KEY}" \
+        -passin "${PUB_KEY_PHRASE}" \
         -pkeyopt rsa_padding_mode:oaep \
         -pkeyopt rsa_oaep_md:sha256 \
         -pkeyopt rsa_mgf1_md:sha1 | \
       tr -d '\n' \
     )"
+    # Send our encoded, wrapped strings to the destination file.
     printf '%s\n' \
     "${EPHEMERAL_WRAPPED}" \
     "${PAYLOAD_WRAPPED}" \
-    "${DATA_WRAPPED}" > appropriately_named_rsa_aes_wrapped_file.bin
+    "${DATA_WRAPPED}" > "${PGP_REAL_NAME_SLUG}.bin"
+
+    # Warn the user this is their FIRST, LAST, AND ONLY CHANCE to copy down the information being displayed.
+    echo -e "\033[1;31m\033[47m !! IMPORTANT !!         !! IMPORTANT !!         !! IMPORTANT !!         !! IMPORTANT !!  \033[0m"
+    echo -e "\033[1;31m\033[47m The following data is highly sensitive. It has been custom encoded for security reasons. \033[0m"
+    echo -e "\033[1;31m\033[47m THIS DATA WILL NOT BE PERSISTED. THIS IS YOUR FIRST, LAST, AND ONLY CHANCE TO COPY IT.   \033[0m"
+    echo -e "\033[0;30m\033[47m - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  \033[0m"
+    echo -e "\033[1;31m\033[47m PLEASE COPY AND SECURE THIS DATA TO PREVENT UNRECOVERABLE CRITICAL DATA LOSS.            \033[0m"
+    echo ""
+    echo -e "\044[0;33m\033[40m $( encode_data_at_rest "${PUB_KEY_PHRASE}" "${PGP_PHRASE}" | base64 ) \033[0m"
+    echo ""
 
     # Increment the value of `n`.
     # IMPORTANT:  We must increment in advance to prevent overrun of
@@ -378,6 +420,9 @@ pgp_generate_key_data_init_and_unseal_vault () (
     ITER=$(($ITER + 1))
   done
 
+  # Erase all entropy images.
+  # rm -rf $HOME/.gnupg/images
+
   # JSON: Append our secret shares to payload string (synonymous with key-shares),
   #       and append our secret threshold to payload string (synonymous with key-threshold).
   VAULT_API_V1_SYS_INIT_JSON="${VAULT_API_V1_SYS_INIT_JSON}],\"secret_shares\":$(($n - 1)),\"secret_threshold\":$(($n - 2))}"
@@ -388,6 +433,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
     --data "${VAULT_API_V1_SYS_INIT_JSON}" \
     ${VAULT_ADDR}/v1/sys/init |
     jq > /response.txt
+    # UPDATE to official file path.
 
   SYS_INIT_KEYS_LINE=-1
   UNSEAL_RESPONSE=
@@ -416,8 +462,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
             --pinentry-mode loopback \
             --decrypt \
             --passphrase "$(
-              sed '1q' < ${HOME}/.raw/pgp-key-1-asc-passphrase.raw |
-                tr -d '\n'
+              echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | cut -f 1 \
             )" | tr -d '\n'
       )"
 
@@ -435,8 +480,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
                 --pinentry-mode loopback \
                 --decrypt \
                 --passphrase "$(
-                  sed '1q' < ${HOME}/.raw/pgp-key-${UNSEAL_KEY_NUM}-asc-passphrase.raw |
-                    tr -d '\n'
+                  echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | cut -f ${UNSEAL_KEY_NUM} \
                 )" | tr -d '\n'
           )"
           JSON_SYS_UNSEAL_PAYLOAD="{\"key\":\"${UNSEAL_KEY_STR}\"}"
@@ -462,6 +506,7 @@ pgp_generate_key_data_init_and_unseal_vault () (
       fi
     fi
   done < response.txt
+  # UPDATE to use official file path.
 )
 pgp_pkill_gpg_agent_daemon () (
   pkill gpg-agent

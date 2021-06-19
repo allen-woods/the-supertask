@@ -105,7 +105,7 @@ services:
     build:
       context: ./security
       dockerfile: ./Dockerfile
-      target: supervault
+      target: vault-init
     image: the-supertask-vault:tag
     restart: always
     environment:

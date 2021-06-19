@@ -10,10 +10,10 @@
 # Proposed Steps:
 #   X DieHarder Test Suite.
 #   X Compile OpenSSL.
-#   -> PGP data.
-#   TLS data.
+#   X PGP data.
 #   Unseal Vault.
 #   Configure Vault.
+#   TLS data.
 FROM alpine:3.12.7 AS test-suite
 WORKDIR /
 COPY --chown=root:root  [ \
@@ -67,6 +67,8 @@ COPY --from=aes-wrap    [ \
   ]
 COPY --chown=root:root  [ \
   "./sh/apk_loader.sh", \
+  "./sh/encode_data_at_rest.sh", \
+  "./sh/get_earthcam_entropy_image.sh", \
   "./sh/pretty.sh", \
   "./sh/run_install.sh", \
   "./sh/utf8_char.sh", \
@@ -76,9 +78,10 @@ COPY --chown=root:root  [ \
   "./sh/install_tls.sh", \
   "/etc/profile.d/" \
   ]
-COPY --chown=root:root [ "./vault/config",          "/vault/config/" ]
-COPY --chown=root:root [ "./tls/.admin",            "/root/" ]
-COPY --chown=root:root [ "./static/char_file.utf8", "/root/.aes_rsa_utf8_support/character_set/char_file.utf8" ]
+COPY --chown=root:root  [ "./vault/config",            "/vault/config/" ]
+COPY --chown=root:root  [ "./tls/.admin",              "/root/" ]
+COPY --chown=root:root  [ "./static/char_file.utf8",   "/root/.aes_rsa_utf8_support/character_set/" ]
+COPY --chown=root:root  [ "./credentials/credentials", "/var/tmp/" ]
 
 RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_pgp.sh /etc/profile.d/install_tls.sh" ]
 
@@ -86,4 +89,4 @@ FROM vault:1.7.1 AS supervault
 
 WORKDIR /
 COPY --chown=root:root --from=init-src [ "./vault/config", "/vault/config/" ]
-CMD ["server"]
+CMD [ "server" ]

@@ -1479,8 +1479,8 @@ utf8_char_file() (
 
       [ $(($UTF8_I % 8)) -eq 0 ] && UTF8_NL=" " || UTF8_NL=" -n "
 
-      # Give the operator feedback while they wait.
-      echo -e${UTF8_NL}"\033[0;34m\033[40m $( printf '%06d' "${UTF8_I}" ) \033[1;33m\033[40m: ${CHAR_I}  \033[0;37m\033[47m \033[0m"
+      # Give the operator feedback while they wait. (Optional)
+      # echo -e${UTF8_NL}"\033[0;34m\033[40m $( printf '%06d' "${UTF8_I}" ) \033[1;33m\033[40m: ${CHAR_I}  \033[0;37m\033[47m \033[0m"
     fi
 
     UTF8_I=$(($UTF8_I + 1))
