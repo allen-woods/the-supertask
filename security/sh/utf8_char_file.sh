@@ -1,10 +1,10 @@
 #!/bin/sh
-utf8_char_file() (
-  UTF8_START=33
-  UTF8_I=33
-  UTF8_END=195103
-  UTF8_FONT=
-  LAST_FONT=
+utf8_char_file() {
+  local UTF8_START=33
+  local UTF8_I=33
+  local UTF8_END=195103
+  local UTF8_FONT=
+  local LAST_FONT=
 
   # Install ImageMagick if Not Found.
   [ ! -z "$( ( convert ) 2>&1 | grep -o "not found" )" ] && \
@@ -29,15 +29,15 @@ utf8_char_file() (
   font-noto-emoji=0_git20200916-r1
 
   # We use this variable to control line length inside "char_file.utf8".
-  CHAR_COUNT=0
+  local CHAR_COUNT=0
 
   # Generate Character File Containing Printable, Unique Glyphs.
   echo "Generating: UTF-8 Character File...    (This will take a long time)"
   while [ $UTF8_I -ge $UTF8_START ] && [ $UTF8_I -le $UTF8_END ]; do
     # We use this variable to latch creation of PNG files used with "compare" utility.
     LAST_FONT=${UTF8_FONT}
-    UTF8_COMPARE=1
-    UTF8_PRINT=1
+    local UTF8_COMPARE=1
+    local UTF8_PRINT=1
 
     # We must identify the correct font to use based on the value of UTF8_I.
     if [ $UTF8_I -ge 0 ] && [ $UTF8_I -le 879 ]; then
@@ -1427,7 +1427,7 @@ utf8_char_file() (
         png:$HOME/.aes_rsa_utf8_support/compare/no_glyph.png
     fi
 
-    CHAR_I="$( utf8_char ${UTF8_I} )"
+    local CHAR_I="$( utf8_char ${UTF8_I} )"
 
     if [ $UTF8_COMPARE -eq 1 ]; then
       if [ ! -z "${CHAR_I}" ]; then
@@ -1441,7 +1441,7 @@ utf8_char_file() (
           label:@- \
           png:$HOME/.aes_rsa_utf8_support/convert/check.png
         
-        IS_UNPRINTABLE="$( \
+        local IS_UNPRINTABLE="$( \
           ( \
             compare \
             -metric MAE \
@@ -1449,7 +1449,7 @@ utf8_char_file() (
             $HOME/.aes_rsa_utf8_support/compare/no_print.png  null: \
           ) 2>&1 \
         )"
-        IS_UNKNOWN="$( \
+        local IS_UNKNOWN="$( \
           ( \
             compare \
             -metric MAE \
@@ -1477,6 +1477,7 @@ utf8_char_file() (
         CHAR_COUNT=$(($CHAR_COUNT + 1))
       fi
 
+      local UTF8_NL=
       [ $(($UTF8_I % 8)) -eq 0 ] && UTF8_NL=" " || UTF8_NL=" -n "
 
       # Give the operator feedback while they wait. (Optional)
@@ -1488,4 +1489,4 @@ utf8_char_file() (
   echo ""
   echo "DONE: UTF-8 Character File Generated."
   rm -f $HOME/.aes_rsa_utf8_support/convert/check.png
-)
+}

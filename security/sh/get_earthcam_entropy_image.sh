@@ -1,17 +1,17 @@
 #!/bin/sh
-get_earthcam_entropy_image () (
+get_earthcam_entropy_image () {
   # The first argument is a positive integer (0 inclusive) that sets an offset of N hours beyond 24 hours ago.
-  OFFSET_HOURS=${1:-0}
+  local OFFSET_HOURS=${1:-0}
 
   # The second argument is a string that sets a custom basename for the final output file.
-  OUTPUT_BASENAME=${2:-final}
+  local OUTPUT_BASENAME=${2:-final}
 
   # The route used by the EarthCam networks' thumbnail archives.
-  EARTHCAM_ADDR="https://www.earthcam.com/cams/includes/images/archivethumbs/network"
+  local EARTHCAM_ADDR="https://www.earthcam.com/cams/includes/images/archivethumbs/network"
 
   # Specific network IDs used by this function.
   # NOTE: The order of these IDs is important!
-  NETWORK_IDS=" \
+  local NETWORK_IDS=" \
     17832 9602 4054 \
     16812 15629 ceuta1 \
     19706 19986 21250 \
@@ -28,30 +28,35 @@ get_earthcam_entropy_image () (
   "
 
   # Destination path for saved image files.
-  IMAGE_DIR="${HOME}/.gnupg/images"
+  local IMAGE_DIR="${HOME}/.gnupg/images"
 
   # Create the destination path if it doesn't exist yet.
   [ ! -d "${IMAGE_DIR}" ] && mkdir -p "${IMAGE_DIR}"
 
   # Initialize variables used to generate XOR data.
-  A=0; B=0; C=0; D=0; E=0; F=0;
+  local A=0; local B=0; local C=0; local D=0; local E=0; local F=0;
 
   # Iterate across the network IDs.
   for ID in $NETWORK_IDS; do
     # Exception that occurs when the 13th "C" file is leftover.
-    EXCEPT_E=
+    local EXCEPT_E=
     # Parse the image file URI based on date information.
-    IMAGE_URL_PATH="$( \
+    local IMAGE_URL_PATH="$( \
       date -d "-$(( 24 + $OFFSET_HOURS )) hours" +'/%Y/%m/%d/%H.jpg' \
     )"
     # Test to see if a given network is live on EarthCam with an image file available.
-    RES=$( \
+    local RES=$( \
       wget --spider "${EARTHCAM_ADDR}/${ID}/${IMAGE_URL_PATH}" 2>&1 | \
       tr '\n' ' ' \
     )
     # If we got a successful response...
     if [ ! -z "$( echo -n "${RES}" | grep -o "exists" )" ]; then
       # Build toward our final output image one wget at a time.
+
+      # TODO: Resize images pulled from EarthCam to 50% original size.
+      #       Important to use "nearest neighbor" equivalent resampling
+      #       (if available).
+      
       case $A in
         0)
           wget \
@@ -161,4 +166,4 @@ get_earthcam_entropy_image () (
     fi
   done
   echo "${IMAGE_DIR}/${OUTPUT_BASENAME}.jpg"
-)
+}

@@ -106,7 +106,7 @@ services:
       context: ./security
       dockerfile: ./Dockerfile
       target: vault-init
-    image: the-supertask-vault:tag
+    image: the-supertask-vault:latest
     restart: always
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200

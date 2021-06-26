@@ -1,21 +1,21 @@
 #!/bin/sh
-encode_data_at_rest () (
+encode_data_at_rest () {
   # Require both arguments.
   if [ -z "${1}" ] || [ -z "${2}" ]; then
     echo "ERROR: Please provide data-to-wrap / wrapped-data string and passphrase string as arguments."
     return 1
   fi
   # Original text of argument one (data/wrapper).
-  DATA_WRAP_STR="${1}"
+  local DATA_WRAP_STR="${1}"
   # Binary-encoded contents of first argument (data/wrapper).
-  DATA_WRAP_BIN="$( \
+  local DATA_WRAP_BIN="$( \
     echo -n "${DATA_WRAP_STR}" | \
     xxd -b -c 1 | \
     awk '{ print $2 }' | \
     tr -d '\n' \
   )"
   # Binary-encoded length of DATA_WRAP_BIN (64-bit word).
-  DATA_WRAP_LEN_WORD="$( \
+  local DATA_WRAP_LEN_WORD="$( \
     echo -n "obase=2; ${#DATA_WRAP_STR}" | bc | \
     awk \
     '{
@@ -24,16 +24,16 @@ encode_data_at_rest () (
     }' \
   )"
   # Original text of argument two (passphrase).
-  PHRASE_STR="${2}"
+  local PHRASE_STR="${2}"
   # Binary-encoded contents of second argument (passphrase).
-  PHRASE_BIN="$( \
+  local PHRASE_BIN="$( \
     echo -n "${PHRASE_STR}" | \
     xxd -b -c 1 | \
     awk '{ print $2 }' | \
     tr -d '\n' \
   )"
   # Binary-encoded length of PHRASE (8-bit word).
-  PHRASE_LEN_WORD="$( \
+  local PHRASE_LEN_WORD="$( \
     echo -n "obase=2; ${#PHRASE_STR}" | bc | \
     awk \
     '{
@@ -43,15 +43,18 @@ encode_data_at_rest () (
   )"
 
   # Scale value for floating point precision.
-  SC=16
+  local SC=16
 
   # Placeholder for the final binary word.
-  BINARY_WORD=$( \
+  local BINARY_WORD=$( \
     printf "%0$(( ${#DATA_WRAP_LEN_WORD} + ${#PHRASE_LEN_WORD} + ${#DATA_WRAP_BIN} + ${#PHRASE_BIN} ))s" "." | \
     tr " " "." \
   )
   
-  I=0; J=0; K=$(( ${#DATA_WRAP_LEN_WORD} - 1 ));
+  local L=
+  local N=
+
+  local I=0; local J=0; local K=$(( ${#DATA_WRAP_LEN_WORD} - 1 ));
   # Place bits of data-to-wrap / wrapped-data encoded length into BINARY_WORD.
   while [[ $I -ge $J && $I -le $K ]]; do
     N=$( echo -n "scale=${SC}; ( ( ( ${#BINARY_WORD} - 2 ) / $K ) * ${I} ) + 0" | bc )
@@ -84,7 +87,7 @@ encode_data_at_rest () (
   done
 
   # Placeholder for sensitive data binary word.
-  DATA_WORD=$( \
+  local DATA_WORD=$( \
     printf "%0$(( ${#DATA_WRAP_BIN} + ${#PHRASE_BIN} ))s" "." | \
     tr " " "." | \
     tr -d '\n'
@@ -135,14 +138,14 @@ encode_data_at_rest () (
     I=$(( $I + 1 ))
   done
 
-  BIT_N=0
-  OUTPUT_HEX=
+  local BIT_N=0
+  local OUTPUT_HEX=
   
   # Convert BINARY_WORD to hex.
   # NOTE: Other means of interpreting the binary will cause mutation of
   #       data based on format and/or locale.
   while [[ $BIT_N -ge 0 && $BIT_N -le $(( ${#BINARY_WORD} - 8 )) ]]; do
-    HEX_BYTE=$( \
+    local HEX_BYTE=$( \
       printf '%02X' "$( \
         echo -n "ibase=2; ${BINARY_WORD:$BIT_N:8}" | bc \
       )" \
@@ -154,4 +157,4 @@ encode_data_at_rest () (
   done
 
   printf '%s\n' "${OUTPUT_HEX}"
-)
+}

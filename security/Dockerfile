@@ -17,7 +17,6 @@
 FROM alpine:3.12.7 AS test-suite
 WORKDIR /
 COPY --chown=root:root  [ \
-  "./sh/apk_loader.sh", \
   "./sh/pretty.sh", \
   "./sh/run_install.sh", \
   "./sh/install_dieharder.sh", \
@@ -28,7 +27,6 @@ RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/i
 FROM alpine:3.13.5 AS aes-wrap
 WORKDIR /
 COPY --chown=root:root  [ \
-  "./sh/apk_loader.sh", \
   "./sh/pretty.sh", \
   "./sh/run_install.sh", \
   "./sh/install_openssl.sh", \
@@ -38,35 +36,46 @@ RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/i
 
 FROM vault:1.7.1 AS vault-init
 WORKDIR /
+
 # DieHarder Test Suite.
-COPY --from=test-suite  [ \
+COPY --chown=root:root --from=test-suite  [ \
   "/usr/bin/dieharder", \
   "/usr/bin/" \
   ]
-COPY --from=test-suite  [ \
+
+COPY --chown=root:root --from=test-suite  [ \
   "/usr/lib/libdieharder.so.3", \
   "/usr/lib/libgsl.so.25", \
   "/usr/lib/libgslcblas.so.0", \
   "/usr/lib/" \
   ]
+
 # AES-Wrap (OpenSSL).
-COPY --from=aes-wrap    [ \
+COPY --chown=root:root --from=aes-wrap    [ \
   "/root/local/bin/openssl", \
   "/root/local/bin/openssl.sh", \
   "/root/local/bin/" \
   ]
-COPY --from=aes-wrap    [ \
+
+COPY --chown=root:root --from=aes-wrap    [ \
   "/usr/bin/aes-wrap", \
   "/usr/bin/" \
   ]
-COPY --from=aes-wrap    [ \
+
+COPY --chown=root:root --from=aes-wrap    [ \
   "/lib/ld-musl-aarch64.so.1", \
+  "/lib/libc.musl-aarch64.so.1", \
   "/lib/libcrypto.so.1.1", \
   "/lib/libssl.so.1.1", \
   "/lib/" \
   ]
+
+COPY --chown=root:root --from=aes-wrap    [ \
+  "/root/local/lib", \
+  "/root/local/lib/" \
+  ]
+
 COPY --chown=root:root  [ \
-  "./sh/apk_loader.sh", \
   "./sh/encode_data_at_rest.sh", \
   "./sh/get_earthcam_entropy_image.sh", \
   "./sh/pretty.sh", \
@@ -75,18 +84,20 @@ COPY --chown=root:root  [ \
   "./sh/utf8_char_file.sh", \
   "./sh/utf8_passphrase.sh", \
   "./sh/install_pgp.sh", \
-  "./sh/install_tls.sh", \
   "/etc/profile.d/" \
   ]
+
+# #  /etc/profile.d/install_tls.sh
 COPY --chown=root:root  [ "./vault/config",            "/vault/config/" ]
-COPY --chown=root:root  [ "./tls/.admin",              "/root/" ]
+#COPY --chown=root:root  [ "./tls/.admin",              "/root/" ]
 COPY --chown=root:root  [ "./static/char_file.utf8",   "/root/.aes_rsa_utf8_support/character_set/" ]
 COPY --chown=root:root  [ "./credentials/credentials", "/var/tmp/" ]
 
-RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_pgp.sh /etc/profile.d/install_tls.sh" ]
+RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_pgp.sh" ]
 
-FROM vault:1.7.1 AS supervault
+# FROM vault:1.7.1 AS supervault
+# WORKDIR /
 
-WORKDIR /
-COPY --chown=root:root --from=init-src [ "./vault/config", "/vault/config/" ]
-CMD [ "server" ]
+# COPY --chown=root:root --from=vault-init [ "./vault/config", "/vault/config/" ]
+# CMD [ "server" ]
+#RUN [ "/bin/sh", "-c", "vault server -config /vault/config/" ]

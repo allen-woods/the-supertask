@@ -1,17 +1,17 @@
 #!/bin/sh
-decode_data_at_rest () (
+decode_data_at_rest () {
   # Require the argument.
   if [ -z "${1}" ]; then
     echo "ERROR: Please provide encoded-data-at-rest string as argument."
     return 1
   fi
   # Original text of argument one (hexadecimal format of binary word).
-  BINARY_HEX_STR="${1}"
+  local BINARY_HEX_STR="${1}"
   # Parse the data into its binary form.
-  CHAR_N=0
-  BINARY_WORD=
+  local CHAR_N=0
+  local BINARY_WORD=
   while [[ $CHAR_N -ge 0 && $CHAR_N -le $(( ${#BINARY_HEX_STR} - 2 )) ]]; do
-    BINARY_BYTE=$( \
+    local BINARY_BYTE=$( \
       printf '%08d' "$( \
         echo -n "ibase=16; obase=2; ${BINARY_HEX_STR:$CHAR_N:2}" | bc \
       )" \
@@ -21,26 +21,28 @@ decode_data_at_rest () (
   done
 
   # Binary-decoded data/wrapper (of unknown length "I" bits).
-  DATA_WRAP_BIN=
+  local DATA_WRAP_BIN=
   # UTF-8 contents of DATA_WRAP.
-  DATA_WRAP_STR=
+  local DATA_WRAP_STR=
   # Expected number of bits (64) required to encode length of DATA_WRAP.
-  DATA_WRAP_WORD_LEN=64
+  local DATA_WRAP_WORD_LEN=64
   # Actual length of DATA_WRAP decoded from BINARY_WORD.
-  DATA_WRAP_NUM_BITS=
+  local DATA_WRAP_NUM_BITS=
   # Binary-decoded passphrase (of unknown length "J" bits).
-  PHRASE_BIN=
+  local PHRASE_BIN=
   # UTF-8 contents of PHRASE.
-  PHRASE_STR=
+  local PHRASE_STR=
   # Expected number of bits (8) required to encode length of PHRASE.
-  PHRASE_WORD_LEN=8
+  local PHRASE_WORD_LEN=8
   # Actual length of PHRASE decoded from BINARY_WORD.
-  PHRASE_NUM_BITS=
+  local PHRASE_NUM_BITS=
 
   # Scale value for floating point precision.
-  SC=16
+  local SC=16
 
-  I=0; J=0; K=$(( ${DATA_WRAP_WORD_LEN} - 1 ));
+  local N=
+
+  local I=0; local J=0; local K=$(( ${DATA_WRAP_WORD_LEN} - 1 ));
   # Decode bits of data-to-wrap / wrapped-data encoded length from BINARY_WORD.
   while [[ $I -ge $J && $I -le $K ]]; do
     N=$( echo -n "scale=${SC}; ( ( ( ${#BINARY_WORD} - 2 ) / $K ) * ${I} ) + 0" | bc )
@@ -81,7 +83,7 @@ decode_data_at_rest () (
   PHRASE_NUM_BITS=$(( ${PHRASE_NUM_BITS} * 8 ))
 
   # Placeholder for sensitive data binary word.
-  DATA_WORD=
+  local DATA_WORD=
 
   I=2; J=2; K=$(( ${#BINARY_WORD} - 3 ));
   # Decode DATA_WORD from BINARY_WORD.
@@ -151,4 +153,4 @@ decode_data_at_rest () (
   done
 
   printf '%s\n' "${DATA_WRAP_STR} ${PHRASE_STR}"
-)
+}

@@ -1,6 +1,6 @@
 #!/bin/sh
-utf8_char() (
-  INT_NUM=$( \
+utf8_char() {
+  local INT_NUM=$( \
     echo -n $1 | tr '[:lower:]' '[:upper:]' | \
     awk \
     '{
@@ -27,12 +27,12 @@ utf8_char() (
 
   # Numbers > 524287 return "invalid" in printf,
   # so we conditionally use strings.
-  NUM_INVALID="$( \
+  local NUM_INVALID="$( \
     ( \
       printf '%021d' $( echo -en "obase=2; ${INT_NUM}" ) \
     ) 2>&1 | grep -o "invalid" \
   )"
-
+  local BIN_WORD=
   if [ ! -z "${NUM_INVALID}" ]; then
     BIN_WORD="$( \
       echo -n "obase=2; ${INT_NUM}" | bc | \
@@ -53,39 +53,39 @@ utf8_char() (
     )"
   fi
 
-  OUTPUT_CHR=
+  local OUTPUT_CHAR=
 
   if [ $INT_NUM -ge 33 ] && [ $INT_NUM -lt 128 ]; then
     BYTE_1=$( echo -en "ibase=2; obase=8; 0${BIN_WORD:14:7}" | bc )
     # Characters 00000 - 0007F
-    OUTPUT_CHR=$( echo -en "\\${BYTE_1}" )
+    OUTPUT_CHAR=$( echo -en "\\${BYTE_1}" )
   elif [ $INT_NUM -ge 128 ] && [ $INT_NUM -lt 2048 ]; then
     BYTE_1=$( echo -n "ibase=2; obase=8; 10${BIN_WORD:15:6}" | bc )
     BYTE_2=$( echo -n "ibase=2; obase=8; 110${BIN_WORD:10:5}" | bc )
     # Characters 00080 - 007FF
-    OUTPUT_CHR=$( echo -en "\\${BYTE_2}\\${BYTE_1}" )
+    OUTPUT_CHAR=$( echo -en "\\${BYTE_2}\\${BYTE_1}" )
   elif [ $INT_NUM -ge 2048 ] && [ $INT_NUM -lt 65536 ]; then
     BYTE_1=$( echo -n "ibase=2; obase=8; 10${BIN_WORD:15:6}" | bc )
     BYTE_2=$( echo -n "ibase=2; obase=8; 10${BIN_WORD:9:6}" | bc )
     BYTE_3=$( echo -n "ibase=2; obase=8; 1110${BIN_WORD:5:4}" | bc )
     # Characters 00800 - 0FFFF
-    OUTPUT_CHR=$( echo -en "\\${BYTE_3}\\${BYTE_2}\\${BYTE_1}" )
+    OUTPUT_CHAR=$( echo -en "\\${BYTE_3}\\${BYTE_2}\\${BYTE_1}" )
   elif [ $INT_NUM -ge 65536 ] && [ $INT_NUM -le 1114111 ]; then
     BYTE_1=$( echo -n "ibase=2; obase=8; 10${BIN_WORD:15:6}" | bc )
     BYTE_2=$( echo -n "ibase=2; obase=8; 10${BIN_WORD:9:6}" | bc )
     BYTE_3=$( echo -n "ibase=2; obase=8; 10${BIN_WORD:3:6}" | bc )
     BYTE_4=$( echo -n "ibase=2; obase=8; 11110${BIN_WORD:0:3}" | bc )
     # Characters 10000 - 3134F
-    OUTPUT_CHR=$( echo -en "\\${BYTE_4}\\${BYTE_3}\\${BYTE_2}\\${BYTE_1}" )
+    OUTPUT_CHAR=$( echo -en "\\${BYTE_4}\\${BYTE_3}\\${BYTE_2}\\${BYTE_1}" )
   fi
 
-  case "${OUTPUT_CHR}" in
+  case "${OUTPUT_CHAR}" in
     [^[:print:]])
       # Fail silently with control characters (return empty string).
       echo -n "" && return 0
       ;;
     [[:print:]])
-      echo -en "${OUTPUT_CHR}"
+      echo -en "${OUTPUT_CHAR}"
       ;;
   esac
-)
+}
