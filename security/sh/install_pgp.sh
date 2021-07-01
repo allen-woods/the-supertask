@@ -287,13 +287,13 @@ pgp_generate_key_data_init_and_unseal_vault () {
       cat "${PGP_EXPORTED_KEY_ASC_FILE}" | \
       tr -d '\n' \
     )"
-    echo "DATA_TO_WRAP = ${DATA_TO_WRAP}"
+    # echo "DATA_TO_WRAP = ${DATA_TO_WRAP}"
 
     # Place each PGP key's passphrase into our function scoped string.
     [ -z "${PGP_FUNC_SCOPE_ONLY_PHRASES}" ] && \
     PGP_FUNC_SCOPE_ONLY_PHRASES="${PGP_PHRASE}" || \
     PGP_FUNC_SCOPE_ONLY_PHRASES="${PGP_FUNC_SCOPE_ONLY_PHRASES} ${PGP_PHRASE}"
-    echo "PGP_FUNC_SCOPE_ONLY_PHRASES = ${PGP_FUNC_SCOPE_ONLY_PHRASES}"
+    # echo "PGP_FUNC_SCOPE_ONLY_PHRASES = ${PGP_FUNC_SCOPE_ONLY_PHRASES}"
     
     # Payload:
     # This is the password protected 32 byte word used to wrap data-at-rest.
@@ -517,15 +517,36 @@ pgp_generate_key_data_init_and_unseal_vault () {
   # Erase all entropy images.
   # rm -rf $HOME/.gnupg/images
 
-  # JSON: Append our secret shares to payload string (synonymous with key-shares),
-  #       and append our secret threshold to payload string (synonymous with key-threshold).
-  VAULT_API_V1_SYS_INIT_JSON="${VAULT_API_V1_SYS_INIT_JSON}],\"secret_shares\":$(($n - 1)),\"secret_threshold\":$(($n - 2))}"
+  local INIT_ENDPOINT=/v1/sys/init
+  local SHARES=$(( $n - 1 ))
+  local THRESHOLD=$(( $n - 2 ))
 
-  vault operator init \
-    -key-shares=$(( $n - 1 )) \
-    -key-threshold=$(( $n - 2 )) \
-    -root-token-pgp-key="${PGP_KEYS_ROOT_TOKEN_ASC_FILE}"
-    -pgp-keys="${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" > /response.txt
+  echo '{
+    \"data\": {
+      \"root_token_pgp_key\": \"'"$( cat ${PGP_KEYS_ROOT_TOKEN_ASC_FILE} )"'\",
+      \"pgp_keys\": [
+        \"'"$( cat $( echo -n ${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} | cut -d ',' -f 1 ) )"'\",
+        \"'"$( cat $( echo -n ${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} | cut -d ',' -f 2 ) )"'\",
+        \"'"$( cat $( echo -n ${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} | cut -d ',' -f 3 ) )"'\"
+      ],
+      \"secret_shares\": '"$(( $n - 1 ))"',
+      \"secret_threshold\": '"$(( $n - 2 ))"'
+    }
+  }' | \
+  curl \
+    -H "Content-Type: application/json" \
+    -X PUT \
+    -d @- \
+    "${VAULT_ADDR}${INIT_ENDPOINT}" \
+    -o /response.txt
+  
+  echo -e "Contents of response.txt:\n$( cat -n /response.txt )"
+
+  # vault operator init \
+  #   -key-shares=$(( $n - 1 )) \
+  #   -key-threshold=$(( $n - 2 )) \
+  #   -root-token-pgp-key="${PGP_KEYS_ROOT_TOKEN_ASC_FILE}"
+  #   -pgp-keys="${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" > /response.txt
     # UPDATE to official file path.
 
   local SYS_INIT_KEYS_LINE=-1

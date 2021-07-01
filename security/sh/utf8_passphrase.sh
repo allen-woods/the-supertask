@@ -52,7 +52,7 @@ utf8_passphrase() {
       BYTE_COUNT=$(( $BYTE_COUNT + $CHAR_BYTES ))
       # Place character into generated passphrase.
       [ -z "${PHRASE}" ] && PHRASE="${CHAR_TXT}"
-    elif [ $BYTE_COUNT -gt 0]; then
+    elif [ $BYTE_COUNT -gt 0 ]; then
       if [ $(( $BYTE_COUNT + $CHAR_BYTES )) -gt $PHRASE_LEN ]; then
         # Loading even one more character will be too many bytes.
         # We must halt the loop and echo our "nearest-bytes" phrase.
