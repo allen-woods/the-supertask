@@ -1,6 +1,6 @@
 #!/bin/sh
 # Recursive implementation of Hilbert Curve.
-# Incoming data in the form: echo -n "hex string" | xxd -r -ps
+# Obfuscates plain text at the binary level.
 hilbert () {
   #
   # HANDLE FATAL EXCEPTIONS # ------------------------------- #
@@ -22,26 +22,26 @@ hilbert () {
   #
   # LOCAL VARIABLES # --------------------------------------- #
   #
-
-  # TODO:
-  # - Allow incoming data to detect binary format.
-  # - Do not alter binary format if found.
-  # - Otherwise, do the default as shown below.
+  local DATA=
+  if [ ! -z "${HILBERT_LVL}" ]; then                                              # If we detect we are on a lower level of recursion...
+    DATA="${1}"                                                                   # ...Receive data to be obfuscated as-is.
+  else                                                                            # Otherwise, if the incoming data is not in binary format...
+    DATA=$( echo -en "${1}" | xxd -b -c 1 | awk '{ print $2 }' | tr -d '\n' )     # ...Convert data to be obfuscated to binary format.
+  fi
+  local DATA_LEN=${#DATA}                                                         # Capture the length of incoming data.
   
-  local DATA=$( echo -en "${1}" | xxd -b -c 1 | awk '{ print $2 }' | tr -d '\n' ) # Convert data to be obfuscated to binary format.
-  local DATA_LEN=${#DATA}                                                         # Capture the length of parsed and sanitized data.
-
   local SC=11                                                                     # Set global floating point precision of decimals.
-
+  
   local PI_CONST=3.141592653589793                                                # Approximation of Pi.
   local RAD_CONST=$( echo "scale=${SC}; ${PI_CONST} / 180" | bc -l )              # Conversion from degree to radian.
   local ROOT_2=$( echo "scale=${SC}; sqrt(2)" | bc -l )                           # Square root of 2.
   local HALF_ROOT_2=$( echo "scale=${SC}; ${ROOT_2} / 2" | bc -l )                # Square root of 2, divided by 2.
 
-  local DATA_LVL=${HILBERT_LVL:-0}                                                # Track recursive depth within each subshell.
+  local DATA_LVL=${HILBERT_LVL:-0}                                                # Track recursive depth within each subshell. 
   local PT0_ANGLE=${HILBERT_PT0_ANGLE:-"-135"}                                    # Parent subshell's starting angle for plotting points.
   local ANGLE_STEP=90                                                             # Angle of incrementation from point to point.
   local ANGLE_STEP_SCALAR=${HILBERT_SCALAR:-1}                                    # Scalar value of +/-1 (determines cw or ccw rotation).
+  
   #
   # DYNAMIC RESIZING # -------------------------------------- #
   #
@@ -52,43 +52,64 @@ hilbert () {
     n=$(( $n + 1 ))
   done
 
-  local DIFF=$(( $SIZE - $DATA_LEN ))                                             # Capture the difference between $SIZE and $DATA_LEN.
+  if [ $DATA_LVL -eq 0 ]; then                                                    # If and only if we are on the root level of recursion...
+    local DIFF=$(( $SIZE - $DATA_LEN ))                                           # ...Capture the difference between $SIZE and $DATA_LEN (if any).
+    if [ $DIFF -gt 0 ]; then                                                      # If we have found a difference greater than zero...
+      if [ $DIFF -ge 32 ]; then                                                   # ...And if the difference is at least 32 bits...
+        local STOP_BIN=$( \
+          echo -en "\xF4\x8F\xBF\xBF" | \
+          xxd -b -c 1 | \
+          awk '{ print $2 }' | \
+          tr -d '\n' \
+        )                                                                         # ...Use unicode code point U+10FFFF as a custom "end of text"
+                                                                                  #    character.
+        DATA="${DATA}${STOP_BIN}"                                                 # Append our "end of text" character.
+        DATA_LEN=${#DATA}                                                         # Re-measure length of our appended data.
+        DIFF=$(( $SIZE - $DATA_LEN ))                                             # Re-calculate difference in length.
+      fi
+    fi
 
-  if [ $DIFF -gt 0 ]; then
-    if [ $DIFF -ge 32 ]; then
-      local STOP_BIN=$( \
-        echo -en "\xF4\x8F\xBF\xBF" | \
-        xxd -b -c 1 | \
-        awk '{ print $2 }' | \
-        tr -d '\n' \
-      )                                                                           # Use unicode code point U+10FFFF as a custom "end of text" character.
-      DATA="${DATA}${STOP_BIN}"                                                   # Append our "end of text" character.
-      DATA_LEN=${#DATA}                                                           # Re-measure length of our appended data.
-      DIFF=$(( $SIZE - $DATA_LEN ))                                               # Re-calculate difference in length.
+    if [ $DIFF -gt 0 ]; then                                                      # If we still have a remaining difference after appending our
+                                                                                  # custom "end of text" character...
+      local MULTIPLE_OF_8="$( \
+        echo "scale=${SC}; ${DIFF} / 8" | \
+        bc -l | \
+        sed "s|[.0-0]\{$(( ${SC} + 1 ))\}||" | \
+        grep -o '\.' \
+      )"                                                                          # ...Check to see if the difference is a multiple of 8 bits
+                                                                                  #    (will only return blank string if true, decimal point if false).
+      if [ -z "${MULTIPLE_OF_8}" ]; then                                          # If we have detected a multiple of 8 bits...
+        local FOLD_VALUE=$(( ($DIFF / 8) - 1 ))                                   # ...Calculate the detected multiple of 8 bits minus 1 ($FOLD_VALUE).
+        if [ $FOLD_VALUE -ne 0 ]; then                                            # If the value of $FOLD_VALUE is not zero...
+          local PADDING_BIN="$( \
+            tr -cd [[:alnum:][:punct:]] < /dev/random | \
+            fold -w ${FOLD_VALUE} | \
+            head -n 1 | \
+            xxd -b -c 1 | \
+            awk '{ print $2 }' | \
+            tr -d '\n' \
+          )"                                                                        # ...Generate a string of random characters whose length is equal
+                                                                                    #    to $FOLD_VALUE and whose bits will be used to fill the rest of
+                                                                                    #    the Hilbert Curve.
+          DATA="${DATA}${PADDING_BIN}"                                              # Append our padding character(s).
+          DATA_LEN=${#DATA}                                                         # Re-measure length of our padded data.
+        fi
+      else                                                                          # If we have not detected a multiple of 8 bits...
+        local PADDING_BIN="$( \
+          tr -cd [0-1] < /dev/random | \
+          fold -w ${DIFF} | \
+          head -n 1 | \
+          tr -d '\n' \
+        )"                                                                          # ...Generate a random string of bits to fill the rest of the
+                                                                                    #    Hilbert Curve.
+        DATA="${DATA}${PADDING_BIN}"                                                # Append our padding character(s).
+        DATA_LEN=${#DATA}                                                           # Re-measure length of our padded data.
+      fi
     fi
   fi
 
-  if [ $DIFF -gt 0 ]; then
-    local MULTIPLE_OF_8="$( \
-      echo "scale=${SC}; ${DIFF} / 8" | \
-      bc -l | \
-      sed "s|[.0-0]\{$(( ${SC} + 1 ))\}||" | \
-      grep -o '\.' \
-    )"
-    if [ -z "${MULTIPLE_OF_8}" ]; then
-      local PADDING_BIN="$( \
-        tr -cd [[:alnum:][:punct:]] < /dev/random | \
-        fold -w $(( $DIFF / 8 )) | \
-        head -n 1 | \
-        xxd -b -c 1 | \
-        awk '{ print $2 }' | \
-        tr -d '\n' \
-      )"                                                                          # Random characters used to fill the rest of the Hilbert Curve.
-    DATA="${DATA}${PADDING_BIN}"                                                  # Append our padding character(s).
-    DATA_LEN=${#DATA}                                                             # Re-measure length of our padded data.
-  fi
-
   local FOURTH_DATA_LEN=$(( $DATA_LEN / 4 ))                                      # Length of our final data, divided by four (passed into subshells).
+  
   #
   # TRIGONOMETRY # ------------------------------------------ #
   #
@@ -96,15 +117,17 @@ hilbert () {
   local HALF_SIZE=$( echo "scale=${SC}; ${ROOT_N} / 2" | bc -l )                  # Half of the side length used to plot this Hilbert Curve.
   local CENTER_X=$( echo "scale=${SC}; ${HILBERT_X_OFFSET:-$HALF_SIZE}" | bc -l ) # Point of origin x-coordinate for this level of recursion (float).
   local CENTER_Y=$( echo "scale=${SC}; ${HILBERT_Y_OFFSET:-$HALF_SIZE}" | bc -l ) # Point of origin y-coordinate for this level of recursion (float).
-  local RADIUS=$( echo "scale=${SC}; ( ${HALF_SIZE} / 2 ) * ${ROOT_2}" | bc -l )  # Radius used to solve for points located on next deeper level of recursion.
-
+  local RADIUS=$( echo "scale=${SC}; ( ${HALF_SIZE} / 2 ) * ${ROOT_2}" | bc -l )  # Radius used to solve for points located on next deeper level of
+                                                                                  # recursion.
+  
   if [ $DATA_LVL -eq 0 ]; then
     [ -f /tmp/.hilbert ] && rm -f /tmp/.hilbert                                   # Create the destination file (erase existing if found).
-    local LINE=1
+    local LINE=1  
     local LINE_MAX="$( \
       echo -n "${ROOT_N}" | \
       sed 's|^\([0-9]\{1,\}\)[.]\{1\}.*$|\1|' \
     )"
+
     while [ $LINE -le $LINE_MAX ]; do
       if [ ! -z "${DECODE_DATA}" ]; then                                          # If we are decoding an incoming encoded string...
         local LINE_STR="${DATA:$(( ( $LINE - 1 ) * $LINE_MAX )):$LINE_MAX}"       # ...We need to parse data back into lines within our temporary file.
@@ -117,38 +140,36 @@ hilbert () {
   fi
 
   local LVL_REMAINDER=$(( $DATA_LVL % 2 ))                                        # Parse the current level of recursive depth.
+  
   case $LVL_REMAINDER in
     0)
-      local SIGN_180=1                                                            # This level is even.
+      local SIGN_180=1                                                            # This level is EVEN.
       ;;
     1)
-      local SIGN_180=-1                                                           # This level is odd.
+      local SIGN_180=-1                                                           # This level is ODD.
       ;;
   esac
 
   local DRAW_ANGLE=
   local DRAW_SCALAR=$(( -1 * $ANGLE_STEP_SCALAR ))
-
+  
   local I=0; local J=0; local K=3;                                                # Iterate over points of origin / characters.
-  while [[ $I -ge $J && $I -le $K ]]; do
-    if [ $I -eq $J ]; then                                                        # Calculate angle.
-      local TERM_2=$(( $PT0_ANGLE - 90 ))
-      local INHERITED_ANGLE=$(( -1 * $TERM_2 ))                                   # First point.
+  while [[ $I -ge $J && $I -le $K ]]; do                                          # Calculate angles.
+    if [ $I -eq $J ]; then                                                        # First point.
+      local INHERITED_ANGLE=$(( -1 * ( $PT0_ANGLE - 90 ) ))
       local INHERITED_SCALAR=$DRAW_SCALAR
-    elif [ $I -eq $K ]; then
-      local TERM_2=$(( $PT0_ANGLE - 90 ))
-      local TERM_3=$(( $SIGN_180 * 180 ))
-      local INHERITED_ANGLE=$(( -1 * ( $TERM_2 + $TERM_3 ) ))                     # Last point.
+    elif [ $I -eq $K ]; then                                                      # Last point.
+      local INHERITED_ANGLE=$(( -1 * ( ( $PT0_ANGLE - 90 ) + ( $SIGN_180 * 180 ) ) ))
       local INHERITED_SCALAR=$DRAW_SCALAR
-    elif [[ $I -gt $J && $I -lt $K ]]; then
-      local INHERITED_ANGLE=$PT0_ANGLE                                            # Middle points.
+    elif [[ $I -gt $J && $I -lt $K ]]; then                                       # Middle points (default).
+      local INHERITED_ANGLE=$PT0_ANGLE
       local INHERITED_SCALAR=$ANGLE_STEP_SCALAR
     fi
 
-    # This angle is used to position points of origin for lower levels of
-    # recursion, or to position encoded characters.
+    # This angle is used to position points of origin for lower
+    # levels of recursion, or to position encoded characters.
     DRAW_ANGLE=$(( ( -1 * ( $PT0_ANGLE - 90 ) ) + ( $I * $DRAW_SCALAR * $ANGLE_STEP ) ))
-
+    
     local X_DEST=$( \
       echo "scale=${SC}; \
       ${CENTER_X} + \
@@ -158,7 +179,7 @@ hilbert () {
       ) * ${RADIUS}" | \
       bc -l \
     )                                                                             # Solve for x-coordinate as a floating point value.
-
+    
     local Y_DEST=$( \
       echo "scale=${SC}; \
       ${CENTER_Y} + \
@@ -168,60 +189,71 @@ hilbert () {
       ) * ${RADIUS}" | \
       bc -l \
     )                                                                             # Solve for y-coordinate as a floating point value.
-
-    # Generate point (subshell) or character.
-    if [ "${RADIUS}" = "${HALF_ROOT_2}" ]; then
-
-      # TODO:
-      # - Allow "end of text" character while encoding.
-      # - Stop reading from file when character found during decoding.
+    #
+    # RECURSION # ------------------------------------------- #
+    #
+    if [ "${RADIUS}" = "${HALF_ROOT_2}" ]; then                                   # Interpolate encoded character within temporary file.
       
-      if [ "${DATA:$I:1}" != "$( echo -en "\xF4\x8F\xBF\xBF" )" ]; then
-        #   #   #
-        # NOTE: #
-        #   #   #
-        #
-        # There is a major 'gotcha' when using $( printf '%0.f' "${FLOAT}" ) to remove decimals.
-        #
-        # Namely, it rounds the trailing decimals to the nearest integer before returning a value!
-        # To prevent rounding, prepend zeroes where needed, then retain the leading integer value.
-        #
-        # Sed is used here, but other methods are possible.
+      # =================== #
+      #  I M P O R T A N T  #
+      # =================== # =============================== #
+      #                                                       #
+      # There is a major 'gotcha' when using the following    #
+      # expression to remove decimals:                        #
+      #                                                       #
+      #   $( printf '%0.f' "${FLOAT}" ) to remove decimals.   #
+      #                                                       #
+      # Namely, it rounds the trailing decimals that are      #
+      # removed to the nearest integer before returning the   #
+      # final value!                                          #
+      #                                                       #
+      # To prevent rounding, prepend zeroes when needed       #
+      # first, then parse out the leading integer to retain   #
+      # it.                                                   #
+      #                                                       #
+      # Sed can be used to do this, as shown below:           #
+      #                                                       #
+      # ===================================================== #
 
-        X_DEST=$( echo "${X_DEST}" | sed 's|^\([.]\{1\}[0-9]\{1,\}\)$|0\1|; s|^\([0-9]\{1,\}\)[.]\{1\}[0-9]\{1,\}$|\1|;' )
-        Y_DEST=$( echo "${Y_DEST}" | sed 's|^\([.]\{1\}[0-9]\{1,\}\)$|0\1|; s|^\([0-9]\{1,\}\)[.]\{1\}[0-9]\{1,\}$|\1|;' )
-
-        # Extract the number of points on a given side of the
-        # full size plot of the Hilbert Curve.
-        local SIDE_LEN=$( wc -l /tmp/.hilbert | cut -d ' ' -f 1 )
-
-        # Copy the line we want to edit.
-        # NOTE: Just like in graphics, we need to write our points from the bottom upward.
-        local LINE_FROM_FILE="$( sed "$(( $SIDE_LEN - $Y_DEST ))q;d" /tmp/.hilbert )"
-
-        local Q=0; local R=$(( $SIDE_LEN - 1 ));
-        # BEGIN: Data mutation block. #   #   #
-          if [ ! -z "${DECODE_DATA}" ]; then
-            STATE="${STATE}${LINE_FROM_FILE:$X_DEST:1}"
+      X_DEST=$( \
+        echo -n "${X_DEST}" | \
+        sed 's|^\([.]\{1\}[0-9]\{1,\}\)$|0\1|; s|^\([0-9]\{1,\}\)[.]\{1\}[0-9]\{1,\}$|\1|;' \
+      )                                                                           # The x-coordinate of our encoded binary bit.
+      Y_DEST=$( \
+        echo -n "${Y_DEST}" | \
+        sed 's|^\([.]\{1\}[0-9]\{1,\}\)$|0\1|; s|^\([0-9]\{1,\}\)[.]\{1\}[0-9]\{1,\}$|\1|;' \
+      )                                                                           # The y-coordinate of our encoded binary bit.
+      
+      local SIDE_LEN=$( wc -l /tmp/.hilbert | cut -d ' ' -f 1 )                   # Use the number of lines in our temporary file to extract the side
+                                                                                  # -length of the square perimeter that our Hilbert Curve fills.
+      local LINE_FROM_FILE="$( \
+        sed "$(( $SIDE_LEN - $Y_DEST ))q;d" /tmp/.hilbert \
+      )"                                                                          # Copy the line we want to edit from our temporary file.
+                                                                                  # NOTE: Just like drawing graphics right-side up, we "draw" from
+                                                                                  #       bottom left, up and over to bottom right.
+      
+      local Q=0; local R=$(( $SIDE_LEN - 1 ));
+      # BEGIN: Data mutation block. #   #   # ----------------------------------- #   #   #
+        if [ ! -z "${DECODE_DATA}" ]; then
+          STATE="${STATE}${LINE_FROM_FILE:$X_DEST:1}"
+        else
+          if [ $X_DEST -eq $Q ]; then
+            # First character of line edge case.
+            LINE_FROM_FILE="${DATA:$I:1}${LINE_FROM_FILE:$(( $X_DEST + 1 ))}"
+          elif [ $X_DEST -eq $R ]; then
+            # Last character of line edge case.
+            LINE_FROM_FILE="${LINE_FROM_FILE:0:$X_DEST}${DATA:$I:1}"
           else
-            if [ $X_DEST -eq $Q ]; then
-              # First character of line edge case.
-              LINE_FROM_FILE="${DATA:$I:1}${LINE_FROM_FILE:$(( $X_DEST + 1 ))}"
-            elif [ $X_DEST -eq $R ]; then
-              # Last character of line edge case.
-              LINE_FROM_FILE="${LINE_FROM_FILE:0:$X_DEST}${DATA:$I:1}"
-            else
-              # Default behavior of middle characters.
-              LINE_FROM_FILE="${LINE_FROM_FILE:0:$X_DEST}${DATA:$I:1}${LINE_FROM_FILE:$(( $X_DEST + 1 ))}"
-            fi
-            # Overwrite the original contents of the file at line $Y_DEST.
-            sed -i "$(( $SIDE_LEN - $Y_DEST ))s|.*|${LINE_FROM_FILE}|;" /tmp/.hilbert
+            # Default behavior of middle characters.
+            LINE_FROM_FILE="${LINE_FROM_FILE:0:$X_DEST}${DATA:$I:1}${LINE_FROM_FILE:$(( $X_DEST + 1 ))}"
           fi
-        # END: Data mutation block.   #   #   #
-      fi
-    else
-
-      # Generate subshell.
+          # Overwrite the original contents of the file at line $Y_DEST.
+          sed -i "$(( $SIDE_LEN - $Y_DEST ))s|.*|${LINE_FROM_FILE}|;" /tmp/.hilbert
+        fi
+      # END: Data mutation block.   #   #   # ----------------------------------- #   #   #
+    else                                                                          # Generate four subshells that will interact with the next lower level
+                                                                                  # of recursion.
+      
       STATE="${STATE}$( \
         HILBERT_LVL=$(( $DATA_LVL + 1 )); \
         HILBERT_PT0_ANGLE=$INHERITED_ANGLE; \
@@ -229,31 +261,45 @@ hilbert () {
         HILBERT_X_OFFSET=$( printf '%0.f' "${X_DEST}" ); \
         HILBERT_Y_OFFSET=$( printf '%0.f' "${Y_DEST}" ); \
         hilbert "${DATA:$(( $I * $FOURTH_DATA_LEN )):$FOURTH_DATA_LEN}" "${2}"; \
-      )"
-    
+      )"                                                                          # Capture echoed state from lower levels of recursion.
+      
     fi
-
-    I=$(( $I + 1 ))
+    I=$(( $I + 1 ))                                                               # Increment to next encoded character or next subshell.
   done
 
-  if [ ! -z "${DECODE_DATA}" ]; then
-    # TODO:
-    # - Convert state during decoding into hexadecimal before echoing output.
-    echo -n "${STATE}" | tr -d '\n'
-  else
-    if [ $DATA_LVL -eq 0 ] && [ -f /tmp/.hilbert ]; then
-      local TEMP_DATA=$( cat /tmp/.hilbert | tr -d '\n' )                         # Spit out the contents of our temporary file as a single line.
-      local OUTPUT_DATA=
-      local BYTE_I=0;
-      while [ $BYTE_I -lt ${#TEMP_DATA} ]; do
-        OUTPUT_DATA="${OUTPUT_DATA}$( \
-          printf '%02X' "$( \
-            echo -n "ibase=2; ${TEMP_DATA:$BYTE_I:8}" \
-          )" \
-        )"                                                                        # Convert each byte of our obfuscated binary data into upper-case hexadecimal.
-        BYTE_I=$(( $BYTE_I + 8 ))
-      done
-      echo -n "${OUTPUT_DATA}"                                                    # Echo our final hexadecimal string without a trailing newline character.
+  if [ $DATA_LVL -eq 0 ]; then                                                    # All recursion has been completed and we are back on the root level.
+    local TEMP_DATA=
+    if [ ! -z "${DECODE_DATA}" ]; then                                            # If we are decoding an encoded string...
+      TEMP_DATA=$( echo -n "${STATE}" | tr -d '\n' )                              # ...Capture our recursive state as a single line.
+    else                                                                          # If we are encoding into a new Hilbert Curve...
+      if [ -f /tmp/.hilbert ]; then                                               # ...And if the temporary file exists...
+        TEMP_DATA=$( cat /tmp/.hilbert | tr -d '\n' )                             # ...Capture the contents of our temporary file as a single line.
+      fi
     fi
+    local OUTPUT_DATA=
+    local BYTE_I=0
+    while [ $BYTE_I -lt ${#TEMP_DATA} ]; do                                       # Iterate across the bytes of binary data in $TEMP_DATA.
+      OUTPUT_DATA="${OUTPUT_DATA}$( \
+        printf '%02X' "$( \
+          echo -n "ibase=2; ${TEMP_DATA:$BYTE_I:8}" | bc -l \
+        )" \
+      )"                                                                          # Convert each byte of our binary data into upper-case hexadecimal.
+
+      BYTE_I=$(( $BYTE_I + 8 ))                                                   # Increment to the next byte.
+    done
+    if [ ! -z "${DECODE_DATA}" ]; then                                            # If we are decoding an encoded string...
+      echo -n "${OUTPUT_DATA}" | \
+      xxd -r -ps | \
+      sed "s|^\(.*\)$( echo -en "\xF4\x8F\xBF\xBF" ).*$|\1|"                      # ...Convert our output back into string format, then echo all data
+                                                                                  #    up until our custom "end of text" character U+10FFFF without a 
+                                                                                  #    trailing newline character.
+    else                                                                          # If we are encoding into a new Hilbert Curve...
+      echo -n "${OUTPUT_DATA}"                                                    # ...Echo our final hexadecimal string without a trailing newline
+                                                                                  #    character.  
+    fi
+  else                                                                            # Not all recursion has been completed and we are not back on the root
+                                                                                  # level.
+    [ ! -z "${DECODE_DATA}" ] && echo -n "${STATE}" | tr -d '\n'                  # While decoding, echo state from lower levels of recursion so that
+                                                                                  # upper levels can capture it.
   fi
 }
