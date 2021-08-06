@@ -42,10 +42,10 @@ pgp_apk_add_packages () {
   apk "${APK_FLAGS}" update
   apk --no-cache "${APK_FLAGS}" add \
     busybox-static=1.32.1-r6 \
-    apk-tools-static=2.12.5-r0
+    apk-tools-static=2.12.7-r0
   apk.static --no-cache "${APK_FLAGS}" add \
     coreutils=8.32-r2 \
-    curl=7.77.0-r1 \
+    curl=7.78.0-r0 \
     gnupg=2.2.27-r0 \
     imagemagick=7.0.11.13-r0 \
     jq=1.6-r1 \
@@ -150,6 +150,14 @@ pgp_generate_key_data_init_and_unseal_vault () {
 
   mkfifo $O_PIPE
 
+  local K_PIPE=$( \
+    tr -cd a-f0-9 < /dev/random | \
+    fold -w 8 | \
+    head -n 1 \
+  )
+
+  mkfifo $K_PIPE
+
   # Iterate through the PGP keys in the batch.
   while [ $ITER -le $MAX_ITER ]; do
     # Initialize a variable whose value contains a dynamic string padded
@@ -166,9 +174,9 @@ pgp_generate_key_data_init_and_unseal_vault () {
       head -n 1 \
     )"
     echo "PGP_BATCH_FILE = ${PGP_BATCH_FILE}"
-    # Generate random integer (20 to 32)
+    # Generate random integer (24 to 96)
     local PGP_PHRASE_LEN=$( \
-      jot -w %i -r 1 20 32 \
+      jot -w %i -r 1 24 96 \
     )
     echo "PGP_PHRASE_LEN = ${PGP_PHRASE_LEN}"
     # Generate random string with length ${PHRASE_LEN}
@@ -237,7 +245,6 @@ pgp_generate_key_data_init_and_unseal_vault () {
     )
     echo "ENTROPY_IMAGE_PATH = ${ENTROPY_IMAGE_PATH}"
 
-    echo "before: gpg addphoto" # debug
     # Add the entropy image to our generated key:
     ( \
       echo "addphoto"; \
@@ -254,13 +261,12 @@ pgp_generate_key_data_init_and_unseal_vault () {
         echo -n "${PGP_REAL_EMAIL_NAME}" | \
         cut -d ',' -f 2 \
       )"
-    echo "after: gpg addphoto" # debug
 
     # Capture the base name of most recently generated revocation file.
     local PGP_GENERATED_KEY_ID_HEX=$( \
       ls -t ${HOME}/.gnupg/openpgp-revocs.d | \
       head -n 1 | \
-      cut -f 1 -d '.' \
+      cut -d '.' -f 1 \
     )
     echo "PGP_GENERATED_KEY_ID_HEX = ${PGP_GENERATED_KEY_ID_HEX}"
 
@@ -298,64 +304,47 @@ pgp_generate_key_data_init_and_unseal_vault () {
     # Payload:
     # This is the password protected 32 byte word used to wrap data-at-rest.
     local PAYLOAD_PHRASE_LEN=$( \
-      jot -w %i -r 1 20 32 \
+      jot -w %i -r 1 24 255 \
     )
     echo "PAYLOAD_PHRASE_LEN = ${PAYLOAD_PHRASE_LEN}"
     local PAYLOAD_PHRASE=$( \
       utf8_passphrase "${PAYLOAD_PHRASE_LEN}" \
     )
     echo "PAYLOAD_PHRASE = ${PAYLOAD_PHRASE}"
-    local PAYLOAD_AES=$( \
-      aes-wrap rand 32 \
-    )
-    echo "PAYLOAD_AES = ${PAYLOAD_AES}"
     # This is PAYLOAD_HEX in upper-case hex format (what aes-wrap/openssl consumes).
     local PAYLOAD_HEX=$( \
-      echo -n "${PAYLOAD_AES}" | \
-      hexdump -v -e '/1 "%02X"' \
+      aes-wrap rand 32 | \
+      hexdump -ve '/1 "%02X"' \
     )
-    echo "PAYLOAD_HEX = ${PAYLOAD_HEX}"
     local PAYLOAD_TO_WRAP=$( \
-      encode_data_at_rest \
-      "${PAYLOAD_AES}" \
-      "${PAYLOAD_PHRASE}" | \
-      base64 | \
-      tr -d '\n' \
+      hilbert "${PAYLOAD_HEX} ${PAYLOAD_PHRASE}" --base64 \
     )
     echo "PAYLOAD_TO_WRAP = ${PAYLOAD_TO_WRAP}"
     
     # Ephemeral:
     # This is the password protected 32 byte word used to wrap payload.
     local EPHEMERAL_PHRASE_LEN=$( \
-      jot -w %i -r 1 20 32 \
+      jot -w %i -r 1 24 255 \
     )
     echo "EPHEMERAL_PHRASE_LEN = ${EPHEMERAL_PHRASE_LEN}"
     local EPHEMERAL_PHRASE=$( \
       utf8_passphrase "${EPHEMERAL_PHRASE_LEN}" \
     )
     echo "EPHEMERAL_PHRASE = ${EPHEMERAL_PHRASE}"
-    local EPHEMERAL_AES=$( \
-      aes-wrap rand 32 \
-    )
-    echo "EPHEMERAL_AES = ${EPHEMERAL_AES}"
     # This is EPHEMERAL_HEX in upper-case hex format (what aes-wrap/openssl consumes).
     local EPHEMERAL_HEX=$( \
-      echo -n "${EPHEMERAL_AES}" | \
-      hexdump -v -e '/1 "%02X"' \
+      aes-wrap rand 32 | \
+      hexdump -ve '/1 "%02X"' \
     )
     echo "EPHEMERAL_HEX = ${EPHEMERAL_HEX}"
     local EPHEMERAL_TO_WRAP=$( \
-      encode_data_at_rest \
-      "${EPHEMERAL_AES}" \
-      "${EPHEMERAL_PHRASE}" | \
-      base64 | \
-      tr -d '\n' \
+      hilbert "${EPHEMERAL_AES} ${EPHEMERAL_PHRASE}" --base64 \
     )
     echo "EPHEMERAL_TO_WRAP = ${EPHEMERAL_TO_WRAP}"
 
     # Private Key:
     local PRIV_KEY_PHRASE_LEN=$( \
-      jot -w %i -r 1 20 255 \
+      jot -w %i -r 1 24 255 \
     )
     echo "PRIV_KEY_PHRASE_LEN = ${PRIV_KEY_PHRASE_LEN}"
     local PRIV_KEY_PHRASE=$( \
@@ -373,12 +362,12 @@ pgp_generate_key_data_init_and_unseal_vault () {
       base64 | \
       tr -d '\n' \
     )"
-    echo "PRIV_KEY = $( echo "${PRIV_KEY}" | base64 -d )"
+    printf '%s\n' "PRIV_KEY = ${PRIV_KEY}"
 
     # Public Key:
     # This is the password protected public key used to wrap ephemeral.
     local PUB_KEY_PHRASE_LEN=$( \
-      jot -w %i -r 1 20 255 \
+      jot -w %i -r 1 24 255 \
     )
     echo "PUB_KEY_PHRASE_LEN = ${PUB_KEY_PHRASE_LEN}"
     local PUB_KEY_PHRASE=$( \
@@ -387,6 +376,7 @@ pgp_generate_key_data_init_and_unseal_vault () {
     echo "PUB_KEY_PHRASE = ${PUB_KEY_PHRASE}"
     ( echo -n "${PRIV_KEY_PHRASE}" > $I_PIPE & ) 2>&1 >/dev/null
     ( echo -n "${PUB_KEY_PHRASE}" > $O_PIPE & ) 2>&1 >/dev/null
+
     local PUB_KEY="$( \
       echo -n "${PRIV_KEY}" | \
       base64 -d | \
@@ -396,14 +386,14 @@ pgp_generate_key_data_init_and_unseal_vault () {
         -outform PEM \
         -pubout \
         -passout file:${O_PIPE} \
-        -check \
         -aes256 | \
       base64 | \
       tr -d '\n' \
     )"
-    echo "PUB_KEY = $( echo "${PUB_KEY}" | base64 -d )"
+    printf '%s\n' "PUB_KEY = ${PUB_KEY}"
+
     # Encrypted data-at-rest remains in a networked volume
-    ( echo -n ${PAYLOAD_PHRASE} > $I_PIPE & ) 2>&1 >/dev/null
+    ( echo -n "${PAYLOAD_PHRASE}" > $I_PIPE & ) 2>&1 >/dev/null
     local DATA_WRAPPED="$( \
       echo -n "${DATA_TO_WRAP}" | \
       aes-wrap enc \
@@ -413,16 +403,15 @@ pgp_generate_key_data_init_and_unseal_vault () {
         -K "${PAYLOAD_HEX}" \
         -iv A65959A6 \
         -md sha512 \
-        -iter 250000 | \
-      base64 | \
+        -iter 250000 \
+        -a | \
       tr -d '\n' \
     )"
-    echo "DATA_WRAPPED = $( echo "${DATA_WRAPPED}" | base64 -d )"
+    echo "DATA_WRAPPED = ${DATA_WRAPPED}"
     # Wrapped decryption keys are concatenated into a file that is not persisted on the network
-    ( echo -n ${EPHEMERAL_PHRASE} > $I_PIPE & ) 2>&1 >/dev/null
+    ( echo -n "${EPHEMERAL_PHRASE}" > $I_PIPE & ) 2>&1 >/dev/null
     local PAYLOAD_WRAPPED="$( \
-      echo -n "${PAYLOAD_TO_WRAP}}" | \
-      base64 -d | \
+      echo -n "${PAYLOAD_TO_WRAP}" | \
       aes-wrap enc \
         -id-aes256-wrap-pad \
         -pass file:${I_PIPE} \
@@ -430,19 +419,19 @@ pgp_generate_key_data_init_and_unseal_vault () {
         -K "${EPHEMERAL_HEX}" \
         -iv A65959A6 \
         -md sha512 \
-        -iter 250000 | \
-      base64 | \
+        -iter 250000 \
+        -a | \
       tr -d '\n' \
     )"
-    echo "PAYLOAD_WRAPPED = $( echo "${PAYLOAD_WRAPPED}" | base64 -d )"
-    ( echo -n ${PUB_KEY_PHRASE} > $I_PIPE & ) 2>&1 >/dev/null
+    echo "PAYLOAD_WRAPPED = ${PAYLOAD_WRAPPED}"
+    ( echo -n "${PUB_KEY}" | base64 -d > $K_PIPE & ) 2>&1 >/dev/null
+    ( echo -n "${PUB_KEY_PHRASE}" > $I_PIPE & ) 2>&1 >/dev/null
     local EPHEMERAL_WRAPPED="$( \
       echo -n "${EPHEMERAL_TO_WRAP}" | \
-      base64 -d | \
       aes-wrap pkeyutl \
         -encrypt \
         -pubin \
-        -inkey "$( echo -n "${PUB_KEY}" | base64 -d )" \
+        -inkey ${K_PIPE} \
         -passin file:${I_PIPE} \
         -pkeyopt rsa_padding_mode:oaep \
         -pkeyopt rsa_oaep_md:sha256 \
@@ -458,11 +447,6 @@ pgp_generate_key_data_init_and_unseal_vault () {
     "${DATA_WRAPPED}" > "${PGP_REAL_NAME_SLUG}.bin"
     echo -e "${PGP_REAL_NAME_SLUG}.bin:\n$( cat -n "${PGP_REAL_NAME_SLUG}.bin" )"
 
-    local TMP_ENTROPY_1="$( aes-wrap rand 32 )"
-    echo "TMP_ENTROPY_1 = ${TMP_ENTROPY_1}"
-    local TMP_ENTROPY_2="$( aes-wrap rand 32 )"
-    echo "TMP_ENTROPY_2 = ${TMP_ENTROPY_2}"
-
     # Warn the user this is their FIRST, LAST, AND ONLY CHANCE to copy down the information being displayed.
     echo -e "\033[1;31m\033[47m !! IMPORTANT !!         !! IMPORTANT !!         !! IMPORTANT !!         !! IMPORTANT !!  \033[0m"
     echo -e "\033[1;31m\033[47m The following data is highly sensitive. It has been custom encoded for security reasons. \033[0m"
@@ -471,11 +455,7 @@ pgp_generate_key_data_init_and_unseal_vault () {
     echo -e "\033[1;31m\033[47m PLEASE COPY AND SECURE THIS DATA TO PREVENT UNRECOVERABLE CRITICAL DATA LOSS.            \033[0m"
     echo ""
     echo -e "\033[0;33m\033[40m $( \
-      encode_data_at_rest \
-      "${TMP_ENTROPY_1}" \
-      "${PUB_KEY_PHRASE}" | \
-      base64 | \
-      tr -d '\n' \
+      hilbert "${PUB_KEY_PHRASE}" --base64 \
     ) \033[0m"
     echo ""
 
@@ -486,11 +466,7 @@ pgp_generate_key_data_init_and_unseal_vault () {
     echo -e "\033[1;31m\033[47m PLEASE COPY AND SECURE THIS DATA TO PREVENT UNRECOVERABLE CRITICAL DATA LOSS.            \033[0m"
     echo ""
     echo -e "\033[0;33m\033[40m $( \
-      encode_data_at_rest \
-      "${TMP_ENTROPY_2}" \
-      "${PGP_PHRASE}" | \
-      base64 | \
-      tr -d '\n' \
+      hilbert "${PGP_PHRASE}" --base64 \
     ) \033[0m"
     echo ""
 
@@ -506,8 +482,8 @@ pgp_generate_key_data_init_and_unseal_vault () {
     elif [ $n -gt 1 ]; then
       # Latch in the exported key data (unseal key shares).
       [ -z "${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" ] &&
-        PGP_KEYS_COMMA_DELIMITED_ASC_FILES="\"${PGP_EXPORTED_KEY_ASC_FILE}\"" ||
-        PGP_KEYS_COMMA_DELIMITED_ASC_FILES="${PGP_KEYS_COMMA_DELIMITED_ASC_FILES},\"${PGP_EXPORTED_KEY_ASC_FILE}\""
+        PGP_KEYS_COMMA_DELIMITED_ASC_FILES="${PGP_EXPORTED_KEY_ASC_FILE}" ||
+        PGP_KEYS_COMMA_DELIMITED_ASC_FILES="${PGP_KEYS_COMMA_DELIMITED_ASC_FILES},${PGP_EXPORTED_KEY_ASC_FILE}"
     fi
 
     # Increment forward to the next key.
@@ -518,109 +494,120 @@ pgp_generate_key_data_init_and_unseal_vault () {
   # rm -rf $HOME/.gnupg/images
 
   local INIT_ENDPOINT=/v1/sys/init
+  local UNSEAL_ENDPOINT=/v1/sys/unseal
   local SHARES=$(( $n - 1 ))
   local THRESHOLD=$(( $n - 2 ))
 
-  echo '{
-    \"data\": {
-      \"root_token_pgp_key\": \"'"$( cat ${PGP_KEYS_ROOT_TOKEN_ASC_FILE} )"'\",
+  local ASC_PATH_1="$( echo -n "${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" | cut -d ',' -f 1 )"
+  local ASC_PATH_2="$( echo -n "${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" | cut -d ',' -f 2 )"
+  local ASC_PATH_3="$( echo -n "${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" | cut -d ',' -f 3 )"
+
+  local INIT_RESPONSE="$( \
+    echo -n \
+    "{
       \"pgp_keys\": [
-        \"'"$( cat $( echo -n ${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} | cut -d ',' -f 1 ) )"'\",
-        \"'"$( cat $( echo -n ${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} | cut -d ',' -f 2 ) )"'\",
-        \"'"$( cat $( echo -n ${PGP_KEYS_COMMA_DELIMITED_ASC_FILES} | cut -d ',' -f 3 ) )"'\"
+        \"$( cat $ASC_PATH_1 | tr -d '\n' )\",
+        \"$( cat $ASC_PATH_2 | tr -d '\n' )\",
+        \"$( cat $ASC_PATH_3 | tr -d '\n' )\"
       ],
-      \"secret_shares\": '"$(( $n - 1 ))"',
-      \"secret_threshold\": '"$(( $n - 2 ))"'
-    }
-  }' | \
-  curl \
-    -H "Content-Type: application/json" \
-    -X PUT \
-    -d @- \
-    "${VAULT_ADDR}${INIT_ENDPOINT}" \
-    -o /response.txt
-  
-  echo -e "Contents of response.txt:\n$( cat -n /response.txt )"
+      \"root_token_pgp_key\": \"$( cat $PGP_KEYS_ROOT_TOKEN_ASC_FILE | tr -d '\n' )\",
+      \"secret_shares\": $SHARES,
+      \"secret_threshold\": $THRESHOLD
+    }" | \
+    curl \
+      -X PUT \
+      -H "Content-Type: application/json" \
+      -d @- \
+      "${VAULT_ADDR}${INIT_ENDPOINT}" | \
+      tr '\n' ' ' \
+  )"
 
-  # vault operator init \
-  #   -key-shares=$(( $n - 1 )) \
-  #   -key-threshold=$(( $n - 2 )) \
-  #   -root-token-pgp-key="${PGP_KEYS_ROOT_TOKEN_ASC_FILE}"
-  #   -pgp-keys="${PGP_KEYS_COMMA_DELIMITED_ASC_FILES}" > /response.txt
-    # UPDATE to official file path.
+  echo "INIT_RESPONSE = ${INIT_RESPONSE}"
 
-  local SYS_INIT_KEYS_LINE=-1
+  local INITIAL_ROOT_TOKEN="$( \
+    echo -n "${INIT_RESPONSE}" | \
+    sed 's|^.*["]\{1\}[\_eknort]\{10\}["]\{1\}[:]\{1\}["]\{1\}\(.*\)["]\{1\}.*$|\1|' | \
+    base64 -d | \
+    gpg \
+    --pinentry-mode loopback \
+    --decrypt \
+    --passphrase "$( \
+      echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | \
+      cut -d ' ' -f 1 | \
+      tr -d '\n' \
+    )" | \
+    tr -d '\n' \
+  )"
+
+  echo "INITIAL_ROOT_TOKEN = ${INITIAL_ROOT_TOKEN}"
+
+  local KEYS_BASE64="$( \
+    echo -n "${INIT_RESPONSE}" | \
+    sed '
+    s|^.*["]\{1\}[\_abeksy4-6]\{11\}["]\{1\}[:]\{1\}[[]\{1\}\(.*\)[]]\{1\}[,]\{1\}.*$|\1|;
+    s|[,]\{1\}| |g;
+    s|["]\{1\}||g;
+    ' \
+  )"
+
+  echo "KEYS_BASE64 = ${KEYS_BASE64}"
+
+  local I=1; local J=1; local K=$( echo -n "${KEYS_BASE64}" | wc -w );
   local UNSEAL_RESPONSE=
-  local INITIAL_ROOT_TOKEN=
 
-  n=0 # Reset value of 'n'.
+  while [[ $I -ge $J && $I -le $K ]]; do
+    local UNSEAL_PHRASE="$( \
+      echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | \
+      cut -d ' ' -f $I \
+    )"
 
-  while IFS= read SYS_UNSEAL_LINE; do
-    n=$(($n + 1))
+    echo "UNSEAL_PHRASE = ${UNSEAL_PHRASE}"
 
-    if [ ! -z "$(echo "${SYS_UNSEAL_LINE}" | grep -o '"keys":')" ]; then
-      # Record the line number where the 'keys' field is located.
-      [ $SYS_INIT_KEYS_LINE -eq -1 ] && SYS_INIT_KEYS_LINE=$n
+    local DECRYPTED_KEY="$( \
+      echo -n "${KEYS_BASE64}" | \
+      cut -d ' ' -f $I | \
+      base64 -d | \
+      gpg \
+        --pinentry-mode loopback \
+        --decrypt \
+        --passphrase "$( \
+          echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | \
+          cut -d ' ' -f $(( $I + 1 )) \
+        )" | \
+      tr -d '\n' \
+    )"
 
-    elif [ ! -z "$(echo "${SYS_UNSEAL_LINE}" | grep -o '],')" ]; then
-      # Delete the line number.
-      [ $SYS_INIT_KEYS_LINE -gt -1 ] && SYS_INIT_KEYS_LINE=-1
+    echo "DECRYPTED_KEY = ${DECRYPTED_KEY}"
 
-    elif [ ! -z "$(echo "${SYS_UNSEAL_LINE}" | grep -o '"root_token":')" ]; then
-      # Decrypt the initial root token.
-      INITIAL_ROOT_TOKEN="$(
-        echo "${SYS_UNSEAL_LINE}" |
-          sed "s/^.*\"root_token\":.*\"\([^ ]\{4,\}\)\".*$/\1/g" |
-          base64 -d |
-          gpg \
-            --pinentry-mode loopback \
-            --decrypt \
-            --passphrase "$(
-              echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | cut -f 1 \
-            )" | tr -d '\n'
-      )"
+    UNSEAL_RESPONSE="$(
+      curl \
+      -X PUT \
+      -H "Content-Type: application/json" \
+      -d "{ \"key\": \"${DECRYPTED_KEY}\" }" \
+      "${VAULT_ADDR}${UNSEAL_ENDPOINT}" | \
+      tr -d '\n'
+    )"
 
-    else
-      if [ $SYS_INIT_KEYS_LINE -gt -1 ]; then
-        # Decrypt keys.
+    echo "UNSEAL_RESPONSE = ${UNSEAL_RESPONSE}"
 
-        local UNSEAL_KEY_NUM=$(( $n + 1 - $SYS_INIT_KEYS_LINE ))
-        if [ $UNSEAL_KEY_NUM -le $MAX_ITER ]; then
-          local UNSEAL_KEY_STR="$(
-            echo "${SYS_UNSEAL_LINE}" |
-              sed "s/^.*\"\([a-f0-9]\{2,\}\)\"[,]\{0,1\}.*$/\1/g;" |
-              xxd -r -ps |
-              gpg \
-                --pinentry-mode loopback \
-                --decrypt \
-                --passphrase "$(
-                  echo -n "${PGP_FUNC_SCOPE_ONLY_PHRASES}" | cut -f ${UNSEAL_KEY_NUM} \
-                )" | tr -d '\n'
-          )"
-          local JSON_SYS_UNSEAL_PAYLOAD="{\"key\":\"${UNSEAL_KEY_STR}\"}"
-          local UNSEAL_RESPONSE="$(
-            curl \
-              --request PUT \
-              --data "${JSON_SYS_UNSEAL_PAYLOAD}" \
-              ${VAULT_ADDR}/v1/sys/unseal |
-              tr -d '\n'
-          )"
+    local CHK_UNSEALED="$( \
+      echo -n "${UNSEAL_RESPONSE}" | \
+      sed 's|^.*["]\{1\}[adels]\{6\}["]\{1\}[:]\{1\}\([aefls]\{5\}\).*$|\1|'
+    )"
 
-        else
-          echo -e "\033[1;31m\033[47m Number of Key Shares Exceeded! \033[0m"
-        fi
-      fi
-      if [ ! -z "$(echo ${UNSEAL_RESPONSE} | grep -o '0,')" ] &&
-        [ ! -z "${INITIAL_ROOT_TOKEN}" ]; then
-        # Display our results once Vault is unsealed and the initial root token has been decrypted.
-        echo -e "\033[0;37m\033[43m$(echo "${UNSEAL_RESPONSE}" | jq)\033[0m"
-        echo -e "\033[1;33m\033[40mThe Initial Root Token is:\033[0;33m\033[40m\n${INITIAL_ROOT_TOKEN}\033[0m\n"
-        break
+    echo "CHK_UNSEALED = ${CHK_UNSEALED}"
 
-      fi
+    if [ "${CHK_UNSEALED}" = "false" ]; then
+      break
     fi
-  done < response.txt
-  # UPDATE to use official file path.
+
+    I=$(( $I + 1 ))
+  done
+
+  echo -e "\033[1;37m\033[45m Final Unseal Response: \033[0m\n"
+  echo -e "\033[0;35m\033[40m$( echo "${UNSEAL_RESPONSE}" | jq )\033[0m\n"
+
+  # Vault should now be unsealed.
 }
 pgp_pkill_gpg_agent_daemon () {
   pkill gpg-agent

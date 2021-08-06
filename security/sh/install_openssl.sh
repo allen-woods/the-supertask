@@ -54,7 +54,7 @@ openssl_apk_add_packages () {
   apk "${APK_FLAGS}" update
   apk --no-cache "${APK_FLAGS}" add \
     busybox-static=1.32.1-r6 \
-    apk-tools-static=2.12.5-r0
+    apk-tools-static=2.12.7-r0
   apk.static --no-cache "${APK_FLAGS}" add \
     build-base=0.5-r2 \
     linux-headers=5.7.8-r0 \

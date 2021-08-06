@@ -83,14 +83,14 @@ tls_apk_add_packages () {
   apk "${APK_FLAGS}" update
   apk --no-cache "${APK_FLAGS}" add \
     busybox-static=1.32.1-r6 \
-    apk-tools-static=2.12.5-r0
+    apk-tools-static=2.12.7-r0
   apk.static --no-cache "${APK_FLAGS}" add \
     outils-jot=0.9-r0
 }
 
 tls_export_certificate_chain_passphrase () {
-  local PHRASE_LEN=$(jot -w %i -r 1 20 99)
-  export CERTIFICATE_CHAIN_PASSPHRASE=$(tr -cd [[:alnum:][:punct:]] < /dev/random | fold -w${PHRASE_LEN} | head -n1)
+  local PHRASE_LEN=$(jot -w %i -r 1 24 96)
+  export CERTIFICATE_CHAIN_PASSPHRASE=$( utf8_passphrase "${PHRASE_LEN}" )
 }
 tls_create_tls_root_certs_dir () {
   mkdir -pm 0700 /to_host/tls/root/certs
@@ -207,7 +207,7 @@ tls_patch_line_83_intermediate_ca_conf () {
 }
 tls_generate_tls_root_private_cakey_pem () {
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
-  $OPENSSL_V111 genpkey \
+  aes-wrap genpkey \
   -out /to_host/tls/root/private/cakey.pem \
   -outform PEM \
   -pass stdin \
@@ -222,7 +222,7 @@ tls_generate_tls_root_certs_cacert_pem () {
   LOCATION_NAME="$(sed '7q;d' $HOME/.admin)"
   ORGANIZATION_NAME="$(sed '8q;d' $HOME/.admin)"
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
-  $OPENSSL_V111 req \
+  aes-wrap req \
   -new \
   -x509 \
   -sha512 \
@@ -238,7 +238,7 @@ tls_generate_tls_root_certs_cacert_pem () {
 }
 tls_generate_tls_intermediate_private_cakey_pem () {
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
-  $OPENSSL_V111 genpkey \
+  aes-wrap genpkey \
   -out /tls/intermediate/private/intermediate.cakey.pem \
   -outform PEM \
   -pass stdin \
@@ -248,7 +248,7 @@ tls_generate_tls_intermediate_private_cakey_pem () {
 }
 tls_generate_tls_intermediate_csr_csr_pem () {
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
-  $OPENSSL_V111 req \
+  aes-wrap req \
   -new \
   -sha512 \
   -passin stdin \
@@ -265,7 +265,7 @@ tls_generate_tls_intermediate_certs_cacert_pem () {
   LOCATION_NAME="$(sed '7q;d' $HOME/.admin)"
   ORGANIZATION_NAME="$(sed '8q;d' $HOME/.admin)"
   echo ${CERTIFICATE_CHAIN_PASSPHRASE} | \
-  $OPENSSL_V111 ca \
+  aes-wrap ca \
   -config /to_host/tls/root/openssl.cnf.root \
   -extensions v3_intermediate_ca \
   -subj "/CN=Alpine 3-10 Intermediate CA/emailAddress=${ADMIN_CONTACT}/C=${COUNTRY_CODE}/ST=${STATE_NAME}/L=${LOCATION_NAME}/O=${ORGANIZATION_NAME}" \
@@ -284,7 +284,7 @@ tls_concatenate_certificate_bundle () {
 }
 tls_verify_certificate_bundle () {
   VERIFICATION_RESULT="$( \
-    $OPENSSL_V111 verify \
+    aes-wrap verify \
     -CAfile \
     /to_host/tls/root/certs/cacert.pem \
     /tls/intermediate/certs/ca-chain-bundle.cert.pem \

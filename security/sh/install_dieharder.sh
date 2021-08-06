@@ -52,7 +52,7 @@ dieharder_apk_add_packages () {
   apk "${APK_FLAGS}" update
   apk --no-cache "${APK_FLAGS}" add \
     busybox-static=1.31.1-r20 \
-    apk-tools-static=2.10.6-r0
+    apk-tools-static=2.10.8-r0
   apk.static --no-cache "${APK_FLAGS}" add \
     build-base=0.5-r2 \
     chrpath=0.16-r2 \

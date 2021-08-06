@@ -11,7 +11,7 @@
 #   X DieHarder Test Suite.
 #   X Compile OpenSSL.
 #   X PGP data.
-#   Unseal Vault.
+#   X Unseal Vault.
 #   Configure Vault.
 #   TLS data.
 FROM alpine:3.12.7 AS test-suite
@@ -76,7 +76,7 @@ COPY --chown=root:root --from=aes-wrap    [ \
   ]
 
 COPY --chown=root:root  [ \
-  "./sh/encode_data_at_rest.sh", \
+  "./sh/hilbert.sh", \
   "./sh/get_earthcam_entropy_image.sh", \
   "./sh/pretty.sh", \
   "./sh/run_install.sh", \
@@ -90,7 +90,7 @@ COPY --chown=root:root  [ \
 # #  /etc/profile.d/install_tls.sh
 COPY --chown=root:root  [ "./vault/config",            "/vault/config/" ]
 #COPY --chown=root:root  [ "./tls/.admin",              "/root/" ]
-COPY --chown=root:root  [ "./static/char_file.utf8",   "/root/.aes_rsa_utf8_support/character_set/" ]
+COPY --chown=root:root  [ "./static/char_file.utf8",   "/root/.aes_rsa_utf8_support/character_set/" ] 
 COPY --chown=root:root  [ "./credentials/credentials", "/var/tmp/" ]
 
 RUN [ "/bin/sh", "-c", ". /etc/profile && run_install --verbose /etc/profile.d/install_pgp.sh" ]

@@ -960,7 +960,11 @@ hilbert () {
             "" >> $LOG_FILE
           fi
 
-          echo -n "${OUTPUT_DATA}" | tr -d '\n'                                   # Echo the final string as UTF-8 with all escape sequences removed.
+          if [ ! -z "${EXPORT_BASE64}" ]; then
+            echo -n "${OUTPUT_DATA}" | base64 | tr -d '\n'
+          else
+            echo -n "${OUTPUT_DATA}" | tr -d '\n'                                 # Echo the final string as UTF-8 with all escape sequences removed.
+          fi
 
           if [ ! -z "${LOG_ENABLED}" ]; then
             printf "${LOG_INDENT}%s\n" \
@@ -978,8 +982,12 @@ hilbert () {
           fi
 
         else                                                                      # If the user has NOT requested decoding...
-          echo -n "${FINAL_HEX}"                                                  # Echo the final hexadecimal string by removing escape sequences
-                                                                                  # with sed.
+          if [ ! -z "${EXPORT_BASE64}" ]; then
+            echo -n "${FINAL_HEX}" | base64 | tr -d '\n'
+          else
+            echo -n "${FINAL_HEX}" | tr -d '\n'                                   # Echo the final hexadecimal string.
+          fi
+          
           if [ ! -z "${LOG_ENABLED}" ]; then
             printf "${LOG_INDENT}%s\n" \
             "Echoed final encoded output." \
